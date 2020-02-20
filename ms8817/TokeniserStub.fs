@@ -4,32 +4,38 @@
 
 module TokeniserStub
 
-type UnaryOp =
+type BuiltinFunc =
+    // UnaryOp
     | Not
     | Head
     | Tail
     | Size
-
-type ComparisonOp =
+    // ComparisonOp
     | Greater
     | GreaterEq
     | Less
     | LessEq
     | Equal
-
-type LogicalOp =
+    // LogicalOp
     | And
     | Or
-
-type AdditiveOp =
+    // AdditiveOp
     | Plus
     | Minus
-
-type MultiplicativeOp =
+    // MultiplicativeOp
     | Mult
     | Div
 
-type Keyword =
+type Literal =
+    | IntLit of int
+    | BoolLit of bool
+    | StringLit of string
+
+type Token =
+    | TLiteral of Literal
+    | TIdentifier of string
+    | BuiltinFun of BuiltinFunc
+    // Keywords
     | KLet
     | KRec
     | KOpenRound
@@ -45,14 +51,4 @@ type Keyword =
     | KStrEq
     | KImplode
     | KExplode
-
-type Literal =
-    | IntLit of int
-    | BoolLit of bool
-    | StringLit of string
-
-type Token =
-    | TLiteral of Literal
-    | TIdentifier of string
-    | UnaryOp of UnaryOp
-    | OtherKeyword of Keyword
+    
