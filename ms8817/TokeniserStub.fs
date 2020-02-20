@@ -41,8 +41,11 @@ type Token =
     // Keywords
     | KLet
     | KRec
+    | KComma
     | KOpenRound
     | KCloseRound
+    | KOpenSquare
+    | KCloseSquare
     | KLambda
     | KDot
     | KIf

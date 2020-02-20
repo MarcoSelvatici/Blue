@@ -13,15 +13,16 @@ type Ast =
     | FuncDefExp of FuncDefExpType // function definition(s) followed by expression
     | Lambda of LambdaType // anonymous function
     | FuncApp of Ast * Ast
-    | Pair of Ast * Ast
     | Null // used with pair to make lists
     | Literal of Literal
     | Identifier of string
     | IdentifierList of string list
-    | BuiltInFunc of BuiltinFunc
+    | BuiltInFunc of BuiltinFunc // E.g. builtinTimes, builtinPlus
     // | Combinator of CombinatorType // Y combinator? ignore for now
     | RoundExp of Ast // possibly needed see techical note
-    | Binop of Ast * Ast * Ast // possibly needed see technical note
+    | IfExp of Ast * Ast * Ast
+    | SeqExp of Ast * Ast // A pair of two elements [a, b]. TODO: (syntactic sugar) Extend this to (untyped) lists [a, b, c, d] -> Seq(a, Seq(b, ...))
+    // | Binop of Ast * Ast * Ast // possibly needed see technical note
 
 // curried version
 // let <FuncName> <FuncParam> = <FuncBody> in <Rest>
@@ -158,14 +159,37 @@ let rec buildCarriedLambda identifierList lambdaBody =
     | id :: identifierList' ->
         buildLambda id <| buildCarriedLambda identifierList' lambdaBody
 
-let rec parseRoundExp parseState =
+let rec parseSeqExp parseState =
     let parseState' =
         parseState
-        |> (parseToken KOpenRound .+. parseExp .+. parseToken KCloseRound)
+        |> (parseToken KOpenSquare .+. parseExp .+. parseToken KComma .+.
+            parseExp .+. parseToken KCloseSquare)
     match parseState' with
         | Error e -> Error e
-        | Ok (ast :: asts, tkns) -> Ok (RoundExp ast :: asts, tkns)
-        | _ -> impossible "parseRoundExp"
+        | Ok (secondAst :: firstAst :: asts, tkns) ->
+            Ok ( SeqExp (firstAst, secondAst) :: asts, tkns)
+        | _ -> impossible "parseSeqExp"
+
+and parseIfExp parseState =
+    let parseState' =
+        parseState
+        |> (parseToken KIf .+. parseExp .+.
+            parseToken KThen .+. parseExp .+.
+            parseToken KElse .+. parseExp .+.
+            parseToken KFi)
+    match parseState' with
+        | Error e -> Error e
+        | Ok (elseAst :: thenAst :: condAst :: asts, tkns) ->
+            Ok ( IfExp (condAst, thenAst, elseAst) :: asts, tkns)
+        | _ -> impossible "parseIfExp"
+
+and parseBuiltinExp parseState =
+    let parseState' =
+        parseState
+        |> (parseIfExp .|. parseSeqExp) // .|. parseUnaryExp .|. parseComparisonExp)
+    match parseState' with
+        | Error e -> Error e
+        | Ok _ -> parseState' // No reduction at this level.
 
 and parseIdentifierList parseState =
     // We expect the identifier list to finish with a dot? Very lambda specific.
@@ -193,22 +217,27 @@ and parseLambda parseState =
             Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
         | _ -> impossible "parseLambda"
 
+and parseRoundExp parseState =
+    let parseState' =
+        parseState
+        |> (parseToken KOpenRound .+. parseExp .+. parseToken KCloseRound)
+    match parseState' with
+        | Error e -> Error e
+        | Ok (ast :: asts, tkns) -> Ok (RoundExp ast :: asts, tkns)
+        | _ -> impossible "parseRoundExp"
+
 and parseExp parseState =
     let parseState' =
         parseState
-        |> (parseLiteral .|. parseIdentifier .|. parseRoundExp .|. parseLambda)
+        |> (parseLiteral .|. parseIdentifier .|. parseRoundExp .|. parseLambda .|. parseBuiltinExp)
     match parseState' with
         | Error e -> Error e
-        | Ok (Identifier _ :: _, _)
-        | Ok (Literal _ :: _, _)
-        | Ok (RoundExp _ :: _, _)
-        | Ok (Lambda _ :: _, _) -> parseState' // "Forward" the match.
-        | _ -> impossible "parseExp"
+        | Ok _ -> parseState' // No reduction at this level.
 
 let parse (tkns : Token list) : Result<Ast, ErrorT> =
     let parseState = Ok ([], tkns)
     match parseExp parseState with
-        | Error e -> Error e 
+        | Error e -> Error e
         | Ok ([ast], []) -> Ok ast
         | Ok (asts, unmatchedTokens) ->
             buildError "failed: top level" unmatchedTokens asts
