@@ -149,7 +149,7 @@ let parseLiteral : ParseRule =
 
 let impossible ruleName = failwithf "What? %A: this case is impossible." ruleName
 
-/// Simple recursive function that transforms transforms a lambda with a series
+/// Simple recursive function that transforms a lambda with a series
 /// of arguments into a series of curried lambdas.
 /// e.g. \x y z.body   becomes    \x.\y.\z.body
 let rec buildCarriedLambda identifierList lambdaBody =
@@ -187,6 +187,8 @@ and parseLambda parseState =
         |> (parseToken KLambda .+. parseIdentifierList .+. parseToken KDot .+. parseExp)
     match parseState' with
         | Error e -> Error e
+        | Ok (_ :: IdentifierList [] :: asts, tkns) ->
+            buildError (sprintf "failed: parseLambda. Invalid empty argument list") tkns asts
         | Ok (lambdaBody :: IdentifierList lambdaParams :: asts, tkns) ->
             Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
         | _ -> impossible "parseLambda"

@@ -4,6 +4,9 @@
 
 module TokeniserStub
 
+let print x =
+    printfn "%A" x
+
 type BuiltinFunc =
     // UnaryOp
     | Not
