@@ -178,10 +178,10 @@ and parseSeqExp parseState =
         |> (parseToken KOpenSquare .+. parseExp .+. parseToken KComma .+.
             parseExp .+. parseToken KCloseSquare)
     match parseState' with
-        | Error e -> Error e
-        | Ok (secondAst :: firstAst :: asts, tkns) ->
-            Ok ( SeqExp (firstAst, secondAst) :: asts, tkns)
-        | _ -> impossible "parseSeqExp"
+    | Error e -> Error e
+    | Ok (secondAst :: firstAst :: asts, tkns) ->
+        Ok ( SeqExp (firstAst, secondAst) :: asts, tkns)
+    | _ -> impossible "parseSeqExp"
 
 and parseIfExp parseState =
     let parseState' =
@@ -191,10 +191,10 @@ and parseIfExp parseState =
             parseToken KElse .+. parseExp .+.
             parseToken KFi)
     match parseState' with
-        | Error e -> Error e
-        | Ok (elseAst :: thenAst :: condAst :: asts, tkns) ->
-            Ok ( IfExp (condAst, thenAst, elseAst) :: asts, tkns)
-        | _ -> impossible "parseIfExp"
+    | Error e -> Error e
+    | Ok (elseAst :: thenAst :: condAst :: asts, tkns) ->
+        Ok ( IfExp (condAst, thenAst, elseAst) :: asts, tkns)
+    | _ -> impossible "parseIfExp"
 
 and parseIdentifierList parseState =
     // We expect the identifier list to finish with a dot? Very lambda specific.
@@ -204,33 +204,33 @@ and parseIdentifierList parseState =
         parseState
         |> (parseNull idListTerminators .|. (parseIdentifier .+. parseIdentifierList))
     match parseState' with
-        | Error e -> Error e
-        | Ok (Null :: asts, tkns) -> // Finsihed the identifier list.
-            Ok (IdentifierList [] :: asts, tkns)
-        | Ok (IdentifierList idList :: Identifier id :: asts, tkns) -> // Append identifier.
-            Ok (IdentifierList (id :: idList) :: asts, tkns)
-        | _ -> impossible "parseIdentifierList"
+    | Error e -> Error e
+    | Ok (Null :: asts, tkns) -> // Finsihed the identifier list.
+        Ok (IdentifierList [] :: asts, tkns)
+    | Ok (IdentifierList idList :: Identifier id :: asts, tkns) -> // Append identifier.
+        Ok (IdentifierList (id :: idList) :: asts, tkns)
+    | _ -> impossible "parseIdentifierList"
 
 and parseLambda parseState =
     let parseState' =
         parseState
         |> (parseToken KLambda .+. parseIdentifierList .+. parseToken KDot .+. parseExp)
     match parseState' with
-        | Error e -> Error e
-        | Ok (_ :: IdentifierList [] :: asts, tkns) ->
-            buildError (sprintf "failed: parseLambda. Invalid empty argument list") tkns asts
-        | Ok (lambdaBody :: IdentifierList lambdaParams :: asts, tkns) ->
-            Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
-        | _ -> impossible "parseLambda"
+    | Error e -> Error e
+    | Ok (_ :: IdentifierList [] :: asts, tkns) ->
+        buildError (sprintf "failed: parseLambda. Invalid empty argument list") tkns asts
+    | Ok (lambdaBody :: IdentifierList lambdaParams :: asts, tkns) ->
+        Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
+    | _ -> impossible "parseLambda"
 
 and parseRoundExp parseState =
     let parseState' =
         parseState
         |> (parseToken KOpenRound .+. parseExp .+. parseToken KCloseRound)
     match parseState' with
-        | Error e -> Error e
-        | Ok (ast :: asts, tkns) -> Ok (RoundExp ast :: asts, tkns)
-        | _ -> impossible "parseRoundExp"
+    | Error e -> Error e
+    | Ok (ast :: asts, tkns) -> Ok (RoundExp ast :: asts, tkns)
+    | _ -> impossible "parseRoundExp"
 
 and parseItemExp parseState =
     let parseState' =
@@ -269,10 +269,9 @@ and parseExp parseState =
 let parse (tkns : Token list) : Result<Ast, ErrorT> =
     let parseState = Ok ([], tkns)
     match parseExp parseState with
-        | Error e -> Error e
-        | Ok ([ast], []) -> Ok ast
-        | Ok (asts, unmatchedTokens) ->
-            buildError "failed: top level" unmatchedTokens asts
+    | Error e -> Error e
+    | Ok ([ast], []) -> Ok ast
+    | Ok (asts, unmatchedTokens) ->
+        buildError "failed: top level" unmatchedTokens asts
 
-// TODO: fix weird match indentation level.
 // TODO: use result.map?
