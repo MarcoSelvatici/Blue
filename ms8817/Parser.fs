@@ -27,7 +27,7 @@ type Ast =
 // let <FuncName> <FuncParam> = <FuncBody> in <Rest>
 and FuncDefExpType = {
     FuncName: string;
-    FuncBody: LambdaType; // Contains <FuncParam>, <FuncBody>
+    FuncBody: Ast; // Contains <FuncParam>, <FuncBody>
     Rest: Ast;
 }
 
@@ -157,12 +157,22 @@ let impossible ruleName = failwithf "What? %A: this case is impossible." ruleNam
 
 /// Simple recursive function that transforms a lambda with a series
 /// of arguments into a series of curried lambdas.
-/// e.g. \x y z.body   becomes    \x.\y.\z.body
+/// e.g. `\x y z.body` becomes `\x.\y.\z.body`
 let rec buildCarriedLambda identifierList lambdaBody =
     match identifierList with
     | [] -> lambdaBody
     | id :: identifierList' ->
         buildLambda id <| buildCarriedLambda identifierList' lambdaBody
+
+/// Transform a function definition with a list of arguments into a "named"
+/// lambda.
+/// e.g. `let x y z = body in rest ni` becomes `let x = \y.\z.body in rest ni`
+let buildCarriedFunc funcParams funcBody rest =
+    FuncDefExp {
+        FuncName = List.head funcParams;
+        FuncBody = buildCarriedLambda (List.tail funcParams) funcBody;
+        Rest = rest;
+    }
 
 /// Transforms a list into a tree of expressions.
 /// TODO: make this in a way that considers operators precedence.
@@ -172,6 +182,7 @@ let rec buildFuncAppTree itemsList =
     | item :: itemsList' -> FuncApp (item, (buildFuncAppTree itemsList'))
     | _ -> impossible "buildFuncAppTree"
 
+// TODO: support sequence lists.
 and parseSeqExp parseState =
     let parseState' =
         parseState
@@ -197,9 +208,7 @@ and parseIfExp parseState =
     | _ -> impossible "parseIfExp"
 
 and parseIdentifierList parseState =
-    // We expect the identifier list to finish with a dot? Very lambda specific.
-    // TODO: define other ways to end an identifier list as needed.
-    let idListTerminators = [KDot]
+    let idListTerminators = [KDot; KEq]
     let parseState' =
         parseState
         |> (parseNull idListTerminators .|. (parseIdentifier .+. parseIdentifierList))
@@ -223,6 +232,19 @@ and parseLambda parseState =
         Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
     | _ -> impossible "parseLambda"
 
+and parseLetInExp parseState =
+    let parseState' =
+        parseState
+        |> (parseToken KLet .+. parseIdentifierList .+. parseToken KEq .+.
+            parseExp .+. parseToken KIn .+. parseExp .+. parseToken KNi) // TODO: is KNi even required?
+    match parseState' with
+    | Error e -> Error e
+    | Ok (_ :: IdentifierList [] :: asts, tkns) ->
+        buildError (sprintf "failed: parseLetInExp. Invalid empty argument list") tkns asts
+    | Ok (rest :: funcBody :: IdentifierList funcParams :: asts, tkns) ->
+        Ok (buildCarriedFunc funcParams funcBody rest :: asts, tkns)
+    | _ -> impossible "parseLetInExp"
+
 and parseRoundExp parseState =
     let parseState' =
         parseState
@@ -236,16 +258,18 @@ and parseItemExp parseState =
     let parseState' =
         parseState
         |> (parseLiteral .|. parseIdentifier .|.
-            parseRoundExp .|. parseLambda .|. parseIfExp .|. parseSeqExp) // TODO: parseLetInExp, parseBuiltinFunc
+            parseRoundExp .|. parseIfExp .|. parseSeqExp .|.
+            parseLambda .|. parseLetInExp) // TODO: parseBuiltinFunc
     match parseState' with
     | Error e -> Error e
     | Ok _ -> parseState' // No reduction at this level. TODO: remove the reduction bit altogether?
 
 and parseAppExpList parseState =
-    let appExpListTerminators = [KComma; KCloseSquare; KCloseRound; KThen; KElse; KFi; KIn; KNi] // What terminates lambdas?
+    let appExpListTerminators =
+        [KComma; KCloseSquare; KCloseRound; KThen; KElse; KFi; KIn; KNi] // TODO: What terminates lambdas?
     let parseState' =
         parseState
-        |> (parseNull appExpListTerminators .|. (parseItemExp .+. parseAppExpList)) // TODO: not efficient.
+        |> (parseNull appExpListTerminators .|. (parseItemExp .+. parseAppExpList))
     match parseState' with
     | Error e -> Error e
     | Ok (Null :: asts, tkns) ->

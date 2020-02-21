@@ -44,6 +44,14 @@ let testCases = [
         Ok (FuncApp (RoundExp (FuncApp (Identifier "f", Literal (IntLit 42))), Identifier "g"));
     "Long exp list", List.replicate 5 (TIdentifier "f"), // Wrong associativity!
         Ok (FuncApp (Identifier "f", FuncApp (Identifier "f", FuncApp (Identifier "f", (FuncApp (Identifier "f", Identifier "f"))))));
+    "Simple let in", [KLet; TIdentifier "f"; KEq; TLiteral (IntLit 2); KIn; TIdentifier "f"; KNi],
+        Ok (FuncDefExp {FuncName = "f"; FuncBody = Literal (IntLit 2); Rest = Identifier "f";});
+    "Double let in", [KLet; TIdentifier "f"; KEq; TLiteral (IntLit 2); KIn; KLet; TIdentifier "g"; KEq; TLiteral (StringLit "aaa"); KIn; TIdentifier "z"; KNi; KNi],
+        Ok (FuncDefExp {FuncName = "f"; FuncBody = Literal (IntLit 2); Rest = FuncDefExp {FuncName = "g"; FuncBody = Literal (StringLit "aaa"); Rest = Identifier "z";};});
+    "Triple let in", [KLet; TIdentifier "f"; KEq; KLet; TIdentifier "fun"; KEq; TLiteral (IntLit 2); KIn; TIdentifier "p"; KNi; KIn; KLet; TIdentifier "g"; KEq; TLiteral (StringLit "aaa"); KIn; TIdentifier "z"; KNi; KNi],
+        Ok (FuncDefExp {FuncName = "f"; FuncBody = FuncDefExp {FuncName = "fun"; FuncBody = Literal (IntLit 2); Rest = Identifier "p";}; Rest = FuncDefExp {FuncName = "g"; FuncBody = Literal (StringLit "aaa"); Rest = Identifier "z";};});
+    "Lambda let in", [KLet; TIdentifier "x"; TIdentifier "y"; TIdentifier "z"; KEq; TLiteral (IntLit 2); KIn; TIdentifier "x"; KNi],
+        Ok (FuncDefExp {FuncName = "x"; FuncBody = buildLambda "y" (buildLambda "z" (Literal (IntLit 2))); Rest = Identifier "x";});
 ]
 
 let testParser (description, tkns, expected) =

@@ -41,6 +41,7 @@ type Token =
     // Keywords
     | KLet
     | KRec
+    | KEq
     | KIn
     | KNi
     | KComma
