@@ -14,7 +14,7 @@ type Ast =
     | Identifier of string
     | IdentifierList of string list
     | BuiltInFunc of BuiltinFunc // E.g. builtinTimes, builtinPlus
-    // | Combinator of CombinatorType // Y combinator? ignore for now
+    | Combinator of CombinatorType // Y combinator? ignore for now
     | RoundExp of Ast // possibly needed see techical note
     | IfExp of Ast * Ast * Ast
     | SeqExp of Ast * Ast // A pair of two elements [a, b]. TODO: (syntactic sugar) Extend this to (untyped) lists [a, b, c, d] -> Seq(a, Seq(b, ...))
@@ -34,6 +34,12 @@ and LambdaType = {
     LambdaParam: string;
     LambdaBody: Ast;
 }
+
+and CombinatorType =
+    | S
+    | K
+    | I
+    | Y
 
 let buildLambda lambdaParam lambdaBody =
     Lambda {
