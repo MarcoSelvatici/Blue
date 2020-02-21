@@ -275,3 +275,10 @@ let parse (tkns : Token list) : Result<Ast, ErrorT> =
         buildError "failed: top level" unmatchedTokens asts
 
 // TODO: use result.map?
+// TODOs:
+// - revise how closely this resembles the grammar.
+// - finish up cases
+// - implement proper errors
+// - write loads of tests
+// - make sure we are efficient (should be)
+// - clean up as much as possible
