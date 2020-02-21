@@ -15,6 +15,67 @@ let pipePrint x =
 
 let eval (input:Ast): Ast =
     match input with
+    //literals
+    | Literal x ->
+        Literal x
+       
+    //Identifier
+    | Identifier x ->
+        Identifier x
+
+    //Lambdas
+
+
+
+
+
+
+
+
+
+
+    ////////////////// START: BUILT-IN FUNCTIONS //////////////////
+    
+    //head
+    | FuncApp( BuiltInFunc Head, x) -> 
+        match x with
+        | SeqExp (head, tail) ->
+            head
+        | _ ->
+            failwith "Error getting head of list/sequence"
+
+    //tail
+    | FuncApp( BuiltInFunc Tail, x) -> 
+        match x with
+        | SeqExp (head, tail) ->
+            tail
+        | _ ->
+            failwith "Error getting tail of list/sequence"
+
+    //size: works on lists created by using nested pairs, e.g. SeqExp ( Literal (IntLit 1), SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null ))) 
+    | FuncApp( BuiltInFunc Size, x) -> 
+        let rec sizeOf x =
+            match x with
+            | SeqExp (head, Null) ->
+                1
+            | SeqExp (head, tail) ->
+                1 + (sizeOf tail)
+            | _ ->
+                failwith "Error getting size of list"
+        Literal (IntLit (sizeOf x))
+
+
+    //unary built-in functions
+    |FuncApp( BuiltInFunc op, x) -> 
+        let x' = eval x
+        match op, x' with
+        
+        //boolean op
+        | Not, Literal (BoolLit n) -> 
+            Literal (BoolLit (not n))
+        | _ ->
+            failwith "Error evaluating built-in function with 1 argument"
+
     // Built-in functon w/ 2 args
     | FuncApp( FuncApp( BuiltInFunc op, x), y) -> 
         let x' = eval x
@@ -52,27 +113,6 @@ let eval (input:Ast): Ast =
         //Error
         | _ -> failwith "Error evaluating built-in fucntion with two arguments"
 
-    //unary built-in functions
-    |FuncApp( BuiltInFunc op, x) -> 
-        let x' = eval x
-        match op, x' with
-        
-        //boolean op
-        | Not, Literal (BoolLit n) -> 
-            Literal (BoolLit (not n))
+        //////////////////  END: BUILT-IN FUNCTIONS  //////////////////
 
-        //head (lst)
-
-        //tail (lst)
-
-        //size
-        | _ ->
-            failwith "Error evaluating built-in function with 1 argument"
-    | _ -> 
-
-
-
-
-
-
-
+    | _ -> failwith "Error evaluating"

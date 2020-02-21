@@ -14,6 +14,9 @@
     <None Include="README-OSS1017.md" />
   </ItemGroup>
 
-  <ItemGroup />
+  <ItemGroup>
+    <PackageReference Include="Expecto" Version="8.13.1" />
+    <PackageReference Include="Expecto.FsCheck" Version="8.13.1" />
+  </ItemGroup>
 
 </Project>
