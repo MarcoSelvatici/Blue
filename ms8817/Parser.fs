@@ -13,23 +13,21 @@ type Ast =
     | FuncDefExp of FuncDefExpType // function definition(s) followed by expression
     | Lambda of LambdaType // anonymous function
     | FuncApp of Ast * Ast
+    | FuncAppList of Ast list
     | Null // used with pair to make lists
     | Literal of Literal
     | Identifier of string
     | IdentifierList of string list
-    | BuiltInFunc of BuiltinFunc // E.g. builtinTimes, builtinPlus
-    // | Combinator of CombinatorType // Y combinator? ignore for now
+    | BuiltInFunc of BuiltInFunc // E.g. builtinTimes, builtinPlus
     | RoundExp of Ast // possibly needed see techical note
     | IfExp of Ast * Ast * Ast
     | SeqExp of Ast * Ast // A pair of two elements [a, b]. TODO: (syntactic sugar) Extend this to (untyped) lists [a, b, c, d] -> Seq(a, Seq(b, ...))
-    // | Binop of Ast * Ast * Ast // possibly needed see technical note
 
 // curried version
 // let <FuncName> <FuncParam> = <FuncBody> in <Rest>
 and FuncDefExpType = {
-    FuncName: string; // Ast Literal.
-    FuncParam: string; // Ast Literal.
-    FuncBody: Ast;
+    FuncName: string;
+    FuncBody: LambdaType; // Contains <FuncParam>, <FuncBody>
     Rest: Ast;
 }
 
@@ -115,15 +113,22 @@ let parseToken (tokenToMatch : Token) : ParseRule =
     | Ok (asts, tokenlist) ->
         buildError (sprintf "failed: parseToken %A" tokenToMatch) tokenlist asts
 
-/// Tries to parse a token and, if successful, returns the Tokens list unchanged
-/// and a Null Ast.
-let parseNull (tokenToMatch : Token) : ParseRule =
+/// Tries to match the next token with a list of tokens, and, if successful,
+/// returns the Tokens list unchanged and a Null Ast.
+/// This parsing rule works also with no more tokens.
+let parseNull (tokensToMatch : Token list) : ParseRule =
+    let matches token =
+        match List.tryFind ((=) token) tokensToMatch with
+        | Some _ -> true
+        | None _ -> false
     function
     | Error e -> Error e
-    | Ok (asts, token :: tokenlist) when token = tokenToMatch ->
+    | Ok (asts, []) ->
+        Ok (Null :: asts, [])
+    | Ok (asts, token :: tokenlist) when matches token ->
         Ok (Null :: asts, token :: tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError (sprintf "failed: parseNull %A" tokenToMatch) tokenlist asts
+        buildError (sprintf "failed: parseNull %A" tokensToMatch) tokenlist asts
 
 let parseIdentifier : ParseRule =
     function
@@ -159,7 +164,15 @@ let rec buildCarriedLambda identifierList lambdaBody =
     | id :: identifierList' ->
         buildLambda id <| buildCarriedLambda identifierList' lambdaBody
 
-let rec parseSeqExp parseState =
+/// Transforms a list into a tree of expressions.
+/// TODO: make this in a way that considers operators precedence.
+let rec buildFuncAppTree itemsList =
+    match itemsList with
+    | [item] -> item
+    | item :: itemsList' -> FuncApp (item, (buildFuncAppTree itemsList'))
+    | _ -> impossible "buildFuncAppTree"
+
+and parseSeqExp parseState =
     let parseState' =
         parseState
         |> (parseToken KOpenSquare .+. parseExp .+. parseToken KComma .+.
@@ -183,20 +196,13 @@ and parseIfExp parseState =
             Ok ( IfExp (condAst, thenAst, elseAst) :: asts, tkns)
         | _ -> impossible "parseIfExp"
 
-and parseBuiltinExp parseState =
-    let parseState' =
-        parseState
-        |> (parseIfExp .|. parseSeqExp) // .|. parseUnaryExp .|. parseComparisonExp)
-    match parseState' with
-        | Error e -> Error e
-        | Ok _ -> parseState' // No reduction at this level.
-
 and parseIdentifierList parseState =
     // We expect the identifier list to finish with a dot? Very lambda specific.
     // TODO: define other ways to end an identifier list as needed.
+    let idListTerminators = [KDot]
     let parseState' =
         parseState
-        |> (parseNull KDot .|. (parseIdentifier .+. parseIdentifierList))
+        |> (parseNull idListTerminators .|. (parseIdentifier .+. parseIdentifierList))
     match parseState' with
         | Error e -> Error e
         | Ok (Null :: asts, tkns) -> // Finsihed the identifier list.
@@ -226,13 +232,39 @@ and parseRoundExp parseState =
         | Ok (ast :: asts, tkns) -> Ok (RoundExp ast :: asts, tkns)
         | _ -> impossible "parseRoundExp"
 
+and parseItemExp parseState =
+    let parseState' =
+        parseState
+        |> (parseLiteral .|. parseIdentifier .|.
+            parseRoundExp .|. parseLambda .|. parseIfExp .|. parseSeqExp) // TODO: parseLetInExp, parseBuiltinFunc
+    match parseState' with
+    | Error e -> Error e
+    | Ok _ -> parseState' // No reduction at this level. TODO: remove the reduction bit altogether?
+
+and parseAppExpList parseState =
+    let appExpListTerminators = [KComma; KCloseSquare; KCloseRound; KThen; KElse; KFi; KIn; KNi] // What terminates lambdas?
+    let parseState' =
+        parseState
+        |> (parseNull appExpListTerminators .|. (parseItemExp .+. parseAppExpList)) // TODO: not efficient.
+    match parseState' with
+    | Error e -> Error e
+    | Ok (Null :: asts, tkns) ->
+        Ok (FuncAppList [] :: asts, tkns)
+    | Ok (FuncAppList fAppList :: itemExp :: asts, tkns) ->
+        Ok (FuncAppList (itemExp :: fAppList) :: asts, tkns)
+    | _ -> impossible "parseAppExpList"
+
 and parseExp parseState =
     let parseState' =
         parseState
-        |> (parseLiteral .|. parseIdentifier .|. parseRoundExp .|. parseLambda .|. parseBuiltinExp)
+        |> parseAppExpList
     match parseState' with
-        | Error e -> Error e
-        | Ok _ -> parseState' // No reduction at this level.
+    | Error e -> Error e
+    | Ok (FuncAppList [] :: asts, tkns) ->
+        buildError (sprintf "failed: parseExp. Invalid empty exp list") tkns asts
+    | Ok (FuncAppList fAppList :: asts, tkns) ->
+        Ok (buildFuncAppTree fAppList :: asts, tkns)
+    | _ -> impossible "parseExp"
 
 let parse (tkns : Token list) : Result<Ast, ErrorT> =
     let parseState = Ok ([], tkns)
@@ -241,3 +273,6 @@ let parse (tkns : Token list) : Result<Ast, ErrorT> =
         | Ok ([ast], []) -> Ok ast
         | Ok (asts, unmatchedTokens) ->
             buildError "failed: top level" unmatchedTokens asts
+
+// TODO: fix weird match indentation level.
+// TODO: use result.map?

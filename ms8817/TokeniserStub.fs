@@ -7,7 +7,7 @@ module TokeniserStub
 let print x =
     printfn "%A" x
 
-type BuiltinFunc =
+type BuiltInFunc =
     // UnaryOp
     | Not
     | Head
@@ -37,10 +37,12 @@ type Literal =
 type Token =
     | TLiteral of Literal
     | TIdentifier of string
-    | BuiltinFun of BuiltinFunc
+    | BuiltInFunc of BuiltInFunc
     // Keywords
     | KLet
     | KRec
+    | KIn
+    | KNi
     | KComma
     | KOpenRound
     | KCloseRound

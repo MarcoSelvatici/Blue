@@ -25,8 +25,10 @@ Author: Marco Selvatici (ms8817)
 
 ```
 <identifier-list> ::= TIdentifier | TIdentfier <identifier-list>
-<item-exp> ::= TLit | TIdentifier | BuiltinFunc | "(" <exp> ")" | <defn-exp> | <if-exp> | <seq-exp>
+<item-exp> ::= TLit | TIdentifier | BuiltinFunc | <round-exp> | <lambda-exp> | <defn-exp> | <if-exp> | <seq-exp>
 <app-exp-list> ::= <item-exp> | <item-exp> <app-exp-list>
+<round-exp> ::= "(" <exp> ")"
+<lambda-exp> ::= "\" <identifier-list> "." <exp>
 <defn-exp> ::= "let" <identifier-list> "=" <exp> "in" <exp> "ni"
 <if-exp> ::= "if" <exp> "then" <exp> "else" <exp> "fi"
 <seq-exp> ::= "[" <exp> "," <exp> "]"
