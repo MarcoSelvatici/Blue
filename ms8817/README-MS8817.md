@@ -1,7 +1,7 @@
 # Parser
 Author: Marco Selvatici (ms8817)
 
-## BNF Grammar
+## BNF Grammar (not working since left recursive...)
 
 ```
 <applicative-exp> ::= <exp> | <exp> <applicative-exp>
@@ -19,6 +19,18 @@ Author: Marco Selvatici (ms8817)
 <exp> ::= TLit | TIdentifier | <round-exp> | <lambda-exp> | <builtin-exp> 
 <named-let-in-exp> ::= KLet <identifier-list> KEq <block> KIn
 <block> ::= <exp> | <named-let-in-exp> <block>
+```
+
+## BNF Grammar (proper)
+
+```
+<identifier-list> ::= TIdentifier | TIdentfier <identifier-list>
+<item-exp> ::= TLit | TIdentifier | BuiltinFunc | "(" <exp> ")" | <defn-exp> | <if-exp> | <seq-exp>
+<app-exp-list> ::= <item-exp> | <item-exp> <app-exp-list>
+<defn-exp> ::= "let" <identifier-list> "=" <exp> "in" <exp> "ni"
+<if-exp> ::= "if" <exp> "then" <exp> "else" <exp> "fi"
+<seq-exp> ::= "[" <exp> "," <exp> "]"
+<exp> ::= <app-exp-list>
 ```
 
 ## Parsing expamples
