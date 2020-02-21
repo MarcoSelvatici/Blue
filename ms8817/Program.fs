@@ -42,8 +42,8 @@ let testCases = [
         Ok (FuncApp (Identifier "g", RoundExp (FuncApp (Identifier "f", Literal (IntLit 42)))));
     "Bracketed fun", [KOpenRound; TIdentifier "f"; TLiteral (IntLit 42); KCloseRound; TIdentifier "g"],
         Ok (FuncApp (RoundExp (FuncApp (Identifier "f", Literal (IntLit 42))), Identifier "g"));
-    "Long exp list", List.replicate 5 (TIdentifier "f"), // Wrong associativity!
-        Ok (FuncApp (Identifier "f", FuncApp (Identifier "f", FuncApp (Identifier "f", (FuncApp (Identifier "f", Identifier "f"))))));
+    "Long exp list", List.map (fun i -> (TIdentifier <| sprintf "%d" i)) [1; 2; 3; 4; 5], // Wrong associativity!
+        Ok (FuncApp (FuncApp (FuncApp (FuncApp (Identifier "1", Identifier "2"), Identifier "3"), Identifier "4" ), Identifier "5"))
     "Simple let in", [KLet; TIdentifier "f"; KEq; TLiteral (IntLit 2); KIn; TIdentifier "f"; KNi],
         Ok (FuncDefExp {FuncName = "f"; FuncBody = Literal (IntLit 2); Rest = Identifier "f";});
     "Double let in", [KLet; TIdentifier "f"; KEq; TLiteral (IntLit 2); KIn; KLet; TIdentifier "g"; KEq; TLiteral (StringLit "aaa"); KIn; TIdentifier "z"; KNi; KNi],
@@ -52,6 +52,10 @@ let testCases = [
         Ok (FuncDefExp {FuncName = "f"; FuncBody = FuncDefExp {FuncName = "fun"; FuncBody = Literal (IntLit 2); Rest = Identifier "p";}; Rest = FuncDefExp {FuncName = "g"; FuncBody = Literal (StringLit "aaa"); Rest = Identifier "z";};});
     "Lambda let in", [KLet; TIdentifier "x"; TIdentifier "y"; TIdentifier "z"; KEq; TLiteral (IntLit 2); KIn; TIdentifier "x"; KNi],
         Ok (FuncDefExp {FuncName = "x"; FuncBody = buildLambda "y" (buildLambda "z" (Literal (IntLit 2))); Rest = Identifier "x";});
+    //"Simple addition", [TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3)], // Wrong association and order.
+    //    Ok (FuncApp (Literal (IntLit 2), FuncApp (BuiltInFunc Plus, Literal (IntLit 3))))
+    //"Simple arithmetic", [TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3); TBuiltInFunc Mult; TLiteral (IntLit 4); TBuiltInFunc Minus; TLiteral (IntLit 5)],
+    //    Ok (FuncApp (Literal (IntLit 2), FuncApp (BuiltInFunc Plus, FuncApp (Literal (IntLit 3), FuncApp (BuiltInFunc Mult, FuncApp (Literal (IntLit 4), FuncApp (BuiltInFunc Minus, Literal (IntLit 5))))))))
 ]
 
 let testParser (description, tkns, expected) =

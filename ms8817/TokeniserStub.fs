@@ -37,7 +37,7 @@ type Literal =
 type Token =
     | TLiteral of Literal
     | TIdentifier of string
-    | BuiltInFunc of BuiltInFunc
+    | TBuiltInFunc of BuiltInFunc
     // Keywords
     | KLet
     | KRec

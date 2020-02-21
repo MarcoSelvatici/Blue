@@ -146,6 +146,14 @@ let parseLiteral : ParseRule =
     | Ok (asts, tokenlist) ->
         buildError "failed: parseLiteral" tokenlist asts
 
+let parseBuiltin : ParseRule =
+    function
+    | Error e -> Error e
+    | Ok (asts, TBuiltInFunc func :: tokenlist) ->
+        Ok (BuiltInFunc func :: asts, tokenlist)
+    | Ok (asts, tokenlist) ->
+        buildError "failed: parseLiteral" tokenlist asts
+
 // Parse builtinFunc?
 
 // Combnied rules.
@@ -257,9 +265,9 @@ and parseRoundExp parseState =
 and parseItemExp parseState =
     let parseState' =
         parseState
-        |> (parseLiteral .|. parseIdentifier .|.
+        |> (parseLiteral .|. parseIdentifier .|. parseBuiltin .|.
             parseRoundExp .|. parseIfExp .|. parseSeqExp .|.
-            parseLambda .|. parseLetInExp) // TODO: parseBuiltinFunc
+            parseLambda .|. parseLetInExp)
     match parseState' with
     | Error e -> Error e
     | Ok _ -> parseState' // No reduction at this level. TODO: remove the reduction bit altogether?
@@ -299,6 +307,8 @@ let parse (tkns : Token list) : Result<Ast, ErrorT> =
         buildError "failed: top level" unmatchedTokens asts
 
 // TODO: use result.map?
+// TODO: fix associativity for func application
+// TODO: fix operator precedence.
 // TODOs:
 // - revise how closely this resembles the grammar.
 // - finish up cases
