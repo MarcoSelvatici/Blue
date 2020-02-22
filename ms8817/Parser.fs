@@ -5,47 +5,35 @@ module Parser
 
 open TokeniserStub
 
-//==========//
-// Ast type //
-//==========//
+//=======//
+// Types //
+//=======//
 
 type Ast =
-    | FuncDefExp of FuncDefExpType // function definition(s) followed by expression
-    | Lambda of LambdaType // anonymous function
+    | FuncDefExp of FuncDefExpType
+    | Lambda of LambdaType
+    | IfExp of Ast * Ast * Ast
+    | SeqExp of Ast * Ast
     | FuncApp of Ast * Ast
     | FuncAppList of Ast list
-    | Null // used with pair to make lists
-    | Literal of Literal
     | Identifier of string
     | IdentifierList of string list
-    | BuiltInFunc of BuiltInFunc // E.g. builtinTimes, builtinPlus
-    | RoundExp of Ast // possibly needed see techical note
-    | IfExp of Ast * Ast * Ast
-    | SeqExp of Ast * Ast // A pair of two elements [a, b]. TODO: (syntactic sugar) Extend this to (untyped) lists [a, b, c, d] -> Seq(a, Seq(b, ...))
+    | Literal of Literal
+    | BuiltInFunc of BuiltInFunc
+    | Null
 
-// curried version
-// let <FuncName> <FuncParam> = <FuncBody> in <Rest>
+// Curried.
 and FuncDefExpType = {
     FuncName: string;
-    FuncBody: Ast; // Contains <FuncParam>, <FuncBody>
+    FuncBody: Ast;
     Rest: Ast;
 }
 
-// Curried
+// Curried.
 and LambdaType = {
     LambdaParam: string;
     LambdaBody: Ast;
 }
-
-let buildLambda lambdaParam lambdaBody =
-    Lambda {
-        LambdaParam = lambdaParam;
-        LambdaBody = lambdaBody;
-    }
-
-//===================//
-// Parser error type //
-//===================//
 
 type ErrorT = {
     parseTrace: string;
@@ -53,19 +41,12 @@ type ErrorT = {
     currentAsts: Ast list;
 }
 
-let buildError parseTrace unmatchedTokens currentAsts = 
-    Error {
-        parseTrace = parseTrace;
-        unmatchedTokens = unmatchedTokens;
-        currentAsts = currentAsts;
-    }
-
-//=============//
-// Parse rules //
-//=============//
-
 type ParseRule =
     Result<Ast list * Token list, ErrorT> -> Result<Ast list * Token list, ErrorT>
+
+//========================//
+// Parse rule combinators //
+//========================//
 
 // Both combinators are left associative, + higher precedence than |.
 
@@ -101,59 +82,22 @@ let (.+.) (pRule1 : ParseRule) (pRule2 : ParseRule) : ParseRule =
         | Ok _ -> tryMatchRules parseState
         | Error _ -> parseState
 
-// Base rules.
+//==================//
+// Helper functions //
+//==================//
 
-/// Tries to parse a token and, if successful, returns the Tokens list without
-/// that token.
-let parseToken (tokenToMatch : Token) : ParseRule =
-    function
-    | Error e -> Error e
-    | Ok (asts, token :: tokenlist) when token = tokenToMatch ->
-        Ok (asts, tokenlist)
-    | Ok (asts, tokenlist) ->
-        buildError (sprintf "failed: parseToken %A" tokenToMatch) tokenlist asts
+let buildLambda lambdaParam lambdaBody =
+    Lambda {
+        LambdaParam = lambdaParam;
+        LambdaBody = lambdaBody;
+    }
 
-/// Tries to match the next token with a list of tokens, and, if successful,
-/// returns the Tokens list unchanged and a Null Ast.
-/// This parsing rule works also with no more tokens.
-let parseNull (tokensToMatch : Token list) : ParseRule =
-    function
-    | Error e -> Error e
-    | Ok (asts, []) ->
-        Ok (Null :: asts, [])
-    | Ok (asts, token :: tokenlist) when List.contains token tokensToMatch ->
-        Ok (Null :: asts, token :: tokenlist)
-    | Ok (asts, tokenlist) ->
-        buildError (sprintf "failed: parseNull %A" tokensToMatch) tokenlist asts
-
-let parseIdentifier : ParseRule =
-    function
-    | Error e -> Error e
-    | Ok (asts, TIdentifier id :: tokenlist) ->
-        Ok (Identifier id :: asts, tokenlist)
-    | Ok (asts, tokenlist) ->
-        buildError "failed: parseIdentifier" tokenlist asts
-
-let parseLiteral : ParseRule =
-    function
-    | Error e -> Error e
-    | Ok (asts, TLiteral lit :: tokenlist) ->
-        Ok(Literal lit :: asts, tokenlist)
-    | Ok (asts, tokenlist) ->
-        buildError "failed: parseLiteral" tokenlist asts
-
-let parseBuiltin : ParseRule =
-    function
-    | Error e -> Error e
-    | Ok (asts, TBuiltInFunc func :: tokenlist) ->
-        Ok (BuiltInFunc func :: asts, tokenlist)
-    | Ok (asts, tokenlist) ->
-        buildError "failed: parseLiteral" tokenlist asts
-
-// Combnied rules.
-// Every rule has two parts:
-// - parse structure: defined as a series of combined parse rules;
-// - ast reduction: take the Asts matched in the previous phase and reduce them.
+let buildError parseTrace unmatchedTokens currentAsts = 
+    Error {
+        parseTrace = parseTrace;
+        unmatchedTokens = unmatchedTokens;
+        currentAsts = currentAsts;
+    }
 
 let impossible ruleName = failwithf "What? %A: this case is impossible." ruleName
 
@@ -201,7 +145,6 @@ let matchAnyOp opGroups itemsList =
 
 /// Transforms a list of Items into a tree of left associative function
 /// applications, respecting operators ordeing.
-/// TODO: not sure this works with unary functions. It should.
 let rec buildFuncAppTree (itemsList : Ast list): Ast =
     let opGroups = 
         List.map (List.map BuiltInFunc) <| [
@@ -222,8 +165,66 @@ let rec buildFuncAppTree (itemsList : Ast list): Ast =
             let itemsList', lastEl = List.splitAt (itemsList.Length - 1) itemsList
             FuncApp ((buildFuncAppTree itemsList'), lastEl.[0]) // TODO: this is a bit hacky.
 
+//=============//
+// Parse rules //
+//=============//
+
+// Base rules.
+
+/// Tries to parse a token and, if successful, consumes that token.
+let parseToken (tokenToMatch : Token) : ParseRule =
+    function
+    | Error e -> Error e
+    | Ok (asts, token :: tokenlist) when token = tokenToMatch ->
+        Ok (asts, tokenlist)
+    | Ok (asts, tokenlist) ->
+        buildError (sprintf "failed: parseToken %A" tokenToMatch) tokenlist asts
+
+/// Tries to match the next token with a list of tokens, and, if successful,
+/// returns the unchanged Tokens list and a Null Ast.
+/// This parsing rule matches also the empty token list.
+let parseNull (tokensToMatch : Token list) : ParseRule =
+    function
+    | Error e -> Error e
+    | Ok (asts, []) ->
+        Ok (Null :: asts, [])
+    | Ok (asts, token :: tokenlist) when List.contains token tokensToMatch ->
+        Ok (Null :: asts, token :: tokenlist)
+    | Ok (asts, tokenlist) ->
+        buildError (sprintf "failed: parseNull %A" tokensToMatch) tokenlist asts
+
+let parseIdentifier : ParseRule =
+    function
+    | Error e -> Error e
+    | Ok (asts, TIdentifier id :: tokenlist) ->
+        Ok (Identifier id :: asts, tokenlist)
+    | Ok (asts, tokenlist) ->
+        buildError "failed: parseIdentifier" tokenlist asts
+
+let parseLiteral : ParseRule =
+    function
+    | Error e -> Error e
+    | Ok (asts, TLiteral lit :: tokenlist) ->
+        Ok(Literal lit :: asts, tokenlist)
+    | Ok (asts, tokenlist) ->
+        buildError "failed: parseLiteral" tokenlist asts
+
+let parseBuiltin : ParseRule =
+    function
+    | Error e -> Error e
+    | Ok (asts, TBuiltInFunc func :: tokenlist) ->
+        Ok (BuiltInFunc func :: asts, tokenlist)
+    | Ok (asts, tokenlist) ->
+        buildError "failed: parseLiteral" tokenlist asts
+
+// Combnied rules.
+// Every rule has two parts:
+// - parse structure: defined as a series of combined parse rules;
+// - ast reduction: take the Asts matched in the previous phase and reduce them.
+//                  This may not be necessary for all the rules.
+
 // TODO: support sequence lists.
-and parseSeqExp parseState =
+let rec parseSeqExp parseState =
     let parseState' =
         parseState
         |> (parseToken KOpenSquare .+. parseExp .+. parseToken KComma .+.
@@ -237,10 +238,8 @@ and parseSeqExp parseState =
 and parseIfExp parseState =
     let parseState' =
         parseState
-        |> (parseToken KIf .+. parseExp .+.
-            parseToken KThen .+. parseExp .+.
-            parseToken KElse .+. parseExp .+.
-            parseToken KFi)
+        |> (parseToken KIf .+. parseExp .+. parseToken KThen .+. parseExp .+.
+            parseToken KElse .+. parseExp .+. parseToken KFi)
     match parseState' with
     | Error e -> Error e
     | Ok (elseAst :: thenAst :: condAst :: asts, tkns) ->
@@ -286,27 +285,17 @@ and parseLetInExp parseState =
     | _ -> impossible "parseLetInExp"
 
 and parseRoundExp parseState =
-    let parseState' =
-        parseState
-        |> (parseToken KOpenRound .+. parseExp .+. parseToken KCloseRound)
-    match parseState' with
-    | Error e -> Error e
-    | Ok (ast :: asts, tkns) -> Ok (ast :: asts, tkns) // TODO: No reduction... remove.
-    | _ -> impossible "parseRoundExp"
+    parseState
+    |> (parseToken KOpenRound .+. parseExp .+. parseToken KCloseRound)
 
 and parseItemExp parseState =
-    let parseState' =
-        parseState
-        |> (parseLiteral .|. parseIdentifier .|. parseBuiltin .|.
-            parseRoundExp .|. parseIfExp .|. parseSeqExp .|.
-            parseLambda .|. parseLetInExp)
-    match parseState' with
-    | Error e -> Error e
-    | Ok _ -> parseState' // No reduction at this level. TODO: remove the reduction bit altogether?
+    parseState
+    |> (parseLiteral .|. parseIdentifier .|. parseBuiltin .|. parseRoundExp .|.
+        parseIfExp .|. parseSeqExp .|. parseLambda .|. parseLetInExp)
 
 and parseAppExpList parseState =
     let appExpListTerminators =
-        [KComma; KCloseSquare; KCloseRound; KThen; KElse; KFi; KIn; KNi] // TODO: What terminates lambdas?
+        [KComma; KCloseSquare; KCloseRound; KThen; KElse; KFi; KIn; KNi]
     let parseState' =
         parseState
         |> (parseNull appExpListTerminators .|. (parseItemExp .+. parseAppExpList))
@@ -340,8 +329,6 @@ let parse (tkns : Token list) : Result<Ast, ErrorT> =
 
 // TODO: use result.map?
 // TODOs:
-// - revise how closely this resembles the grammar.
-// - finish up cases
 // - implement proper errors
 // - write loads of tests
 // - make sure we are efficient (should be)
