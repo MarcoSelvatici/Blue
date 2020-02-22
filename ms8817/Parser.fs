@@ -11,7 +11,7 @@ open TokeniserStub
 
 type Ast =
     | FuncDefExp of FuncDefExpType
-    | Lambda of LambdaType
+    | LambdaExp of LambdaType
     | IfExp of Ast * Ast * Ast
     | SeqExp of Ast * Ast
     | FuncApp of Ast * Ast
@@ -87,7 +87,7 @@ let (.+.) (pRule1 : ParseRule) (pRule2 : ParseRule) : ParseRule =
 //==================//
 
 let buildLambda lambdaParam lambdaBody =
-    Lambda {
+    LambdaExp {
         LambdaParam = lambdaParam;
         LambdaBody = lambdaBody;
     }
@@ -172,18 +172,18 @@ let rec buildFuncAppTree (itemsList : Ast list): Ast =
 // Base rules.
 
 /// Tries to parse a token and, if successful, consumes that token.
-let parseToken (tokenToMatch : Token) : ParseRule =
+let pToken (tokenToMatch : Token) : ParseRule =
     function
     | Error e -> Error e
     | Ok (asts, token :: tokenlist) when token = tokenToMatch ->
         Ok (asts, tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError (sprintf "failed: parseToken %A" tokenToMatch) tokenlist asts
+        buildError (sprintf "failed: pToken %A" tokenToMatch) tokenlist asts
 
 /// Tries to match the next token with a list of tokens, and, if successful,
 /// returns the unchanged Tokens list and a Null Ast.
 /// This parsing rule matches also the empty token list.
-let parseNull (tokensToMatch : Token list) : ParseRule =
+let pNull (tokensToMatch : Token list) : ParseRule =
     function
     | Error e -> Error e
     | Ok (asts, []) ->
@@ -191,31 +191,31 @@ let parseNull (tokensToMatch : Token list) : ParseRule =
     | Ok (asts, token :: tokenlist) when List.contains token tokensToMatch ->
         Ok (Null :: asts, token :: tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError (sprintf "failed: parseNull %A" tokensToMatch) tokenlist asts
+        buildError (sprintf "failed: pNull %A" tokensToMatch) tokenlist asts
 
-let parseIdentifier : ParseRule =
+let pIdentifier : ParseRule =
     function
     | Error e -> Error e
     | Ok (asts, TIdentifier id :: tokenlist) ->
         Ok (Identifier id :: asts, tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError "failed: parseIdentifier" tokenlist asts
+        buildError "failed: pIdentifier" tokenlist asts
 
-let parseLiteral : ParseRule =
+let pLiteral : ParseRule =
     function
     | Error e -> Error e
     | Ok (asts, TLiteral lit :: tokenlist) ->
         Ok(Literal lit :: asts, tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError "failed: parseLiteral" tokenlist asts
+        buildError "failed: pLiteral" tokenlist asts
 
-let parseBuiltin : ParseRule =
+let pBuiltin : ParseRule =
     function
     | Error e -> Error e
     | Ok (asts, TBuiltInFunc func :: tokenlist) ->
         Ok (BuiltInFunc func :: asts, tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError "failed: parseLiteral" tokenlist asts
+        buildError "failed: pBuiltin" tokenlist asts
 
 // Combnied rules.
 // Every rule has two parts:
@@ -224,104 +224,97 @@ let parseBuiltin : ParseRule =
 //                  This may not be necessary for all the rules.
 
 // TODO: support sequence lists.
-let rec parseSeqExp parseState =
-    let parseState' =
-        parseState
-        |> (parseToken KOpenSquare .+. parseExp .+. parseToken KComma .+.
-            parseExp .+. parseToken KCloseSquare)
-    match parseState' with
+let rec pSeqExp pState =
+    let pState' =
+        pState
+        |> (pToken KOpenSquare .+. pExp .+. pToken KComma .+.
+            pExp .+. pToken KCloseSquare)
+    match pState' with
     | Error e -> Error e
     | Ok (secondAst :: firstAst :: asts, tkns) ->
         Ok ( SeqExp (firstAst, secondAst) :: asts, tkns)
-    | _ -> impossible "parseSeqExp"
+    | _ -> impossible "pSeqExp"
 
-and parseIfExp parseState =
-    let parseState' =
-        parseState
-        |> (parseToken KIf .+. parseExp .+. parseToken KThen .+. parseExp .+.
-            parseToken KElse .+. parseExp .+. parseToken KFi)
-    match parseState' with
+and pIfExp pState =
+    let pState' =
+        pState
+        |> (pToken KIf .+. pExp .+. pToken KThen .+. pExp .+.
+            pToken KElse .+. pExp .+. pToken KFi)
+    match pState' with
     | Error e -> Error e
     | Ok (elseAst :: thenAst :: condAst :: asts, tkns) ->
         Ok ( IfExp (condAst, thenAst, elseAst) :: asts, tkns)
-    | _ -> impossible "parseIfExp"
+    | _ -> impossible "pIfExp"
 
-and parseIdentifierList parseState =
+and pIdentifierList pState =
     let idListTerminators = [KDot; KEq]
-    let parseState' =
-        parseState
-        |> (parseNull idListTerminators .|. (parseIdentifier .+. parseIdentifierList))
-    match parseState' with
+    let pState' =
+        pState |> (pNull idListTerminators .|. (pIdentifier .+. pIdentifierList))
+    match pState' with
     | Error e -> Error e
     | Ok (Null :: asts, tkns) -> // Finsihed the identifier list.
         Ok (IdentifierList [] :: asts, tkns)
     | Ok (IdentifierList idList :: Identifier id :: asts, tkns) -> // Append identifier.
         Ok (IdentifierList (id :: idList) :: asts, tkns)
-    | _ -> impossible "parseIdentifierList"
+    | _ -> impossible "pIdentifierList"
 
-and parseLambda parseState =
-    let parseState' =
-        parseState
-        |> (parseToken KLambda .+. parseIdentifierList .+. parseToken KDot .+. parseExp)
-    match parseState' with
+and pLambdaExp pState =
+    let pState' =
+        pState |> (pToken KLambda .+. pIdentifierList .+. pToken KDot .+. pExp)
+    match pState' with
     | Error e -> Error e
     | Ok (_ :: IdentifierList [] :: asts, tkns) ->
-        buildError (sprintf "failed: parseLambda. Invalid empty argument list") tkns asts
+        buildError (sprintf "failed: pLambdaExp. Invalid empty argument list") tkns asts
     | Ok (lambdaBody :: IdentifierList lambdaParams :: asts, tkns) ->
         Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
-    | _ -> impossible "parseLambda"
+    | _ -> impossible "pLambdaExp"
 
-and parseLetInExp parseState =
-    let parseState' =
-        parseState
-        |> (parseToken KLet .+. parseIdentifierList .+. parseToken KEq .+.
-            parseExp .+. parseToken KIn .+. parseExp .+. parseToken KNi) // TODO: is KNi even required?
-    match parseState' with
+and pFuncDefExp pState =
+    let pState' =
+        pState
+        |> (pToken KLet .+. pIdentifierList .+. pToken KEq .+.
+            pExp .+. pToken KIn .+. pExp .+. pToken KNi) // TODO: is KNi even required?
+    match pState' with
     | Error e -> Error e
     | Ok (_ :: IdentifierList [] :: asts, tkns) ->
-        buildError (sprintf "failed: parseLetInExp. Invalid empty argument list") tkns asts
+        buildError (sprintf "failed: pFuncDefExp. Invalid empty argument list") tkns asts
     | Ok (rest :: funcBody :: IdentifierList funcParams :: asts, tkns) ->
         Ok (buildCarriedFunc funcParams funcBody rest :: asts, tkns)
-    | _ -> impossible "parseLetInExp"
+    | _ -> impossible "pFuncDefExp"
 
-and parseRoundExp parseState =
-    parseState
-    |> (parseToken KOpenRound .+. parseExp .+. parseToken KCloseRound)
+and pRoundExp pState =
+    pState |> (pToken KOpenRound .+. pExp .+. pToken KCloseRound)
 
-and parseItemExp parseState =
-    parseState
-    |> (parseLiteral .|. parseIdentifier .|. parseBuiltin .|. parseRoundExp .|.
-        parseIfExp .|. parseSeqExp .|. parseLambda .|. parseLetInExp)
+and pItemExp pState =
+    pState
+    |> (pLiteral .|. pIdentifier .|. pBuiltin .|. pRoundExp .|.
+        pIfExp .|. pSeqExp .|. pLambdaExp .|. pFuncDefExp)
 
-and parseAppExpList parseState =
+and pAppExpList pState =
     let appExpListTerminators =
         [KComma; KCloseSquare; KCloseRound; KThen; KElse; KFi; KIn; KNi]
-    let parseState' =
-        parseState
-        |> (parseNull appExpListTerminators .|. (parseItemExp .+. parseAppExpList))
-    match parseState' with
+    let pState' =
+        pState |> (pNull appExpListTerminators .|. (pItemExp .+. pAppExpList))
+    match pState' with
     | Error e -> Error e
     | Ok (Null :: asts, tkns) ->
         Ok (FuncAppList [] :: asts, tkns)
     | Ok (FuncAppList fAppList :: itemExp :: asts, tkns) ->
         Ok (FuncAppList (itemExp :: fAppList) :: asts, tkns)
-    | _ -> impossible "parseAppExpList"
+    | _ -> impossible "pAppExpList"
 
-and parseExp parseState =
-    let parseState' =
-        parseState
-        |> parseAppExpList
-    match parseState' with
+and pExp pState =
+    match pAppExpList pState with
     | Error e -> Error e
     | Ok (FuncAppList [] :: asts, tkns) ->
-        buildError (sprintf "failed: parseExp. Invalid empty exp list") tkns asts
+        buildError (sprintf "failed: pExp. Invalid empty exp list") tkns asts
     | Ok (FuncAppList fAppList :: asts, tkns) ->
         Ok (buildFuncAppTree fAppList :: asts, tkns)
-    | _ -> impossible "parseExp"
+    | _ -> impossible "pExp"
 
 let parse (tkns : Token list) : Result<Ast, ErrorT> =
     let parseState = Ok ([], tkns)
-    match parseExp parseState with
+    match pExp parseState with
     | Error e -> Error e
     | Ok ([ast], []) -> Ok ast
     | Ok (asts, unmatchedTokens) ->

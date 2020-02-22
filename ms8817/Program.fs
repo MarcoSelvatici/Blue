@@ -21,7 +21,7 @@ let testCases = [
     "Curried lambda", [KLambda; TIdentifier "x";  TIdentifier "y"; KDot; TLiteral (IntLit 42)],
         Ok (buildLambda "x" (buildLambda "y" (Literal (IntLit 42))));
     "Invalid lambda, no arguments", [KLambda; KDot; TLiteral (IntLit 2)],
-        buildError "failed: parseLambda. Invalid empty argument list" [] [];
+        buildError "failed: pLambdaExp. Invalid empty argument list" [] [];
     //"Lambda and Dot", [KLambda; TIdentifier "x"; KDot; TLiteral (IntLit 42); KDot],
     //    buildError "failed: top level" [KDot] [buildLambda "x" (Literal (IntLit 42))];
     "IfExp", [KIf; TIdentifier "x"; KThen; TIdentifier "y"; KElse; TIdentifier "z"; KFi],
