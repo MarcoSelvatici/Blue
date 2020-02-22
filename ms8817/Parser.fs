@@ -15,9 +15,9 @@ type Ast =
     | IfExp of Ast * Ast * Ast
     | SeqExp of Ast * Ast
     | FuncApp of Ast * Ast
-    | FuncAppList of Ast list
+    | FuncAppList of Ast list // Transformed into a tree of FuncApp.
     | Identifier of string
-    | IdentifierList of string list
+    | IdentifierList of string list // Transformed into a list of Identifier.
     | Literal of Literal
     | BuiltInFunc of BuiltInFunc
     | Null
