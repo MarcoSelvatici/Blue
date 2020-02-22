@@ -13,9 +13,9 @@ let testCases = [
     "Double literal", [TLiteral (IntLit 42); TLiteral (IntLit 3)],
         Ok (FuncApp (Literal (IntLit 42), Literal (IntLit 3)));
     "Simple roundExp", [KOpenRound; TLiteral (IntLit 42); KCloseRound],
-        Ok (RoundExp (Literal (IntLit 42)));
+        Ok (Literal (IntLit 42));
     "Nested roundExp", [KOpenRound; KOpenRound; TLiteral (IntLit 42); KCloseRound; KCloseRound],
-        Ok (RoundExp (RoundExp (Literal (IntLit 42))));
+        Ok (Literal (IntLit 42));
     "Simple lambda", [KLambda; TIdentifier "x"; KDot; TLiteral (IntLit 42)],
         Ok (buildLambda "x" (Literal (IntLit 42)));
     "Curried lambda", [KLambda; TIdentifier "x";  TIdentifier "y"; KDot; TLiteral (IntLit 42)],
@@ -37,11 +37,11 @@ let testCases = [
     "Simple FuncApp Ident", [TIdentifier "f"; TIdentifier "x"],
         Ok (FuncApp (Identifier "f", Identifier "x"));
     "Simple FuncApp Bracket", [KOpenRound; TIdentifier "f"; TLiteral (IntLit 42); KCloseRound],
-        Ok (RoundExp (FuncApp (Identifier "f", Literal (IntLit 42))));
+        Ok (FuncApp (Identifier "f", Literal (IntLit 42)));
     "Bracketed arg", [TIdentifier "g"; KOpenRound; TIdentifier "f"; TLiteral (IntLit 42); KCloseRound],
-        Ok (FuncApp (Identifier "g", RoundExp (FuncApp (Identifier "f", Literal (IntLit 42)))));
+        Ok (FuncApp (Identifier "g", FuncApp (Identifier "f", Literal (IntLit 42))));
     "Bracketed fun", [KOpenRound; TIdentifier "f"; TLiteral (IntLit 42); KCloseRound; TIdentifier "g"],
-        Ok (FuncApp (RoundExp (FuncApp (Identifier "f", Literal (IntLit 42))), Identifier "g"));
+        Ok (FuncApp (FuncApp (Identifier "f", Literal (IntLit 42)), Identifier "g"));
     "Long exp list, left associative", List.map (fun i -> (TIdentifier <| sprintf "%d" i)) [1; 2; 3; 4; 5],
         Ok (FuncApp (FuncApp (FuncApp (FuncApp (Identifier "1", Identifier "2"), Identifier "3"), Identifier "4" ), Identifier "5"))
     "Simple let in", [KLet; TIdentifier "f"; KEq; TLiteral (IntLit 2); KIn; TIdentifier "f"; KNi],
@@ -62,6 +62,12 @@ let testCases = [
         Ok (FuncApp ( FuncApp (BuiltInFunc Minus, Literal (IntLit 1)), FuncApp ( FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3))));
     "Simple arithmetic 1=2<=3", [TLiteral (IntLit 1); TBuiltInFunc Equal; TLiteral (IntLit 2); TBuiltInFunc LessEq; TLiteral (IntLit 3)],
         Ok (FuncApp ( FuncApp (BuiltInFunc Equal, Literal (IntLit 1)), FuncApp (FuncApp (BuiltInFunc LessEq, Literal (IntLit 2)), Literal (IntLit 3))));
+    "Simple builtin", [TBuiltInFunc Head; TIdentifier "l"],
+        Ok (FuncApp (BuiltInFunc Head, Identifier "l"));
+    "Double builtin", [TBuiltInFunc Head; TBuiltInFunc Tail; TIdentifier "l"],
+        Ok (FuncApp (FuncApp (BuiltInFunc Head, BuiltInFunc Tail), Identifier "l"));
+    "Bracketed Double builtin", [TBuiltInFunc Head; KOpenRound; TBuiltInFunc Tail; TIdentifier "l"; KCloseRound],
+        Ok (FuncApp (BuiltInFunc Head, (FuncApp (BuiltInFunc Tail, Identifier "l"))));
 ]
 
 let testParser (description, tkns, expected) =
