@@ -130,13 +130,13 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
     //Identifier
     | Identifier x ->
         if bindings.ContainsKey x
-        then bindings.[x]
+        then bracketAbstract bindings.[x] bindings
         else Identifier x
         
 
     //sub literals into lambdas
     | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
-        let bindings  = bindings.Add(name, bracketAbstract exp2 bindings)
+        let bindings = bindings.Add(name, bracketAbstract exp2 bindings)
         bracketAbstract exp1 bindings
 
     //    2.  T[(E₁ E₂)] => (T[E₁] T[E₂])
@@ -165,13 +165,14 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
     
     //function definitiions and bindings
     | FuncDefExp { FuncName = name; FuncBody = body; Rest = exp } ->
-        let bindings = bindings.Add(name, bracketAbstract body bindings)
+        let bindings = bindings.Add(name,  body )
         bracketAbstract exp bindings
 
     // S K I Y
     | Combinator x ->
         Combinator x
 
+    //let built-ins pass, catch errors in eval if needed
     | _ 
         -> input
 
@@ -196,8 +197,6 @@ let rec interpret (exp:Ast) :Ast =
         then FuncApp (exp1, exp2)
         else interpret (FuncApp (exp1', exp2'))
     | _ -> exp
-
-
 
 
 let combinatorRuntime (input: Ast): Ast = 
