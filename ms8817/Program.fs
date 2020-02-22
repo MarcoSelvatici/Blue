@@ -3,6 +3,15 @@ open Expecto
 open Parser
 open TokeniserStub
 
+/// Like buildError, but allows to manually set the trace.
+let buildErrorManually msg trace unmatchedTokens currentAsts = 
+    Error {
+        msg = msg;
+        parseTrace = trace;
+        unmatchedTokens = unmatchedTokens;
+        currentAsts = currentAsts;
+    }
+
 // TODO It does not make sense to test all the failure messages now because they
 // are not completely designed yet.
 let testCases = [
@@ -21,9 +30,9 @@ let testCases = [
     "Curried lambda", [KLambda; TIdentifier "x";  TIdentifier "y"; KDot; TLiteral (IntLit 42)],
         Ok (buildLambda "x" (buildLambda "y" (Literal (IntLit 42))));
     "Invalid lambda, no arguments", [KLambda; KDot; TLiteral (IntLit 2)],
-        buildError "failed: pLambdaExp. Invalid empty argument list" [] [];
-    //"Lambda and Dot", [KLambda; TIdentifier "x"; KDot; TLiteral (IntLit 42); KDot],
-    //    buildError "failed: top level" [KDot] [buildLambda "x" (Literal (IntLit 42))];
+        buildErrorManually "failed: pLambdaExp. Invalid empty argument list" "" [] [];
+    "Lambda and Dot", [KLambda; TIdentifier "x"; KDot; TLiteral (IntLit 42); KDot],
+        buildErrorManually "failed: pToken KLet" "in x " [KDot] [Literal (IntLit 42); IdentifierList ["x"]];
     "IfExp", [KIf; TIdentifier "x"; KThen; TIdentifier "y"; KElse; TIdentifier "z"; KFi],
         Ok (IfExp (Identifier "x", Identifier "y", Identifier "z"));
     //"Miss Cond exp", [KIf; KThen; TIdentifier "y"; KElse; TIdentifier "z"; KFi],
@@ -68,6 +77,10 @@ let testCases = [
         Ok (FuncApp (FuncApp (BuiltInFunc Head, BuiltInFunc Tail), Identifier "l"));
     "Bracketed Double builtin", [TBuiltInFunc Head; KOpenRound; TBuiltInFunc Tail; TIdentifier "l"; KCloseRound],
         Ok (FuncApp (BuiltInFunc Head, (FuncApp (BuiltInFunc Tail, Identifier "l"))));
+    "Double trace error", [KLet; TIdentifier "x"; KEq; TLiteral (IntLit 2); KIn; KLet; TIdentifier "y"; KEq; TLiteral (IntLit 3); KIn; KDot; KNi; KNi],
+        buildErrorManually "failed: pToken KLet" "in y in x " [KDot; KNi; KNi] [Literal (IntLit 3); IdentifierList ["y"]; Literal (IntLit 2); IdentifierList ["x"]]
+    "Single trace error", [KLet; TIdentifier "x"; KEq; TLiteral (IntLit 2); KIn; KLet; TIdentifier "y"; KEq; TLiteral (IntLit 3); KIn; TIdentifier "y"; KNi; KDot; KNi],
+        buildErrorManually "failed: pToken KLet" "in x " [KDot; KNi] [FuncDefExp {FuncName = "y"; FuncBody = Literal (IntLit 3); Rest = Identifier "y" }; Literal (IntLit 2); IdentifierList ["x"]]
 ]
 
 let testParser (description, tkns, expected) =

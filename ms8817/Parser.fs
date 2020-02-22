@@ -36,6 +36,7 @@ and LambdaType = {
 }
 
 type ErrorT = {
+    msg: string;
     parseTrace: string;
     unmatchedTokens: Token list;
     currentAsts: Ast list;
@@ -92,9 +93,20 @@ let buildLambda lambdaParam lambdaBody =
         LambdaBody = lambdaBody;
     }
 
-let buildError parseTrace unmatchedTokens currentAsts = 
+/// Examines the parse state in search for identfier lists. An idenfier list is
+/// only present there is a named function or a lambda that has not been
+/// completely parsed yet, hence the error is "within" those.
+let rec buildParseTrace (asts : Ast list) : string =
+    match asts with
+    | [] -> ""
+    | IdentifierList ids :: asts' when not (List.isEmpty ids) ->
+        sprintf "in %s " (List.head ids) + (buildParseTrace asts')
+    | _ :: asts' -> buildParseTrace asts'
+
+let buildError msg unmatchedTokens currentAsts = 
     Error {
-        parseTrace = parseTrace;
+        msg = msg;
+        parseTrace = buildParseTrace currentAsts;
         unmatchedTokens = unmatchedTokens;
         currentAsts = currentAsts;
     }
@@ -276,7 +288,7 @@ and pFuncDefExp pState =
             pExp .+. pToken KIn .+. pExp .+. pToken KNi) // TODO: is KNi even required?
     match pState' with
     | Error e -> Error e
-    | Ok (_ :: IdentifierList [] :: asts, tkns) ->
+    | Ok (_ :: _ :: IdentifierList [] :: asts, tkns) ->
         buildError (sprintf "failed: pFuncDefExp. Invalid empty argument list") tkns asts
     | Ok (rest :: funcBody :: IdentifierList funcParams :: asts, tkns) ->
         Ok (buildCarriedFunc funcParams funcBody rest :: asts, tkns)
