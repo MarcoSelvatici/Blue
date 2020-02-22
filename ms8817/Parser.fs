@@ -117,15 +117,11 @@ let parseToken (tokenToMatch : Token) : ParseRule =
 /// returns the Tokens list unchanged and a Null Ast.
 /// This parsing rule works also with no more tokens.
 let parseNull (tokensToMatch : Token list) : ParseRule =
-    let matches token =
-        match List.tryFind ((=) token) tokensToMatch with
-        | Some _ -> true
-        | None _ -> false
     function
     | Error e -> Error e
     | Ok (asts, []) ->
         Ok (Null :: asts, [])
-    | Ok (asts, token :: tokenlist) when matches token ->
+    | Ok (asts, token :: tokenlist) when List.contains token tokensToMatch ->
         Ok (Null :: asts, token :: tokenlist)
     | Ok (asts, tokenlist) ->
         buildError (sprintf "failed: parseNull %A" tokensToMatch) tokenlist asts
@@ -180,38 +176,48 @@ let buildCarriedFunc funcParams funcBody rest =
         Rest = rest;
     }
 
-/// Given a list of operators, returns an option with the position and type of
-/// the first operator that matches, or None if no operator was found in the
-/// itemsList.
-let matchAnyOp ops itemsList =
-    let matchOp acc op =
+/// Given a list of operators groups, returns an option with the position and
+/// type of the first operator that matches, or None if no operator was found in
+/// the itemsList.
+/// Operators in the same group have the same precedence (order within a group
+/// does not matter).
+/// TODO: this function should be simplified somehow.
+let matchAnyOp opGroups itemsList =
+    let matchAnyOpInGroup acc opGroup =
+        let folder acc item =
+            match acc with
+            | _, Some _ -> acc // Aleready found a match.
+            | idx, None ->
+                // Try to match the item at the current index, otherwise continue.
+                if List.contains item opGroup then idx, Some item else idx + 1, None
         match acc with
-        | Some _ -> acc // Found an operator with higher precedence.
-        | None -> // Try to match the current operator.
-            List.tryFindIndex ((=) op) itemsList
-            |> Option.map (fun idx -> (idx, op))
-    (None, ops) ||> List.fold matchOp
+        | Some _ -> acc // Found an operator in a group with higher precedence.
+        | None -> // Try to match the current operator group.
+            let inGroup = ((0, None), itemsList) ||> List.fold folder
+            match inGroup with
+            | (idx, Some op) -> Some (idx, op) // Found.
+            | (_, None) -> None 
+    (None, opGroups) ||> List.fold matchAnyOpInGroup
 
 /// Transforms a list of Items into a tree of left associative function
 /// applications, respecting operators ordeing.
-/// TODO: not sure it works with operators of the same precedence. (It will try to match all Plus before any Minus, even if Minus is before Plus).
-/// TODO: not sure this works with unary functions.
+/// TODO: not sure this works with unary functions. It should.
 let rec buildFuncAppTree (itemsList : Ast list): Ast =
-    let ops = 
-        List.map BuiltInFunc <| [
-            And; Or; // Logical.
-            Greater; GreaterEq; Less; LessEq; Equal; // Comparison.
-            Plus; Minus; // Additive.
-            Mult; Div; // Multiplicative.
+    let opGroups = 
+        List.map (List.map BuiltInFunc) <| [
+            [And; Or]; // Logical.
+            [Greater; GreaterEq; Less; LessEq; Equal]; // Comparison.
+            [Plus; Minus]; // Additive.
+            [Mult; Div]; // Multiplicative.
         ]
     match itemsList with
     | [] -> impossible "buildFuncAppTree" // Caller should make sure this cannot happen. TODO: this may need to change now.
     | [item] -> item
     | itemsList ->
-        match matchAnyOp ops itemsList with
+        match matchAnyOp opGroups itemsList with
         | Some (idx, op) -> // Split at the operator and recur on both sides.
             let lhs, rhs = List.splitAt idx itemsList
-            FuncApp ( FuncApp (op, buildFuncAppTree lhs), buildFuncAppTree (List.tail rhs))
+            FuncApp (FuncApp (op, buildFuncAppTree lhs), buildFuncAppTree (List.tail rhs))
         | None -> // No arithmetic operator was found, use normal function application associativity.
             let itemsList', lastEl = List.splitAt (itemsList.Length - 1) itemsList
             FuncApp ((buildFuncAppTree itemsList'), lastEl.[0]) // TODO: this is a bit hacky.

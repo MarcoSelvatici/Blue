@@ -53,9 +53,15 @@ let testCases = [
     "Lambda let in", [KLet; TIdentifier "x"; TIdentifier "y"; TIdentifier "z"; KEq; TLiteral (IntLit 2); KIn; TIdentifier "x"; KNi],
         Ok (FuncDefExp {FuncName = "x"; FuncBody = buildLambda "y" (buildLambda "z" (Literal (IntLit 2))); Rest = Identifier "x";});
     "Simple addition 2+3", [TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3)],
-        Ok (FuncApp (FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3)))
+        Ok (FuncApp (FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3)));
     "Simple arithmetic 2+3*4-5<6", [TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3); TBuiltInFunc Mult; TLiteral (IntLit 4); TBuiltInFunc Minus; TLiteral (IntLit 5); TBuiltInFunc Less; TLiteral (IntLit 6)],
-        Ok (FuncApp (FuncApp (BuiltInFunc Less, FuncApp (FuncApp (BuiltInFunc Plus,Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Minus, FuncApp (FuncApp (BuiltInFunc Mult,Literal (IntLit 3)), Literal (IntLit 4))),Literal (IntLit 5)))), Literal (IntLit 6)))
+        Ok (FuncApp (FuncApp (BuiltInFunc Less, FuncApp (FuncApp (BuiltInFunc Plus,Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Minus, FuncApp (FuncApp (BuiltInFunc Mult,Literal (IntLit 3)), Literal (IntLit 4))),Literal (IntLit 5)))), Literal (IntLit 6)));
+    "Simple arithmetic 1<2&&3>=4", [TLiteral (IntLit 1); TBuiltInFunc Less; TLiteral (IntLit 2); TBuiltInFunc And; TLiteral (IntLit 3); TBuiltInFunc GreaterEq; TLiteral (IntLit 4);],
+        Ok (FuncApp ( FuncApp (BuiltInFunc And, FuncApp ( FuncApp (BuiltInFunc Less, Literal (IntLit 1)), Literal (IntLit 2))), FuncApp ( FuncApp (BuiltInFunc GreaterEq, Literal (IntLit 3)), Literal (IntLit 4))));
+    "Simple arithmetic 1-2+3", [TLiteral (IntLit 1); TBuiltInFunc Minus; TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3)],
+        Ok (FuncApp ( FuncApp (BuiltInFunc Minus, Literal (IntLit 1)), FuncApp ( FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3))));
+    "Simple arithmetic 1=2<=3", [TLiteral (IntLit 1); TBuiltInFunc Equal; TLiteral (IntLit 2); TBuiltInFunc LessEq; TLiteral (IntLit 3)],
+        Ok (FuncApp ( FuncApp (BuiltInFunc Equal, Literal (IntLit 1)), FuncApp (FuncApp (BuiltInFunc LessEq, Literal (IntLit 2)), Literal (IntLit 3))));
 ]
 
 let testParser (description, tkns, expected) =
