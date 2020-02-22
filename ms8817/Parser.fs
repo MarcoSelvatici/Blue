@@ -154,8 +154,6 @@ let parseBuiltin : ParseRule =
     | Ok (asts, tokenlist) ->
         buildError "failed: parseLiteral" tokenlist asts
 
-// Parse builtinFunc?
-
 // Combnied rules.
 // Every rule has two parts:
 // - parse structure: defined as a series of combined parse rules;
@@ -186,9 +184,11 @@ let buildCarriedFunc funcParams funcBody rest =
 /// TODO: make this in a way that considers operators precedence.
 let rec buildFuncAppTree itemsList =
     match itemsList with
+    | [] -> impossible "buildFuncAppTree" // Caller should make sure this cannot happen.
     | [item] -> item
-    | item :: itemsList' -> FuncApp (item, (buildFuncAppTree itemsList'))
-    | _ -> impossible "buildFuncAppTree"
+    | itemsList ->
+        let itemsList', lastEl = List.splitAt (itemsList.Length - 1) itemsList
+        FuncApp ((buildFuncAppTree itemsList'), lastEl.[0]) // TODO: this is a bit hacky.
 
 // TODO: support sequence lists.
 and parseSeqExp parseState =
