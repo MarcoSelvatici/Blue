@@ -134,12 +134,12 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
         else Identifier x
         
 
-    //    2.  T[(E₁ E₂)] => (T[E₁] T[E₂])
-    | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 }, Literal exp2) ->
-        let bindings  = bindings.Add(name, Literal exp2)
+    //sub literals into lambdas
+    | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
+        let bindings  = bindings.Add(name, bracketAbstract exp2 bindings)
         bracketAbstract exp1 bindings
 
-
+    //    2.  T[(E₁ E₂)] => (T[E₁] T[E₂])
     | FuncApp (exp1, exp2) -> 
         FuncApp (bracketAbstract exp1 bindings, bracketAbstract exp2 bindings)
     
@@ -153,7 +153,7 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
         | { LambdaParam = name; LambdaBody = Identifier exp } when name = exp ->
             Combinator I
 
-        //    5.  T[λx.λy.E] => T[λx.T[λy.E]] (if x occurs free in E)    | AbstractionInter (name1, AbstractionInter (name2, exp1)) when isFree name1 exp1
+        //    5.  T[λx.λy.E] => T[λx.T[λy.E]] (if x occurs free in E) 
         | { LambdaParam = name1; LambdaBody = Lambda { LambdaParam = name2; LambdaBody = exp } } when isFree name1 exp ->
             bracketAbstract (Lambda { LambdaParam = name1; LambdaBody = bracketAbstract (Lambda { LambdaParam = name2; LambdaBody = exp } ) bindings } ) bindings
 
@@ -207,7 +207,4 @@ let combinatorRuntime (input: Ast): Ast =
     |> pipePrint
     |> interpret
     |> pipePrint
-
     |> eval
-
-

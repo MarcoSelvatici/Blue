@@ -5,6 +5,13 @@ open ski_combinator
 open Parser
 open TokeniserStub
 
+let tmp = 
+    FuncDefExp {
+        FuncName = "f"; 
+        FuncBody =  Lambda { 
+            LambdaParam = "x" ; 
+            LambdaBody = FuncApp( FuncApp( BuiltInFunc Plus, Identifier "x"), Literal (IntLit 2)) }; 
+        Rest = FuncApp( Identifier "f", Literal (IntLit 5))}
 
 
 // TESTBENCH
@@ -96,19 +103,29 @@ let booleanTests = [
 let lambdaTests = [
 
     "lambda testing",
-    FuncApp (Lambda { LambdaParam = "x"; LambdaBody = FuncApp ( FuncApp( BuiltInFunc Plus , Identifier "x" ), Literal (IntLit 1)) } , Literal (IntLit 5)),
+    FuncApp (Lambda { 
+        LambdaParam = "x";
+        LambdaBody = FuncApp ( FuncApp( BuiltInFunc Plus , Identifier "x" ), Literal (IntLit 1)) } , Literal (IntLit 5)),
     Literal (IntLit 6);
 
     "lambda identity",
-    Lambda { LambdaParam = "x" ; LambdaBody = Identifier "x" },
+    Lambda { 
+        LambdaParam = "x" ;
+        LambdaBody = Identifier "x" },
     Combinator I;
 
     "lambda passthrough",
-    FuncApp (Lambda { LambdaParam = "x"; LambdaBody = Identifier "x" } , Literal (IntLit 5)),
+    FuncApp (Lambda {
+        LambdaParam = "x";
+        LambdaBody = Identifier "x" } , Literal (IntLit 5)),
     Literal (IntLit 5);
 
     "lambda x+y",
-    FuncApp (FuncApp(Lambda { LambdaParam = "x"; LambdaBody = Lambda { LambdaParam = "y"; LambdaBody = FuncApp ( FuncApp( BuiltInFunc Plus , Identifier "x" ),  Identifier "y")  }},Literal (IntLit 12)),Literal (IntLit 10)),
+    FuncApp (FuncApp (Lambda { 
+        LambdaParam = "x"; 
+        LambdaBody = Lambda { 
+            LambdaParam = "y"; 
+            LambdaBody = FuncApp ( FuncApp( BuiltInFunc Plus , Identifier "x" ),  Identifier "y")  }},Literal (IntLit 12)),Literal (IntLit 10)),
     Literal (IntLit 22);
 
 ]
@@ -116,21 +133,58 @@ let lambdaTests = [
 let funcDefTests = [
 
     "func def w/ lambdas",
-    FuncDefExp {FuncName = "x"; FuncBody = buildLambda "y" (buildLambda "z" (Literal (IntLit 2))); Rest = FuncApp( FuncApp( Identifier "x", Literal (IntLit 5)), Literal (BoolLit true)) ;},
+    FuncDefExp {
+        FuncName = "x";
+        FuncBody = buildLambda "y" (buildLambda "z" (Literal (IntLit 2)));
+        Rest = FuncApp( FuncApp( Identifier "x", Literal (IntLit 5)), Literal (BoolLit true)) ;},
     Literal (IntLit 2);
 
     "unused func def and ret ID",
-    FuncDefExp {FuncName = "f"; FuncBody = FuncDefExp {FuncName = "fun"; FuncBody = Literal (IntLit 2); Rest = Identifier "p";}; Rest = FuncDefExp {FuncName = "g"; FuncBody = Literal (StringLit "aaa"); Rest = Identifier "z";};},
+    FuncDefExp {
+        FuncName = "f";
+        FuncBody = FuncDefExp {
+            FuncName = "fun"; 
+            FuncBody = Literal (IntLit 2);
+            Rest = Identifier "p";}; 
+        Rest = FuncDefExp {
+            FuncName = "g";
+            FuncBody = Literal (StringLit "aaa"); 
+            Rest = Identifier "z";};},
     Identifier "z";
 
     "double identity lambda and ret int",
-    FuncDefExp {FuncName = "f"; FuncBody =  Lambda { LambdaParam = "x" ; LambdaBody = Identifier "x" }; Rest = FuncApp( FuncApp (Identifier "f", Identifier "f"), Literal (IntLit 5));},
+    FuncDefExp {
+        FuncName = "f";
+        FuncBody =  Lambda { 
+            LambdaParam = "x" ; 
+            LambdaBody = Identifier "x" }; 
+        Rest = FuncApp( FuncApp (Identifier "f", Identifier "f"), Literal (IntLit 5));},
     Literal (IntLit 5);
 
     "func def w/ lambda and builtin",
-    FuncDefExp {FuncName = "f"; FuncBody =  Lambda { LambdaParam = "x" ; LambdaBody = FuncApp( FuncApp( BuiltInFunc Plus, Identifier "x"), Literal (IntLit 2)) }; Rest = FuncApp( Identifier "f", Literal (IntLit 5))},
+    FuncDefExp {
+        FuncName = "f";
+        FuncBody =  Lambda { 
+            LambdaParam = "x" ;
+            LambdaBody = FuncApp( FuncApp( BuiltInFunc Plus, Identifier "x"), Literal (IntLit 2)) };
+        Rest = FuncApp( Identifier "f", Literal (IntLit 5))},
     Literal (IntLit 7);
 
+    "func test",
+    FuncDefExp {
+        FuncName = "main"; 
+        FuncBody = FuncDefExp {
+            FuncName = "f"; 
+            FuncBody = FuncApp (FuncApp (BuiltInFunc Less, FuncApp (FuncApp (BuiltInFunc Plus,Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Minus, FuncApp (FuncApp (BuiltInFunc Mult,Literal (IntLit 3)), Literal (IntLit 4))),Literal (IntLit 5)))), Literal (IntLit 6)); 
+            Rest = FuncDefExp {
+                FuncName = "g"; 
+                FuncBody =  Literal (BoolLit true);
+                Rest = FuncDefExp {
+                    FuncName = "h"; 
+                    FuncBody = FuncApp (BuiltInFunc Not, Identifier "f"); 
+                    Rest =  FuncApp (FuncApp (BuiltInFunc And, Identifier "g"), Identifier "h")} } }; 
+        Rest = Identifier "main"},
+    Literal ( BoolLit true);
 ]
 
 let generalTests = [
@@ -138,6 +192,10 @@ let generalTests = [
     "combination of several tests",
     FuncApp( FuncApp( BuiltInFunc Equal, FuncApp( BuiltInFunc Head, SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null )))), FuncApp( FuncApp( BuiltInFunc Mult, Literal (IntLit 1)), Literal (IntLit 2))),
     Literal (BoolLit true);
+
+    "arithmetic bool funcapp tests 2+3*4-5<6",
+    FuncApp (FuncApp (BuiltInFunc Less, FuncApp (FuncApp (BuiltInFunc Plus,Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Minus, FuncApp (FuncApp (BuiltInFunc Mult,Literal (IntLit 3)), Literal (IntLit 4))),Literal (IntLit 5)))), Literal (IntLit 6)),
+    Literal (BoolLit false);
 
     //"func app w/ missing arg",
     //FuncDefExp {FuncName = "f"; FuncBody =  Lambda { LambdaParam = "x" ; LambdaBody = FuncApp( FuncApp( BuiltInFunc Plus, Identifier "x"), Literal (IntLit 2)) }; Rest = FuncApp( Identifier "f", Literal (IntLit 5));},
