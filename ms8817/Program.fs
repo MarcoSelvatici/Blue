@@ -52,10 +52,10 @@ let testCases = [
         Ok (FuncDefExp {FuncName = "f"; FuncBody = FuncDefExp {FuncName = "fun"; FuncBody = Literal (IntLit 2); Rest = Identifier "p";}; Rest = FuncDefExp {FuncName = "g"; FuncBody = Literal (StringLit "aaa"); Rest = Identifier "z";};});
     "Lambda let in", [KLet; TIdentifier "x"; TIdentifier "y"; TIdentifier "z"; KEq; TLiteral (IntLit 2); KIn; TIdentifier "x"; KNi],
         Ok (FuncDefExp {FuncName = "x"; FuncBody = buildLambda "y" (buildLambda "z" (Literal (IntLit 2))); Rest = Identifier "x";});
-    "Simple addition", [TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3)], // Wrong operators order.
-        Ok (FuncApp (FuncApp (Literal (IntLit 2), BuiltInFunc Plus), Literal (IntLit 3)))
-    "Simple arithmetic", [TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3); TBuiltInFunc Mult; TLiteral (IntLit 4); TBuiltInFunc Minus; TLiteral (IntLit 5)],
-        Ok (FuncApp (FuncApp (FuncApp (FuncApp (FuncApp (FuncApp (Literal (IntLit 2), BuiltInFunc Plus), Literal (IntLit 3)),BuiltInFunc Mult),Literal (IntLit 4)), BuiltInFunc Minus),Literal (IntLit 5)))
+    "Simple addition 2+3", [TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3)],
+        Ok (FuncApp (FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3)))
+    "Simple arithmetic 2+3*4-5<6", [TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3); TBuiltInFunc Mult; TLiteral (IntLit 4); TBuiltInFunc Minus; TLiteral (IntLit 5); TBuiltInFunc Less; TLiteral (IntLit 6)],
+        Ok (FuncApp (FuncApp (BuiltInFunc Less, FuncApp (FuncApp (BuiltInFunc Plus,Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Minus, FuncApp (FuncApp (BuiltInFunc Mult,Literal (IntLit 3)), Literal (IntLit 4))),Literal (IntLit 5)))), Literal (IntLit 6)))
 ]
 
 let testParser (description, tkns, expected) =

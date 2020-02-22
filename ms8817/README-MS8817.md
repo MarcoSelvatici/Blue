@@ -35,6 +35,28 @@ Author: Marco Selvatici (ms8817)
 <exp> ::= <app-exp-list>
 ```
 
+## Operator precendences examples
+```
+2 + 3 * 4 - 5
+Try find operator in the list, in orderof associativity: && ||, then <, > then +, - then * /
+When operator is found, split the list there.
+Create: FuncApp( FuncApp(Operator, recur LHS), recur RHS)
+If no operator is found, use normal function application associativity.
+2 + 3 * 4 - 5 < 6
+              ^
+FA ( FA (<, 2 + 3 * 4 - 5), 6)
+2 + 3 * 4 - 5   (LHS)
+  ^
+FA ( FA (+, 2), 3 * 4 - 5)
+3 * 4 - 5   (RHS)
+      ^
+FA ( FA (-, 3 * 4), 5)
+3 * 4    (LHS)
+  ^
+FA (FA (*, 3), 4))
+
+FA ( FA (<, FA ( FA (+, 2), FA ( FA (-, FA (FA (*, 3), 4)), 5))), 6)
+```
 ## Parsing expamples
 ```
 > Example 1

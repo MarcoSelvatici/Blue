@@ -180,15 +180,41 @@ let buildCarriedFunc funcParams funcBody rest =
         Rest = rest;
     }
 
-/// Transforms a list into a tree of expressions.
-/// TODO: make this in a way that considers operators precedence.
-let rec buildFuncAppTree itemsList =
+/// Given a list of operators, returns an option with the position and type of
+/// the first operator that matches, or None if no operator was found in the
+/// itemsList.
+let matchAnyOp ops itemsList =
+    let matchOp acc op =
+        match acc with
+        | Some _ -> acc // Found an operator with higher precedence.
+        | None -> // Try to match the current operator.
+            List.tryFindIndex ((=) op) itemsList
+            |> Option.map (fun idx -> (idx, op))
+    (None, ops) ||> List.fold matchOp
+
+/// Transforms a list of Items into a tree of left associative function
+/// applications, respecting operators ordeing.
+/// TODO: not sure it works with operators of the same precedence. (It will try to match all Plus before any Minus, even if Minus is before Plus).
+/// TODO: not sure this works with unary functions.
+let rec buildFuncAppTree (itemsList : Ast list): Ast =
+    let ops = 
+        List.map BuiltInFunc <| [
+            And; Or; // Logical.
+            Greater; GreaterEq; Less; LessEq; Equal; // Comparison.
+            Plus; Minus; // Additive.
+            Mult; Div; // Multiplicative.
+        ]
     match itemsList with
-    | [] -> impossible "buildFuncAppTree" // Caller should make sure this cannot happen.
+    | [] -> impossible "buildFuncAppTree" // Caller should make sure this cannot happen. TODO: this may need to change now.
     | [item] -> item
     | itemsList ->
-        let itemsList', lastEl = List.splitAt (itemsList.Length - 1) itemsList
-        FuncApp ((buildFuncAppTree itemsList'), lastEl.[0]) // TODO: this is a bit hacky.
+        match matchAnyOp ops itemsList with
+        | Some (idx, op) -> // Split at the operator and recur on both sides.
+            let lhs, rhs = List.splitAt idx itemsList
+            FuncApp ( FuncApp (op, buildFuncAppTree lhs), buildFuncAppTree (List.tail rhs))
+        | None -> // No arithmetic operator was found, use normal function application associativity.
+            let itemsList', lastEl = List.splitAt (itemsList.Length - 1) itemsList
+            FuncApp ((buildFuncAppTree itemsList'), lastEl.[0]) // TODO: this is a bit hacky.
 
 // TODO: support sequence lists.
 and parseSeqExp parseState =
@@ -307,8 +333,6 @@ let parse (tkns : Token list) : Result<Ast, ErrorT> =
         buildError "failed: top level" unmatchedTokens asts
 
 // TODO: use result.map?
-// TODO: fix associativity for func application
-// TODO: fix operator precedence.
 // TODOs:
 // - revise how closely this resembles the grammar.
 // - finish up cases
