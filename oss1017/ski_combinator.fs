@@ -30,7 +30,7 @@ let isFree (var:string) (exp: Ast): bool =
 
 
 ///Evaluate Ast built-in functions
-let eval (input:Ast): Ast =
+let eval (input:Ast) : Ast =
     match input with
     //literals
     | Literal x ->
@@ -68,7 +68,7 @@ let eval (input:Ast): Ast =
 
 
     //unary built-in functions
-    |FuncApp( BuiltInFunc op, x) -> 
+    | FuncApp( BuiltInFunc op, x) -> 
         let x' = eval x
         match op, x' with
         
@@ -114,27 +114,40 @@ let eval (input:Ast): Ast =
             Literal (BoolLit (n = m))
 
         //Error
-        | _ -> failwith "Error evaluating built-in fucntion with two arguments"
+        | _ -> pipePrint input
 
     //////////////////  END: BUILT-IN FUNCTIONS  //////////////////
+            
 
-    /////////////  START: LAMBDAS/BRACKET ABSTRACTION  ////////////
+    | _ -> input
 
 
+let tmp = FuncDefExp {FuncName = "f"; FuncBody = Literal (IntLit 2); Rest = FuncDefExp {FuncName = "g"; FuncBody = Literal (StringLit "aaa"); Rest = Identifier "z";};}
+
+let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
+    match input with
     //    1.  T[x] => x
     //Identifier
     | Identifier x ->
-        Identifier x
+        if bindings.ContainsKey x
+        then bindings.[x]
+        else Identifier x
+        
 
     //    2.  T[(E₁ E₂)] => (T[E₁] T[E₂])
-    | FuncApp (exp1, exp2)
-        -> FuncApp (eval exp1, eval exp2)
+    | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 }, Literal exp2) ->
+        let bindings  = bindings.Add(name, Literal exp2)
+        bracketAbstract exp1 bindings
+
+
+    | FuncApp (exp1, exp2) -> 
+        FuncApp (bracketAbstract exp1 bindings, bracketAbstract exp2 bindings)
     
     | Lambda x ->
         match x with
         //    3.  T[λx.E] => (K T[E]) (if x does not occur free in E)
         | { LambdaParam = name; LambdaBody = exp } when not (isFree name exp) ->
-            FuncApp (Combinator K, eval exp)
+            FuncApp (Combinator K, bracketAbstract exp bindings)
 
         //    4.  T[λx.x] => I
         | { LambdaParam = name; LambdaBody = Identifier exp } when name = exp ->
@@ -142,21 +155,25 @@ let eval (input:Ast): Ast =
 
         //    5.  T[λx.λy.E] => T[λx.T[λy.E]] (if x occurs free in E)    | AbstractionInter (name1, AbstractionInter (name2, exp1)) when isFree name1 exp1
         | { LambdaParam = name1; LambdaBody = Lambda { LambdaParam = name2; LambdaBody = exp } } when isFree name1 exp ->
-            eval (Lambda { LambdaParam = name1; LambdaBody = eval (Lambda { LambdaParam = name2; LambdaBody = exp } ) } )
+            bracketAbstract (Lambda { LambdaParam = name1; LambdaBody = bracketAbstract (Lambda { LambdaParam = name2; LambdaBody = exp } ) bindings } ) bindings
 
         //    6.  T[λx.(E₁ E₂)] => (S T[λx.E₁] T[λx.E₂]) (if x occurs free in E₁ or E₂)
         | { LambdaParam = name; LambdaBody = FuncApp (exp1, exp2) } when isFree name exp1 || isFree name exp2 ->
-            FuncApp (FuncApp (Combinator I, eval ( Lambda { LambdaParam = name; LambdaBody = exp1 })), eval ( Lambda { LambdaParam = name; LambdaBody = exp2 }) )
+            FuncApp (FuncApp (Combinator I, bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp1 }) bindings ), bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp2 }) bindings )
         | _ ->
             failwith "Error doing bracket abstraction"
+    
+    //function definitiions and bindings
+    | FuncDefExp { FuncName = name; FuncBody = body; Rest = exp } ->
+        let bindings = bindings.Add(name, bracketAbstract body bindings)
+        bracketAbstract exp bindings
 
     // S K I Y
     | Combinator x ->
         Combinator x
 
-    /////////////   END: LAMBDAS/BRACKET ABSTRACTION   ////////////
-
-    | _ -> failwith "Error evaluating"
+    | _ 
+        -> input
 
 
 //evaluate/simplify SKI exp
@@ -180,5 +197,17 @@ let rec interpret (exp:Ast) :Ast =
         else interpret (FuncApp (exp1', exp2'))
     | _ -> exp
 
+
+
+
+let combinatorRuntime (input: Ast): Ast = 
+    let bindings = Map []
+    (input, bindings)
+    ||> bracketAbstract
+    |> pipePrint
+    |> interpret
+    |> pipePrint
+
+    |> eval
 
 
