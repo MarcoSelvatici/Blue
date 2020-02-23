@@ -47,46 +47,60 @@ BuiltInFunc
 let rec functionApplication env f x =
     match evaluate env f, evaluate env x with
     | Error e, _ | _, Error e -> Error e
-    | Ok (Identifier i), Ok( ast ) -> Ok ( FuncApp (Identifier i, ast) )    // if function is an indetifier - don't evaluate
-    | Ok( ast ), Ok (Identifier i) -> Ok ( FuncApp (ast, Identifier i) )    // if argument is an indetifier - don't evaluate
-    | Ok (Lambda  { LambdaParam = name; LambdaBody = body;}), Ok( ast ) ->  // reduce lambda terms
-        evaluate (extendVarMap env name ast) body
-    // add FuncDefExp
-    // add FuncApp
-    // add BuiltInFunc
-    // add Null / Literal / IdentifierList
-    | _ -> Error "Not impemented" 
-     
+    | Ok fnc, Ok inp -> Ok (fnc , inp)
+    |> Result.map (function
+        // pass on - if funtion / argument is an identifier / non-reducable if 
+        | (Identifier _, _) | (_, Identifier _) | (IfExp _, _) | (_, IfExp _) as nonReducable
+            -> Ok (FuncApp (nonReducable))
+        // reduce - lambda (CHANGE HERE FOR NORMAL REDUCTION)
+        | Lambda  { LambdaParam = name; LambdaBody = body;}, ast
+            -> evaluate (extendVarMap env name ast) body
+        
+        // add FuncApp
+        // add BuiltInFunc
+
+        // fail on
+        |  Null , _ | Literal _ , _ | SeqExp _ , _ -> Error "Null / Literal / SeqExp non-reducable" // TODO: make better error        
+        | _ -> Error "What? RoundExp / IdentifierList / FuncAppList / FuncDefExp in functionApplication"  
+        )
+        |> function
+        | Ok ( Ok ast ) -> Ok ast
+        | Ok ( Error e) -> Error e
+        | Error e -> Error e
 
 (*
 type Ast =
-    | FuncDefExp of FuncDefExpType // function definition(s) followed by expression
-x   | Lambda of LambdaType // anonymous function
-    | FuncApp of Ast * Ast
-    | FuncAppList of Ast list
-    | Null // used with pair to make lists
-    | Literal of Literal
-x    | Identifier of string
-    | IdentifierList of string list
-    | BuiltInFunc of BuiltInFunc // E.g. builtinTimes, builtinPlus
-    | RoundExp of Ast // possibly needed see techical note
-    | IfExp of Ast * Ast * Ast
-    | SeqExp of Ast * Ast // A pair of two elements [a, b]. TODO: (syntactic sugar) Extend this to (untyped) lists [a, b, c, d] -> Seq(a, Seq(b, ...))
+# f?   | FuncDefExp of FuncDefExpType // function definition(s) followed by expression
+# r    | Lambda of LambdaType // anonymous function
+prf    | FuncApp of Ast * Ast
+# f    | FuncAppList of Ast list
+# f    | Null // used with pair to make lists
+# f    | Literal of Literal
+# p    | Identifier of string
+# f    | IdentifierList of string list
+  p/f  | BuiltInFunc of BuiltInFunc // E.g. builtinTimes, builtinPlus
+# f    | RoundExp of Ast // possibly needed see techical note
+# p    | IfExp of Ast * Ast * Ast
+# f    | SeqExp of Ast * Ast // A pair of two elements [a, b]. TODO: (syntactic sugar) Extend this to (untyped) lists [a, b, c, d] -> Seq(a, Seq(b, ...))
 *)
 
 and evaluate env ast =
     match ast with
     | FuncDefExp {FuncName = name; FuncBody = body; Rest = rest} -> 
         evaluate (extendEnv env name body) rest
-    | Lambda  { LambdaParam = name; LambdaBody = body;}-> 
-        evaluate (extendBoundVar env name) body
+    | Lambda  { LambdaParam = name; LambdaBody = body;} as l->
+        //Ok l // (CHANGE HERE FOR NORMAL REDUCTION)
+        match evaluate (extendBoundVar env name) body with
+        | Ok b -> Ok (Lambda  { LambdaParam = name; LambdaBody = b } )
+        | Error e -> Error e
     | FuncApp (f,x)     -> functionApplication env f x 
     | RoundExp x        -> evaluate env x
-    | IfExp (bool,bTrue,bFalse) ->
+    | IfExp (bool,bTrue,bFalse) ->                                  // TODO: change to result map ?
         match evaluate env bool with
         | Ok (Literal (BoolLit true))  -> evaluate env bTrue
         | Ok (Literal (BoolLit false)) -> evaluate env bFalse
-        | error -> error    
+        | Error e -> Error e
+        | Ok ( exp ) -> Ok (IfExp (exp,bTrue,bFalse))
     | Identifier i -> 
         match Map.tryFind i (snd env) with
         | Some ast -> evaluate env ast
