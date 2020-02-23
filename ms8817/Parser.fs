@@ -285,7 +285,7 @@ and pLambdaExp pState =
     match pState' with
     | Error e -> Error e
     | Ok (_ :: IdentifierList [] :: asts, tkns) ->
-        buildError (sprintf "failed: pLambdaExp. Invalid empty argument list") tkns asts
+        buildError "failed: pLambdaExp. Invalid empty argument list" tkns asts
     | Ok (lambdaBody :: IdentifierList lambdaParams :: asts, tkns) ->
         Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
     | _ -> impossible "pLambdaExp"
@@ -294,11 +294,11 @@ and pFuncDefExp pState =
     let pState' =
         pState
         |> (pToken KLet .+. pIdentifierList .+. pToken KEq .+.
-            pExp .+. pToken KIn .+. pExp .+. pToken KNi) // TODO: is KNi even required?
+            pExp .+. pToken KIn .+. pExp .+. pToken KNi)
     match pState' with
     | Error e -> Error e
     | Ok (_ :: _ :: IdentifierList [] :: asts, tkns) ->
-        buildError (sprintf "failed: pFuncDefExp. Invalid empty argument list") tkns asts
+        buildError "failed: pFuncDefExp. Invalid empty argument list" tkns asts
     | Ok (rest :: funcBody :: IdentifierList funcParams :: asts, tkns) ->
         Ok (buildCarriedFunc funcParams funcBody rest :: asts, tkns)
     | _ -> impossible "pFuncDefExp"
@@ -343,7 +343,6 @@ let parse (tkns : Token list) : Result<Ast, ErrorT> =
 
 // TODO: use result.map?
 // TODOs:
-// - implement proper errors
 // - write loads of tests
 // - make sure we are efficient (should be)
 // - clean up as much as possible
