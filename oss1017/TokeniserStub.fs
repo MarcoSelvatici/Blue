@@ -29,6 +29,9 @@ type BuiltinFunc =
     // MultiplicativeOp
     | Mult
     | Div
+    //string func
+    | Implode
+    | Explode
 
 type Literal =
     | IntLit of int

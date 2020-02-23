@@ -29,6 +29,15 @@ let isFree (var:string) (exp: Ast): bool =
     List.contains var (free exp)
 
 
+/// Builds a list in our language out of an f# list
+let rec buildList lst =
+    match lst with
+    | [] ->  SeqExp (Null, Null)
+    | [x] -> SeqExp (Literal (StringLit x), Null)
+    | head::tail -> SeqExp ( Literal (StringLit head), buildList tail )
+
+
+
 ///Evaluate Ast built-in functions
 let eval (input:Ast) : Ast =
     match input with
@@ -38,6 +47,26 @@ let eval (input:Ast) : Ast =
 
     ////////////////// START: BUILT-IN FUNCTIONS //////////////////
     
+    // implode string list
+    | FuncApp( BuiltInFunc Implode, x) -> 
+        let rec imp lst =
+            match lst with
+            | SeqExp ( Literal (StringLit head) , Null) ->
+                head
+            | SeqExp (Literal (StringLit head), tail) ->
+                head + imp tail
+            | _ ->
+                failwith "Error: cannot implode argument of type which is not string list"
+        imp x |> StringLit |> Literal
+
+    // explode string
+    | FuncApp( BuiltInFunc Explode, x) -> 
+        match x with
+        | Literal (StringLit x) ->
+            Seq.toList x |> List.map (string) |> buildList
+        | _ ->
+            failwith "Error: cannot explode argument of type which is not string"
+
     //head
     | FuncApp( BuiltInFunc Head, x) -> 
         match x with
@@ -58,12 +87,12 @@ let eval (input:Ast) : Ast =
     | FuncApp( BuiltInFunc Size, x) -> 
         let rec sizeOf x =
             match x with
+            | SeqExp (Null, Null) ->
+                0
             | SeqExp (head, Null) ->
                 1
             | SeqExp (head, tail) ->
                 1 + (sizeOf tail)
-            | Null ->
-                0
             | _ ->
                 failwith "Error getting size of list"
         Literal (IntLit (sizeOf x))
@@ -122,9 +151,6 @@ let eval (input:Ast) : Ast =
             
 
     | _ -> input
-
-
-let tmp = FuncDefExp {FuncName = "f"; FuncBody = Literal (IntLit 2); Rest = FuncDefExp {FuncName = "g"; FuncBody = Literal (StringLit "aaa"); Rest = Identifier "z";};}
 
 
 let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
@@ -188,7 +214,6 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
     | IdentifierList _  -> failwith "should not be returned by parser"
 
 
-
 //evaluate/simplify SKI exp
 ///SKI combinator reduction
 let rec interpret (exp:Ast) :Ast =
@@ -215,7 +240,5 @@ let combinatorRuntime (input: Ast): Ast =
     let bindings = Map []
     (input, bindings)
     ||> bracketAbstract
-    |> pipePrint
     |> interpret
-    |> pipePrint
     |> eval
