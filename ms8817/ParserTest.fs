@@ -1,4 +1,5 @@
-﻿open System
+﻿// Author: ms8817 (Marco Selvatici)
+
 open Expecto
 open Parser
 open TokeniserStub
@@ -12,8 +13,6 @@ let buildErrorManually msg trace unmatchedTokens currentAsts =
         currentAsts = currentAsts;
     }
 
-// TODO It does not make sense to test all the failure messages now because they
-// are not completely designed yet.
 let testCases = [
     "Empty", [],
         buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [] [];

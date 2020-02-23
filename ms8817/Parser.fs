@@ -94,7 +94,7 @@ let buildLambda lambdaParam lambdaBody =
     }
 
 /// Examines the parse state in search for identfier lists. An idenfier list is
-/// only present there is a named function or a lambda that has not been
+/// only present if there is a named function or a lambda that has not been
 /// completely parsed yet, hence the error is "within" those.
 let rec buildParseTrace (asts : Ast list) : string =
     match asts with
@@ -123,7 +123,7 @@ let rec buildCarriedLambda identifierList lambdaBody =
         buildLambda id <| buildCarriedLambda identifierList' lambdaBody
 
 /// Transform a function definition with a list of arguments into a "named"
-/// lambda.
+/// lambda. Caller ensures there is at least one entry in funcParams.
 /// e.g. `let x y z = body in rest ni` becomes `let x = \y.\z.body in rest ni`
 let buildCarriedFunc funcParams funcBody rest =
     FuncDefExp {
@@ -245,25 +245,25 @@ let pBuiltin : ParseRule =
 // When possible, Result.map is used, but some rules may generate an error from
 // an Ok result, hence require a normal pattern matching.
 
-let rec pSeqListExp pState =
+let rec pSeqList pState =
     let seqExpListTerminators = [KCloseSquare]
     // At least one element will be present in the sequence, since empty
     // sequences are matched in pSeqExp.
     pState
-    |> (pExp .+. (pNull seqExpListTerminators .|. pToken KComma .+. pSeqListExp))
+    |> (pExp .+. (pNull seqExpListTerminators .|. pToken KComma .+. pSeqList))
     |> Result.map (
         function
         | Null :: exp :: asts, tkns ->
             SeqExp (exp, Null) :: asts, tkns
         | SeqExp (fst, snd) :: exp :: asts, tkns ->
             SeqExp (exp, SeqExp (fst, snd)) :: asts, tkns
-        | _ -> impossible "pSeqListExp"
+        | _ -> impossible "pSeqList"
     )
 
 and pSeqExp pState =
     pState
     |> (pToken KOpenSquare .+. pToken KCloseSquare .|. // Empty sequence.
-        pToken KOpenSquare .+. pSeqListExp .+. pToken KCloseSquare)
+        pToken KOpenSquare .+. pSeqList .+. pToken KCloseSquare)
     |> Result.map (
         function
         | SeqExp _ :: _, _ as pState' -> pState' // Non empty sequence.
@@ -356,8 +356,3 @@ let parse (tkns : Token list) : Result<Ast, ErrorT> =
     | Ok ([ast], []) -> Ok ast
     | Ok (asts, unmatchedTokens) ->
         buildError "failed: top level" unmatchedTokens asts
-
-// TODOs:
-// - write loads of tests
-// - make sure we are efficient (should be)
-// - clean up as much as possible
