@@ -1,27 +1,7 @@
 # Parser
 Author: Marco Selvatici (ms8817)
 
-## BNF Grammar (not working since left recursive...)
-
-```
-<applicative-exp> ::= <exp> | <exp> <applicative-exp>
-<multiplicative-exp> ::= <applicative-exp> | <applicative-exp> KMultiplicativeOp <multiplicative-exp>
-<additive-exp> ::= <multiplicative-exp> | <multiplicative-exp> KAdditiveOp <additive-exp>
-<comparison-exp> ::= <additive-exp> | <additive-exp> KComparisonOp <comparison-exp>
-<logical-exp> ::= <comparison-exp> | LogicalNotOp <comparison-exp> | <comparison-exp> KLogicalOp <logical-exp> 
-<unary-exp> ::= KUnaryOp <exp>
-<seq-exp> ::= KOpenSquare <exp> KComma <exp> KCloseSquare
-<if-exp> ::= KIf <exp> KThen <exp> KElse <exp> KFi
-<builtin-exp> ::= <if-exp> | <seq-exp> | <unary-exp> | <comparison-exp>
-<identifier-list> ::= TIdentifier | TIdentfier <identifier-list>
-<lambda-exp> ::= KLambda <identifier-list> KDot <exp>  // \x.x+1
-<round-exp> ::= KOpenRound <exp> KCloseRound
-<exp> ::= TLit | TIdentifier | <round-exp> | <lambda-exp> | <builtin-exp> 
-<named-let-in-exp> ::= KLet <identifier-list> KEq <block> KIn
-<block> ::= <exp> | <named-let-in-exp> <block>
-```
-
-## BNF Grammar (proper)
+## BNF Grammar
 
 ```
 <identifier-list> ::= TIdentifier | TIdentfier <identifier-list>
@@ -31,7 +11,8 @@ Author: Marco Selvatici (ms8817)
 <lambda-exp> ::= "\" <identifier-list> "." <exp>
 <defn-exp> ::= "let" <identifier-list> "=" <exp> "in" <exp> "ni"
 <if-exp> ::= "if" <exp> "then" <exp> "else" <exp> "fi"
-<seq-exp> ::= "[" <exp> "," <exp> "]"
+<seq-exp> ::= "[" <seq-list-exp> "]"
+<seq-list-exp> ::= <exp> | <exp> "," <seq-list-exp> 
 <exp> ::= <app-exp-list>
 ```
 

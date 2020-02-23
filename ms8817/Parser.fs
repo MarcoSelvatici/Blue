@@ -244,17 +244,30 @@ let pBuiltin : ParseRule =
 // - ast reduction: take the Asts matched in the previous phase and reduce them.
 //                  This may not be necessary for all the rules.
 
-// TODO: support sequence lists.
-let rec pSeqExp pState =
+let rec pSeqListExp pState =
+    let seqExpListTerminators = [KCloseSquare]
+    // At least one element will be present in the sequence, since empty
+    // sequences are matched in pSeqExp.
     let pState' =
         pState
-        |> (pToken KOpenSquare .+. pExp .+. pToken KComma .+.
-            pExp .+. pToken KCloseSquare)
+        |> (pExp .+. (pNull seqExpListTerminators .|. pToken KComma .+. pSeqListExp))
     match pState' with
     | Error e -> Error e
-    | Ok (secondAst :: firstAst :: asts, tkns) ->
-        Ok ( SeqExp (firstAst, secondAst) :: asts, tkns)
-    | _ -> impossible "pSeqExp"
+    | Ok (Null :: exp :: asts, tkns) ->
+        Ok (SeqExp (exp, Null) :: asts, tkns)
+    | Ok (SeqExp (fst, snd) :: exp :: asts, tkns) ->
+        Ok (SeqExp (exp, SeqExp (fst, snd)) :: asts, tkns)
+    | _ -> impossible "pSeqListExp"
+
+and pSeqExp pState =
+    let pState' =
+        pState
+        |> (pToken KOpenSquare .+. pToken KCloseSquare .|. // Empty sequence.
+            pToken KOpenSquare .+. pSeqListExp .+. pToken KCloseSquare)
+    match pState' with
+    | Error e -> Error e
+    | Ok (SeqExp _ :: _, _) -> pState' // Non empty sequence.
+    | Ok (asts, tkns) -> Ok (SeqExp (Null, Null) :: asts, tkns) // Empty sequence.
 
 and pIfExp pState =
     let pState' =
