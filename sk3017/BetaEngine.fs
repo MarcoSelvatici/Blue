@@ -16,15 +16,13 @@ let rec reduceAst env ast =
         | Ok (Literal (BoolLit true))  -> reduceAst env bTrue
         | Ok (Literal (BoolLit false)) -> reduceAst env bFalse
         | error -> error
-
-    | Null | Literal _ | BuiltInFunc _ | SeqExp _ 
-                       -> Ok ast
     | Identifier i -> 
         Map.tryFind i env |>
         function
-        | Some ast -> Ok ast
+        | Some def -> reduceAst env def
         | None -> Error <| sprintf "Identifier \'%s\' is not defined" i
-
+    | Null | Literal _ | BuiltInFunc _ | SeqExp _ 
+                       -> Ok ast
     | FuncAppList _     -> Error "What? parser returned FuncAppList"  
     | IdentifierList _  -> Error "What? parser returned IdentifierList"
 
