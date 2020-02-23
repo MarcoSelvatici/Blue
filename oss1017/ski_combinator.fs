@@ -138,7 +138,7 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
     // Check in bindings to see if that identfier has been defined
     | Identifier x ->
         if bindings.ContainsKey x
-        then bracketAbstract bindings.[x] bindings
+        then bindings.[x]
         else Identifier x    // Could also return an error "Unkown ID"
         
 
@@ -167,13 +167,13 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
 
         //    6.  T[λx.(E₁ E₂)] => (S T[λx.E₁] T[λx.E₂]) (if x occurs free in E₁ or E₂)
         | { LambdaParam = name; LambdaBody = FuncApp (exp1, exp2) } when isFree name exp1 || isFree name exp2 ->
-            FuncApp (FuncApp (Combinator I, bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp1 }) bindings ), bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp2 }) bindings )
+            FuncApp (FuncApp (Combinator S, bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp1 }) bindings ), bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp2 }) bindings )
         | _ ->
             failwith "Error doing bracket abstraction"
     
     //function definitiions and bindings
     | FuncDefExp { FuncName = name; FuncBody = body; Rest = exp } ->
-        let bindings = bindings.Add(name,  body )
+        let bindings = bindings.Add(name, bracketAbstract body bindings)
         bracketAbstract exp bindings
 
     | IfExp (condition,expT,expF) ->

@@ -31,8 +31,8 @@ let listTests = [
     Literal (IntLit 3);
 
     "ListSize long", 
-    FuncApp( BuiltInFunc Size, [1..1000] |> buildList), 
-    Literal (IntLit 1000);
+    FuncApp( BuiltInFunc Size, [1..6000] |> buildList), 
+    Literal (IntLit 6000);
 
     "ListSize 1", 
     FuncApp( BuiltInFunc Size, [1] |> buildList),
@@ -233,6 +233,68 @@ let ifThenElseTests = [
     Literal (StringLit "condition evaluated to true");
 ]
 
+
+let combinatorTests = [
+
+    "identity",
+    Lambda { 
+        LambdaParam = "x" ;
+        LambdaBody = Identifier "x" 
+    },
+    Combinator I
+
+    "switch args (combinator only)",
+    Lambda { 
+        LambdaParam = "x" ;
+        LambdaBody = Lambda { 
+            LambdaParam = "y" ;
+            LambdaBody = FuncApp (Identifier "y", Identifier "x") 
+        } 
+    },
+    // S (K (S I)) (S (K K) I)
+    FuncApp (
+        FuncApp (
+            Combinator S, 
+            FuncApp ( 
+                Combinator K,
+                FuncApp (
+                    Combinator S,
+                    Combinator I 
+                ) 
+            ) 
+        ),
+        FuncApp (
+            FuncApp (
+                Combinator S,
+                FuncApp (
+                    Combinator K,
+                    Combinator K
+                )
+            ), 
+            Combinator I 
+        ) 
+    );
+
+    "switch args (with arguments)",
+    FuncApp ( 
+        FuncApp (
+            Lambda { 
+                LambdaParam = "x" ;
+                LambdaBody = Lambda { 
+                    LambdaParam = "y" ;
+                    LambdaBody = FuncApp (Identifier "y", Identifier "x") 
+                } 
+            }, 
+            Literal (StringLit "World")
+        ),
+        Literal (StringLit "Hello ")
+    ),
+    // S (K (S I)) (S (K K) I)
+    FuncApp ( Literal (StringLit "Hello "),  Literal (StringLit "World") );
+
+
+]
+ 
 let generalTests = [
 
     "combination of several tests",
@@ -257,6 +319,7 @@ let testCases = [
     funcDefTests;
     generalTests;
     ifThenElseTests;
+    combinatorTests;
 ]
 
 
