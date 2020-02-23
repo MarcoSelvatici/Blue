@@ -399,60 +399,76 @@ let testCases = [
     stringTests;
 ]
 
-
+/// Run an Expecto test given a 3-tuple containing the test name, the input to the runtime and the expected output
 let testEval (testName, input, expectedOutput) =
     testCase testName <| fun () ->
         Expect.equal (input |> combinatorRuntime) expectedOutput ""
-
-let runTestLists  lst = 
-    testList "Evaluator test" <| List.map testEval (List.fold (fun x y -> x @ y) [] lst)
+ 
 
 [<Tests>]
-let tests = runTestLists testCases
+/// Evaluates all test cases in the list of lists: testCases
+let tests = 
+    testList "Evaluator test" <| List.map testEval (List.fold (fun x y -> x @ y) [] testCases)
+
+
+/// Start Expecto testing
+let testAll() = 
+    runTestsInAssembly defaultConfig [||] |> ignore
+
+
+/// Run a single input using the combinator runtime
+let singleEval = 
+    combinatorRuntime >> print
 
 
 [<EntryPoint>]
 let main argv =
-    
 
-    runTestsInAssembly defaultConfig [||] |> ignore
-    //FuncDefExp {FuncName = "f"; FuncBody =  Lambda { LambdaParam = "x" ; LambdaBody = FuncApp( FuncApp( BuiltInFunc Plus, Identifier "x"), Literal (IntLit 2)) }; Rest = FuncApp( Identifier "f", Literal (IntLit 5));}
-    //FuncApp (
-    //    Lambda { 
-    //        LambdaParam = "x";
-    //        LambdaBody = 
-    //            FuncDefExp {
-    //                FuncName = "y";
-    //                FuncBody = Literal (IntLit 1);
-    //                Rest = 
-    //                    FuncApp (
-    //                        FuncApp (
-    //                            BuiltInFunc Mult,
-    //                            Identifier "x"
-    //                        ),
-    //                        Identifier "y"
-    //                    );
-    //            }
-    //    },
-    //    Identifier "z"
-    //)
+    let TC1 = 
+        FuncDefExp {
+            FuncName = "f";
+            FuncBody =  Lambda { 
+                LambdaParam = "x" ;
+                LambdaBody = FuncApp( FuncApp( BuiltInFunc Plus, Identifier "x"), Literal (IntLit 2)) 
+            }; 
+            Rest = FuncApp( Identifier "f", Literal (IntLit 5));
+        }
 
-    //let x y =
-    //    x + y
-    //let z = 
-    //    fun a b -> a < b && z
-    //x (z 1 2)
+    let TC2 =
+        FuncApp (
+            Lambda { 
+                LambdaParam = "x";
+                LambdaBody = 
+                    FuncDefExp {
+                        FuncName = "y";
+                        FuncBody = Literal (IntLit 1);
+                        Rest = 
+                            FuncApp (
+                                FuncApp (
+                                    BuiltInFunc Mult,
+                                    Identifier "x"
+                                ),
+                                Identifier "y"
+                            );
+                    }
+            },
+            Identifier "z"
+        )
+
+    let TC3 =
+        FuncDefExp {
+            FuncName = "x";
+            FuncBody = buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "y")); 
+            Rest = FuncDefExp {
+                FuncName = "z";
+                FuncBody = buildLambda "a" ( buildLambda "b" (FuncApp (FuncApp (BuiltInFunc And, FuncApp (FuncApp (BuiltInFunc Less, Identifier "a"), Identifier "b")), Identifier "z")) );
+                Rest = FuncApp(Identifier "x", FuncApp(FuncApp (Identifier "z", Literal (IntLit 1)), Literal (IntLit 2)))}}
 
 
+    //// RUN ALL EXPECTO TESTS ////
+    //testAll()
 
-    //FuncDefExp {
-    //    FuncName = "x";
-    //    FuncBody = buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "y")); 
-    //    Rest = FuncDefExp {
-    //        FuncName = "z";
-    //        FuncBody = buildLambda "a" ( buildLambda "b" (FuncApp (FuncApp (BuiltInFunc And, FuncApp (FuncApp (BuiltInFunc Less, Identifier "a"), Identifier "b")), Identifier "z")) );
-    //        Rest = FuncApp(Identifier "x", FuncApp(FuncApp (Identifier "z", Literal (IntLit 1)), Literal (IntLit 2)))}}
+    //// USE THE COMBINATOR RUNTIME TO EVALUATE A PROGRAM ////
+    singleEval TC1
 
-    //|> combinatorRuntime
-    //|> print
     0

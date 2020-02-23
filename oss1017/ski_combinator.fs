@@ -1,5 +1,5 @@
 ﻿// Module: SKI combinator Runtime
-// Author: oss1017 (Oliver Stiff)
+// Author: oss1017 (Oliver Stiff)-
 
 module rec ski_combinator
 
@@ -10,12 +10,72 @@ open Parser
 let print x =
     printfn "%A" x
 
+
  /// Print and return (used in pipeline)
 let pipePrint x =
     print x; x
 
 
-///Determine if a variable is free in an expression
+/// Bracket abstraction and substituting functions when they are called by making use of function name to body bindings. 
+let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
+    match input with
+    | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null ->  input
+
+    //    1.  T[x] => x
+    // Check in bindings to see if that identfier has been defined
+    | Identifier x ->
+        if bindings.ContainsKey x
+        then bindings.[x]
+        else Identifier x    // Could also return an error "Unkown ID"
+
+    //substitute expressions into lambdas
+    | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
+        let bindings = bindings.Add(name, bracketAbstract exp2 bindings)
+        bracketAbstract exp1 bindings
+
+    //    2.  T[(E₁ E₂)] => (T[E₁] T[E₂])
+    | FuncApp (exp1, exp2) -> 
+        FuncApp (bracketAbstract exp1 bindings, bracketAbstract exp2 bindings)
+    
+    | Lambda x ->
+        match x with
+        //    3.  T[λx.E] => (K T[E]) (if x does not occur free in E)
+        | { LambdaParam = name; LambdaBody = exp } when not (isFree name exp) ->
+            FuncApp (Combinator K, bracketAbstract exp bindings)
+
+        //    4.  T[λx.x] => I
+        | { LambdaParam = name; LambdaBody = Identifier exp } when name = exp ->
+            Combinator I
+
+        //    5.  T[λx.λy.E] => T[λx.T[λy.E]] (if x occurs free in E) 
+        | { LambdaParam = name1; LambdaBody = Lambda { LambdaParam = name2; LambdaBody = exp } } when isFree name1 exp ->
+            bracketAbstract (Lambda { LambdaParam = name1; LambdaBody = bracketAbstract (Lambda { LambdaParam = name2; LambdaBody = exp } ) bindings } ) bindings
+
+        //    6.  T[λx.(E₁ E₂)] => (S T[λx.E₁] T[λx.E₂]) (if x occurs free in E₁ or E₂)
+        | { LambdaParam = name; LambdaBody = FuncApp (exp1, exp2) } when isFree name exp1 || isFree name exp2 ->
+            FuncApp (FuncApp (Combinator S, bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp1 }) bindings ), bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp2 }) bindings )
+        | _ ->
+            failwith "Error doing bracket abstraction"
+    
+    //function definitiions and bindings
+    | FuncDefExp { FuncName = name; FuncBody = body; Rest = exp } ->
+        let bindings = bindings.Add(name, bracketAbstract body bindings)
+        bracketAbstract exp bindings
+
+    | IfExp (condition,expT,expF) ->
+            match eval (bracketAbstract condition bindings) with
+            | Literal (BoolLit true)  -> 
+                bracketAbstract expT bindings
+            | Literal (BoolLit false) -> 
+                bracketAbstract expF bindings
+            | _ -> failwith "Unexpected value in ifThenElse condition"
+
+    | RoundExp _        -> failwith "should not be returned by parser"
+    | FuncAppList _     -> failwith "should not be returned by parser"
+    | IdentifierList _  -> failwith "should not be returned by parser"
+
+
+/// Determine if a variable is free in an expression
 let isFree (var:string) (exp: Ast): bool =
     let rec free (exp: Ast): string List =
         match exp with
@@ -29,15 +89,6 @@ let isFree (var:string) (exp: Ast): bool =
             -> []
 
     List.contains var (free exp)
-
-
-/// Builds a list in our language out of an f# list
-let rec buildList lst =
-    match lst with
-    | [] ->  SeqExp (Null, Null)
-    | [x] -> SeqExp (Literal (StringLit x), Null)
-    | head::tail -> SeqExp ( Literal (StringLit head), buildList tail )
-
 
 
 /// Evaluate Ast built-in functions
@@ -156,69 +207,17 @@ let eval (input:Ast) : Ast =
     | IdentifierList _  -> failwith "IdentifierList should not be returned by parser"
 
 
-/// Bracket abstraction and substituting functions when they are called by making use of function name to body bindings. 
-let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
-    match input with
-    | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null ->  input
-
-    //    1.  T[x] => x
-    // Check in bindings to see if that identfier has been defined
-    | Identifier x ->
-        if bindings.ContainsKey x
-        then bindings.[x]
-        else Identifier x    // Could also return an error "Unkown ID"
-
-    //substitute expressions into lambdas
-    | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
-        let bindings = bindings.Add(name, bracketAbstract exp2 bindings)
-        bracketAbstract exp1 bindings
-
-    //    2.  T[(E₁ E₂)] => (T[E₁] T[E₂])
-    | FuncApp (exp1, exp2) -> 
-        FuncApp (bracketAbstract exp1 bindings, bracketAbstract exp2 bindings)
-    
-    | Lambda x ->
-        match x with
-        //    3.  T[λx.E] => (K T[E]) (if x does not occur free in E)
-        | { LambdaParam = name; LambdaBody = exp } when not (isFree name exp) ->
-            FuncApp (Combinator K, bracketAbstract exp bindings)
-
-        //    4.  T[λx.x] => I
-        | { LambdaParam = name; LambdaBody = Identifier exp } when name = exp ->
-            Combinator I
-
-        //    5.  T[λx.λy.E] => T[λx.T[λy.E]] (if x occurs free in E) 
-        | { LambdaParam = name1; LambdaBody = Lambda { LambdaParam = name2; LambdaBody = exp } } when isFree name1 exp ->
-            bracketAbstract (Lambda { LambdaParam = name1; LambdaBody = bracketAbstract (Lambda { LambdaParam = name2; LambdaBody = exp } ) bindings } ) bindings
-
-        //    6.  T[λx.(E₁ E₂)] => (S T[λx.E₁] T[λx.E₂]) (if x occurs free in E₁ or E₂)
-        | { LambdaParam = name; LambdaBody = FuncApp (exp1, exp2) } when isFree name exp1 || isFree name exp2 ->
-            FuncApp (FuncApp (Combinator S, bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp1 }) bindings ), bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp2 }) bindings )
-        | _ ->
-            failwith "Error doing bracket abstraction"
-    
-    //function definitiions and bindings
-    | FuncDefExp { FuncName = name; FuncBody = body; Rest = exp } ->
-        let bindings = bindings.Add(name, bracketAbstract body bindings)
-        bracketAbstract exp bindings
-
-    | IfExp (condition,expT,expF) ->
-            match eval (bracketAbstract condition bindings) with
-            | Literal (BoolLit true)  -> 
-                bracketAbstract expT bindings
-            | Literal (BoolLit false) -> 
-                bracketAbstract expF bindings
-            | _ -> failwith "Unexpected value in ifThenElse condition"
-
-    | RoundExp _        -> failwith "should not be returned by parser"
-    | FuncAppList _     -> failwith "should not be returned by parser"
-    | IdentifierList _  -> failwith "should not be returned by parser"
+/// Builds a list in our language out of an f# list
+let rec buildList lst =
+    match lst with
+    | [] ->  SeqExp (Null, Null)
+    | [x] -> SeqExp (Literal (StringLit x), Null)
+    | head::tail -> SeqExp ( Literal (StringLit head), buildList tail )
 
 
 //evaluate/simplify SKI exp
-///SKI combinator reduction
+/// SKI combinator reduction
 let rec interpret (exp:Ast) :Ast =
-    //funcapp is used as a tree
     match exp with
     | Combinator x ->
         exp
@@ -236,7 +235,7 @@ let rec interpret (exp:Ast) :Ast =
         else interpret (FuncApp (exp1', exp2'))
     | _ -> exp
 
-
+/// Evaluate the output of the parser using bracket abstraction, S K I Y combinators and the evaluation of built-in functions
 let combinatorRuntime (input: Ast): Ast = 
     let bindings = Map []
     (input, bindings)
