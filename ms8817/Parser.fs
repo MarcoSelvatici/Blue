@@ -157,8 +157,10 @@ let matchAnyOp opGroups itemsList =
 
 /// Transforms a list of Items into a tree of left associative function
 /// applications, respecting operators ordeing.
-let rec buildFuncAppTree (itemsList : Ast list): Ast =
-    let opGroups = 
+/// If such transformation is not possible (e.g. due to incomplete arithmetic
+/// expression like `1+`), return a string with the error message.
+let rec buildFuncAppTree (itemsList : Ast list): Result<Ast, string> =
+    let opGroups =
         List.map (List.map BuiltInFunc) <| [
             [And; Or]; // Logical.
             [Greater; GreaterEq; Less; LessEq; Equal]; // Comparison.
@@ -166,16 +168,23 @@ let rec buildFuncAppTree (itemsList : Ast list): Ast =
             [Mult; Div]; // Multiplicative.
         ]
     match itemsList with
-    | [] -> impossible "buildFuncAppTree" // Caller should make sure this cannot happen. TODO: this may need to change now.
-    | [item] -> item
-    | itemsList ->
+    | [] -> Error "failed: buildFuncAppTree. Expected expression"
+    | [item] -> Ok item
+    | itemsList -> // More than one item.
         match matchAnyOp opGroups itemsList with
-        | Some (idx, op) -> // Split at the operator and recur on both sides.
+        | Some (idx, op) ->
+            // Split at the operator and recur on both sides.
             let lhs, rhs = List.splitAt idx itemsList
-            FuncApp (FuncApp (op, buildFuncAppTree lhs), buildFuncAppTree (List.tail rhs))
-        | None -> // No arithmetic operator was found, use normal function application associativity.
+            match buildFuncAppTree lhs, buildFuncAppTree (List.tail rhs) with
+            | Error msg, _
+            | _, Error msg -> Error msg
+            | Ok lTree, Ok rTree -> Ok <| FuncApp (FuncApp (op, lTree), rTree)
+        | None ->
+            // No arithmetic operator was found, use normal funcApp associativity.
             let itemsList', lastEl = List.splitAt (itemsList.Length - 1) itemsList
-            FuncApp ((buildFuncAppTree itemsList'), lastEl.[0]) // TODO: this is a bit hacky.
+            match buildFuncAppTree itemsList' with
+            | Error msg -> Error msg
+            | Ok tree -> Ok <| FuncApp (tree, lastEl.[0])
 
 //=============//
 // Parse rules //
@@ -318,10 +327,10 @@ and pAppExpList pState =
 and pExp pState =
     match pAppExpList pState with
     | Error e -> Error e
-    | Ok (FuncAppList [] :: asts, tkns) ->
-        buildError (sprintf "failed: pExp. Invalid empty exp list") tkns asts
     | Ok (FuncAppList fAppList :: asts, tkns) ->
-        Ok (buildFuncAppTree fAppList :: asts, tkns)
+        match buildFuncAppTree fAppList with
+        | Error msg -> buildError msg tkns asts
+        | Ok tree -> Ok (tree :: asts, tkns)
     | _ -> impossible "pExp"
 
 let parse (tkns : Token list) : Result<Ast, ErrorT> =

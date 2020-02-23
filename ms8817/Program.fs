@@ -15,6 +15,8 @@ let buildErrorManually msg trace unmatchedTokens currentAsts =
 // TODO It does not make sense to test all the failure messages now because they
 // are not completely designed yet.
 let testCases = [
+    "Empty", [],
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [] [];
     "Simple identifier", [TIdentifier "a"],
         Ok (Identifier "a");
     "Simple literal", [TLiteral (IntLit 42)],
@@ -35,12 +37,16 @@ let testCases = [
         buildErrorManually "failed: pToken KLet" "in x " [KDot] [Literal (IntLit 42); IdentifierList ["x"]];
     "IfExp", [KIf; TIdentifier "x"; KThen; TIdentifier "y"; KElse; TIdentifier "z"; KFi],
         Ok (IfExp (Identifier "x", Identifier "y", Identifier "z"));
-    //"Miss Cond exp", [KIf; KThen; TIdentifier "y"; KElse; TIdentifier "z"; KFi],
-    //    Error...
+    "Miss Cond exp", [KIf; KThen; TIdentifier "y"; KElse; TIdentifier "z"; KFi],
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KThen; TIdentifier "y"; KElse; TIdentifier "z"; KFi] [];
+    "Miss Then exp", [KIf; TIdentifier "y"; KThen; KElse; TIdentifier "z"; KFi],
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KElse; TIdentifier "z"; KFi] [Identifier "y"];
+    "Miss Else exp", [KIf; TIdentifier "y"; KThen; TIdentifier "z"; KElse; KFi],
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KFi] [Identifier "z"; Identifier "y"];
     "Simple SeqExp", [KOpenSquare; TIdentifier "x"; KComma; TIdentifier "y"; KCloseSquare],
         Ok (SeqExp (Identifier "x", Identifier "y"));
-    //"Miss first Exp", [KOpenSquare; KComma; TIdentifier "y"; KCloseSquare],
-    //    Error...
+    "Miss first Exp", [KOpenSquare; KComma; TIdentifier "y"; KCloseSquare],
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KComma; TIdentifier "y"; KCloseSquare] []
     "Simple FuncApp Lit", [TIdentifier "f"; TLiteral (IntLit 42)],
         Ok (FuncApp (Identifier "f", Literal (IntLit 42)));
     "Simple FuncApp Ident", [TIdentifier "f"; TIdentifier "x"],
@@ -51,6 +57,8 @@ let testCases = [
         Ok (FuncApp (Identifier "g", FuncApp (Identifier "f", Literal (IntLit 42))));
     "Bracketed fun", [KOpenRound; TIdentifier "f"; TLiteral (IntLit 42); KCloseRound; TIdentifier "g"],
         Ok (FuncApp (FuncApp (Identifier "f", Literal (IntLit 42)), Identifier "g"));
+    "Empty brackets", [KOpenRound; KCloseRound],
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KCloseRound] [];
     "Long exp list, left associative", List.map (fun i -> (TIdentifier <| sprintf "%d" i)) [1; 2; 3; 4; 5],
         Ok (FuncApp (FuncApp (FuncApp (FuncApp (Identifier "1", Identifier "2"), Identifier "3"), Identifier "4" ), Identifier "5"))
     "Simple let in", [KLet; TIdentifier "f"; KEq; TLiteral (IntLit 2); KIn; TIdentifier "f"; KNi],
@@ -71,6 +79,12 @@ let testCases = [
         Ok (FuncApp ( FuncApp (BuiltInFunc Minus, Literal (IntLit 1)), FuncApp ( FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3))));
     "Simple arithmetic 1=2<=3", [TLiteral (IntLit 1); TBuiltInFunc Equal; TLiteral (IntLit 2); TBuiltInFunc LessEq; TLiteral (IntLit 3)],
         Ok (FuncApp ( FuncApp (BuiltInFunc Equal, Literal (IntLit 1)), FuncApp (FuncApp (BuiltInFunc LessEq, Literal (IntLit 2)), Literal (IntLit 3))));
+    "Incomplete arithmetic 1+", [TLiteral (IntLit 1); TBuiltInFunc Plus],
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [] [];
+    "Incomplete arithmetic /1", [TBuiltInFunc Div; TLiteral (IntLit 1)],
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [] [];
+    "Incomplete arithmetic *1&&", [TBuiltInFunc Mult; TLiteral (IntLit 1); TBuiltInFunc And],
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [] [];
     "Simple builtin", [TBuiltInFunc Head; TIdentifier "l"],
         Ok (FuncApp (BuiltInFunc Head, Identifier "l"));
     "Double builtin", [TBuiltInFunc Head; TBuiltInFunc Tail; TIdentifier "l"],
@@ -81,6 +95,12 @@ let testCases = [
         buildErrorManually "failed: pToken KLet" "in y in x " [KDot; KNi; KNi] [Literal (IntLit 3); IdentifierList ["y"]; Literal (IntLit 2); IdentifierList ["x"]]
     "Single trace error", [KLet; TIdentifier "x"; KEq; TLiteral (IntLit 2); KIn; KLet; TIdentifier "y"; KEq; TLiteral (IntLit 3); KIn; TIdentifier "y"; KNi; KDot; KNi],
         buildErrorManually "failed: pToken KLet" "in x " [KDot; KNi] [FuncDefExp {FuncName = "y"; FuncBody = Literal (IntLit 3); Rest = Identifier "y" }; Literal (IntLit 2); IdentifierList ["x"]]
+    "Simple program", [KLet; TIdentifier "x"; TIdentifier "y"; KEq; TIdentifier "x"; TBuiltInFunc Plus; TIdentifier "y"; KIn; KLet; TIdentifier "z"; KEq; KLambda; TIdentifier "a"; TIdentifier "b"; KDot; TIdentifier "a"; TBuiltInFunc Less; TIdentifier "b"; TBuiltInFunc And; TIdentifier "z"; KIn; TIdentifier "x"; KOpenRound; TIdentifier "z"; TLiteral (IntLit 1); TLiteral (IntLit 2); KCloseRound; KNi; KNi],
+        Ok (FuncDefExp {FuncName = "x"; FuncBody = buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "y")); Rest =        FuncDefExp {FuncName = "z"; FuncBody = buildLambda "a" ( buildLambda "b" (FuncApp (FuncApp (BuiltInFunc And, FuncApp (FuncApp (BuiltInFunc Less, Identifier "a"), Identifier "b")), Identifier "z")) ); Rest = FuncApp(Identifier "x", FuncApp(FuncApp (Identifier "z", Literal (IntLit 1)), Literal (IntLit 2)))}});
+    "Longest match", [KLet; TIdentifier "x"; TIdentifier "y"; KEq; TIdentifier "x"; TBuiltInFunc Div; TIdentifier "y"; KNi; TIdentifier "x"; KNi],
+        buildErrorManually "failed: pToken KIn" "in x " [KNi; TIdentifier "x"; KNi] [FuncApp (FuncApp (BuiltInFunc Div, Identifier "x"), Identifier "y"); IdentifierList ["x"; "y"]];
+    "Lambda with let in", [KLambda; TIdentifier "x"; KDot; KLet; TIdentifier "y"; KEq; TLiteral (BoolLit true); KIn; TIdentifier "x"; TBuiltInFunc Mult; TLiteral (IntLit 2); KNi; TIdentifier "y"],
+        Ok (buildLambda "x" (FuncApp ((FuncDefExp {FuncName="y"; FuncBody=Literal (BoolLit true); Rest=FuncApp (FuncApp (BuiltInFunc Mult, Identifier "x"), Literal (IntLit 2))}), Identifier "y")));
 ]
 
 let testParser (description, tkns, expected) =

@@ -91,6 +91,20 @@ FA ( FA (+, 2), 3)
 Total:
 FA ( FA (-, 1), FA ( FA (+, 2), 3))
 ```
+
+## Wroth noting tests
+<u>Simple program</u>. Tests:
+- Curried functions and lambas,
+- operators associativity,
+- function application associativity.
+```
+let x y = x + y in
+    let z = \a b. a < b && z in
+        x (z 1 2)
+    ni
+ni
+```
+
 ## Parsing expamples
 ```
 > Example 1
