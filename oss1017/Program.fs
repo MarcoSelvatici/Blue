@@ -16,18 +16,38 @@ let tmp =
 
 // TESTBENCH
 
+let rec buildList lst =
+    match lst with
+    | [] -> Null
+    | [x] -> SeqExp (Literal (IntLit x), Null)
+    | head::tail -> SeqExp ( Literal (IntLit head), buildList tail )
+
+
+
 let listTests = [
 
-    "ListSize", 
-    FuncApp( BuiltInFunc Size, SeqExp ( Literal (IntLit 1), SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null )))), 
+    "ListSize short", 
+    FuncApp( BuiltInFunc Size, [1..3] |> buildList), 
     Literal (IntLit 3);
 
-    "List Size 2",
-    FuncApp( BuiltInFunc Size, SeqExp ( Literal (IntLit 1), Null)),
+    "ListSize long", 
+    FuncApp( BuiltInFunc Size, [1..1000] |> buildList), 
+    Literal (IntLit 1000);
+
+    "ListSize 1", 
+    FuncApp( BuiltInFunc Size, [1] |> buildList),
+    Literal (IntLit 1);
+
+    "ListSize null", 
+    FuncApp( BuiltInFunc Size, [] |> buildList), 
+    Literal (IntLit 0);
+
+    "List Size string",
+    FuncApp( BuiltInFunc Size, SeqExp ( Literal (StringLit "this is a list"), Null)),
     Literal (IntLit 1);
 
     "List Head",
-    FuncApp( BuiltInFunc Head, SeqExp ( Literal (IntLit 1), Null)),
+    FuncApp( BuiltInFunc Head, [1..3] |> buildList),
     Literal (IntLit 1);
 
     "List tail",
@@ -187,6 +207,32 @@ let funcDefTests = [
     Literal ( BoolLit true);
 ]
 
+let ifThenElseTests = [
+    "simple ifThenElse true",
+    IfExp ( Literal (BoolLit true),Literal (StringLit "condition evaluated to true") ,Literal (StringLit "condition evaluated to false")),
+    Literal (StringLit "condition evaluated to true");
+
+    "simple ifThenElse false",
+    IfExp ( Literal (BoolLit false),Literal (StringLit "condition evaluated to true") ,Literal (StringLit "condition evaluated to false")),
+    Literal (StringLit "condition evaluated to false");
+
+    "needs eval ifThenElse false",
+    IfExp (
+        FuncApp (FuncApp (BuiltInFunc Less, FuncApp (FuncApp (BuiltInFunc Plus,Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Minus, FuncApp (FuncApp (BuiltInFunc Mult,Literal (IntLit 3)), Literal (IntLit 4))),Literal (IntLit 5)))), Literal (IntLit 6)),
+        Literal (StringLit "condition evaluated to true"),
+        Literal (StringLit "condition evaluated to false")
+    ),
+    Literal (StringLit "condition evaluated to false");
+
+    "needs eval ifThenElse true",
+    IfExp (
+        FuncApp (FuncApp (BuiltInFunc Greater, FuncApp (FuncApp (BuiltInFunc Plus,Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Minus, FuncApp (FuncApp (BuiltInFunc Mult,Literal (IntLit 3)), Literal (IntLit 4))),Literal (IntLit 5)))), Literal (IntLit 6)),
+        Literal (StringLit "condition evaluated to true"),
+        Literal (StringLit "condition evaluated to false")
+    ),
+    Literal (StringLit "condition evaluated to true");
+]
+
 let generalTests = [
 
     "combination of several tests",
@@ -210,6 +256,7 @@ let testCases = [
     lambdaTests;
     funcDefTests;
     generalTests;
+    ifThenElseTests;
 ]
 
 
@@ -226,6 +273,7 @@ let tests = runTestLists testCases
 [<EntryPoint>]
 let main argv =
     
+
     runTestsInAssembly defaultConfig [||] |> ignore
     //FuncDefExp {FuncName = "f"; FuncBody =  Lambda { LambdaParam = "x" ; LambdaBody = FuncApp( FuncApp( BuiltInFunc Plus, Identifier "x"), Literal (IntLit 2)) }; Rest = FuncApp( Identifier "f", Literal (IntLit 5));}
     //FuncApp (FuncApp(Lambda { LambdaParam = "x"; LambdaBody = Lambda { LambdaParam = "y"; LambdaBody = FuncApp ( FuncApp( BuiltInFunc Plus , Identifier "x" ),  Identifier "y")  }},Literal (IntLit 12)),Literal (IntLit 10))

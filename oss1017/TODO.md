@@ -9,7 +9,7 @@
 - fix function definitions which contain lambdas: not evaluating in correct order so not simplifying
 - string implode/explode
 - If Then Else
-- 
+- Error passthrough/eval
 
 
 #### Advanced/ implement if implemented in tokeniser and parser

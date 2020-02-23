@@ -62,6 +62,8 @@ let eval (input:Ast) : Ast =
                 1
             | SeqExp (head, tail) ->
                 1 + (sizeOf tail)
+            | Null ->
+                0
             | _ ->
                 failwith "Error getting size of list"
         Literal (IntLit (sizeOf x))
@@ -124,14 +126,20 @@ let eval (input:Ast) : Ast =
 
 let tmp = FuncDefExp {FuncName = "f"; FuncBody = Literal (IntLit 2); Rest = FuncDefExp {FuncName = "g"; FuncBody = Literal (StringLit "aaa"); Rest = Identifier "z";};}
 
+
 let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
     match input with
+    | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null ->  input
+
+    | RoundExp x ->
+        bracketAbstract x bindings
+
     //    1.  T[x] => x
-    //Identifier
+    // Check in bindings to see if that identfier has been defined
     | Identifier x ->
         if bindings.ContainsKey x
         then bracketAbstract bindings.[x] bindings
-        else Identifier x
+        else Identifier x    // Could also return an error "Unkown ID"
         
 
     //sub literals into lambdas
@@ -168,13 +176,17 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
         let bindings = bindings.Add(name,  body )
         bracketAbstract exp bindings
 
-    // S K I Y
-    | Combinator x ->
-        Combinator x
+    | IfExp (condition,expT,expF) ->
+            match eval (bracketAbstract condition bindings) with
+            | Literal (BoolLit true)  -> 
+                bracketAbstract expT bindings
+            | Literal (BoolLit false) -> 
+                bracketAbstract expF bindings
+            | _ -> failwith "Unexpected value in ifThenElse condition"
 
-    //let built-ins pass, catch errors in eval if needed
-    | _ 
-        -> input
+    | FuncAppList _     -> failwith "should not be returned by parser"
+    | IdentifierList _  -> failwith "should not be returned by parser"
+
 
 
 //evaluate/simplify SKI exp
