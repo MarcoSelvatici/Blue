@@ -243,81 +243,84 @@ let pBuiltin : ParseRule =
 // - parse structure: defined as a series of combined parse rules;
 // - ast reduction: take the Asts matched in the previous phase and reduce them.
 //                  This may not be necessary for all the rules.
+// When possible, Result.map is used, but some rules may generate an error from
+// an Ok result, hence require a normal pattern matching.
 
 let rec pSeqListExp pState =
     let seqExpListTerminators = [KCloseSquare]
     // At least one element will be present in the sequence, since empty
     // sequences are matched in pSeqExp.
-    let pState' =
-        pState
-        |> (pExp .+. (pNull seqExpListTerminators .|. pToken KComma .+. pSeqListExp))
-    match pState' with
-    | Error e -> Error e
-    | Ok (Null :: exp :: asts, tkns) ->
-        Ok (SeqExp (exp, Null) :: asts, tkns)
-    | Ok (SeqExp (fst, snd) :: exp :: asts, tkns) ->
-        Ok (SeqExp (exp, SeqExp (fst, snd)) :: asts, tkns)
-    | _ -> impossible "pSeqListExp"
+    pState
+    |> (pExp .+. (pNull seqExpListTerminators .|. pToken KComma .+. pSeqListExp))
+    |> Result.map (
+        function
+        | Null :: exp :: asts, tkns ->
+            SeqExp (exp, Null) :: asts, tkns
+        | SeqExp (fst, snd) :: exp :: asts, tkns ->
+            SeqExp (exp, SeqExp (fst, snd)) :: asts, tkns
+        | _ -> impossible "pSeqListExp"
+    )
 
 and pSeqExp pState =
-    let pState' =
-        pState
-        |> (pToken KOpenSquare .+. pToken KCloseSquare .|. // Empty sequence.
-            pToken KOpenSquare .+. pSeqListExp .+. pToken KCloseSquare)
-    match pState' with
-    | Error e -> Error e
-    | Ok (SeqExp _ :: _, _) -> pState' // Non empty sequence.
-    | Ok (asts, tkns) -> Ok (SeqExp (Null, Null) :: asts, tkns) // Empty sequence.
+    pState
+    |> (pToken KOpenSquare .+. pToken KCloseSquare .|. // Empty sequence.
+        pToken KOpenSquare .+. pSeqListExp .+. pToken KCloseSquare)
+    |> Result.map (
+        function
+        | SeqExp _ :: _, _ as pState' -> pState' // Non empty sequence.
+        | asts, tkns -> SeqExp (Null, Null) :: asts, tkns // Empty sequence.
+    )
 
 and pIfExp pState =
-    let pState' =
-        pState
-        |> (pToken KIf .+. pExp .+. pToken KThen .+. pExp .+.
-            pToken KElse .+. pExp .+. pToken KFi)
-    match pState' with
-    | Error e -> Error e
-    | Ok (elseAst :: thenAst :: condAst :: asts, tkns) ->
-        Ok ( IfExp (condAst, thenAst, elseAst) :: asts, tkns)
-    | _ -> impossible "pIfExp"
+    pState
+    |> (pToken KIf .+. pExp .+. pToken KThen .+. pExp .+.
+        pToken KElse .+. pExp .+. pToken KFi)
+    |> Result.map (
+        function
+        | elseAst :: thenAst :: condAst :: asts, tkns ->
+            IfExp (condAst, thenAst, elseAst) :: asts, tkns
+        | _ -> impossible "pIfExp"
+    )
 
 and pIdentifierList pState =
     let idListTerminators = [KDot; KEq]
-    let pState' =
-        pState |> (pNull idListTerminators .|. (pIdentifier .+. pIdentifierList))
-    match pState' with
-    | Error e -> Error e
-    | Ok (Null :: asts, tkns) -> // Finsihed the identifier list.
-        Ok (IdentifierList [] :: asts, tkns)
-    | Ok (IdentifierList idList :: Identifier id :: asts, tkns) -> // Append identifier.
-        Ok (IdentifierList (id :: idList) :: asts, tkns)
-    | _ -> impossible "pIdentifierList"
+    pState
+    |> (pNull idListTerminators .|. (pIdentifier .+. pIdentifierList))
+    |> Result.map (
+        function
+        | Null :: asts, tkns -> // Finsihed the identifier list.
+            IdentifierList [] :: asts, tkns
+        | IdentifierList idList :: Identifier id :: asts, tkns -> // Append identifier.
+            IdentifierList (id :: idList) :: asts, tkns
+        | _ -> impossible "pIdentifierList"
+    )
 
 and pLambdaExp pState =
-    let pState' =
-        pState |> (pToken KLambda .+. pIdentifierList .+. pToken KDot .+. pExp)
-    match pState' with
-    | Error e -> Error e
-    | Ok (_ :: IdentifierList [] :: asts, tkns) ->
-        buildError "failed: pLambdaExp. Invalid empty argument list" tkns asts
-    | Ok (lambdaBody :: IdentifierList lambdaParams :: asts, tkns) ->
-        Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
-    | _ -> impossible "pLambdaExp"
+    pState
+    |> (pToken KLambda .+. pIdentifierList .+. pToken KDot .+. pExp)
+    |> function
+       | Error e -> Error e
+       | Ok (_ :: IdentifierList [] :: asts, tkns) ->
+           buildError "failed: pLambdaExp. Invalid empty argument list" tkns asts
+       | Ok (lambdaBody :: IdentifierList lambdaParams :: asts, tkns) ->
+           Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
+       | _ -> impossible "pLambdaExp"
 
 and pFuncDefExp pState =
-    let pState' =
-        pState
-        |> (pToken KLet .+. pIdentifierList .+. pToken KEq .+.
-            pExp .+. pToken KIn .+. pExp .+. pToken KNi)
-    match pState' with
-    | Error e -> Error e
-    | Ok (_ :: _ :: IdentifierList [] :: asts, tkns) ->
-        buildError "failed: pFuncDefExp. Invalid empty argument list" tkns asts
-    | Ok (rest :: funcBody :: IdentifierList funcParams :: asts, tkns) ->
-        Ok (buildCarriedFunc funcParams funcBody rest :: asts, tkns)
-    | _ -> impossible "pFuncDefExp"
+    pState
+    |> (pToken KLet .+. pIdentifierList .+. pToken KEq .+.
+        pExp .+. pToken KIn .+. pExp .+. pToken KNi)
+    |> function
+       | Error e -> Error e
+       | Ok (_ :: _ :: IdentifierList [] :: asts, tkns) ->
+           buildError "failed: pFuncDefExp. Invalid empty argument list" tkns asts
+       | Ok (rest :: funcBody :: IdentifierList funcParams :: asts, tkns) ->
+           Ok (buildCarriedFunc funcParams funcBody rest :: asts, tkns)
+       | _ -> impossible "pFuncDefExp"
 
 and pRoundExp pState =
-    pState |> (pToken KOpenRound .+. pExp .+. pToken KCloseRound)
+    pState
+    |> (pToken KOpenRound .+. pExp .+. pToken KCloseRound)
 
 and pItemExp pState =
     pState
@@ -327,15 +330,16 @@ and pItemExp pState =
 and pAppExpList pState =
     let appExpListTerminators =
         [KComma; KCloseSquare; KCloseRound; KThen; KElse; KFi; KIn; KNi]
-    let pState' =
-        pState |> (pNull appExpListTerminators .|. (pItemExp .+. pAppExpList))
-    match pState' with
-    | Error e -> Error e
-    | Ok (Null :: asts, tkns) ->
-        Ok (FuncAppList [] :: asts, tkns)
-    | Ok (FuncAppList fAppList :: itemExp :: asts, tkns) ->
-        Ok (FuncAppList (itemExp :: fAppList) :: asts, tkns)
-    | _ -> impossible "pAppExpList"
+    pState
+    |> (pNull appExpListTerminators .|. (pItemExp .+. pAppExpList))
+    |> Result.map (
+        function
+        | Null :: asts, tkns ->
+            FuncAppList [] :: asts, tkns
+        | FuncAppList fAppList :: itemExp :: asts, tkns ->
+            FuncAppList (itemExp :: fAppList) :: asts, tkns
+        | _ -> impossible "pAppExpList"
+    )
 
 and pExp pState =
     match pAppExpList pState with
@@ -354,7 +358,6 @@ let parse (tkns : Token list) : Result<Ast, ErrorT> =
     | Ok (asts, unmatchedTokens) ->
         buildError "failed: top level" unmatchedTokens asts
 
-// TODO: use result.map?
 // TODOs:
 // - write loads of tests
 // - make sure we are efficient (should be)
