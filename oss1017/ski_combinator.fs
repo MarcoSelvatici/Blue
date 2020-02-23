@@ -6,9 +6,11 @@ module rec ski_combinator
 open TokeniserStub
 open Parser
 
+/// Print function
 let print x =
     printfn "%A" x
 
+ /// Print and return (used in pipeline)
 let pipePrint x =
     print x; x
 
@@ -38,14 +40,9 @@ let rec buildList lst =
 
 
 
-///Evaluate Ast built-in functions
+/// Evaluate Ast built-in functions
 let eval (input:Ast) : Ast =
     match input with
-    //literals
-    | Literal x ->
-        Literal x
-
-    ////////////////// START: BUILT-IN FUNCTIONS //////////////////
     
     // implode string list
     | FuncApp( BuiltInFunc Implode, x) -> 
@@ -57,11 +54,11 @@ let eval (input:Ast) : Ast =
                 head + imp tail
             | _ ->
                 failwith "Error: cannot implode argument of type which is not string list"
-        imp x |> StringLit |> Literal
+        x |> eval |> imp |> StringLit |> Literal
 
     // explode string
     | FuncApp( BuiltInFunc Explode, x) -> 
-        match x with
+        match eval x with
         | Literal (StringLit x) ->
             Seq.toList x |> List.map (string) |> buildList
         | _ ->
@@ -69,7 +66,7 @@ let eval (input:Ast) : Ast =
 
     //head
     | FuncApp( BuiltInFunc Head, x) -> 
-        match x with
+        match eval x with
         | SeqExp (head, tail) ->
             head
         | _ ->
@@ -77,26 +74,25 @@ let eval (input:Ast) : Ast =
 
     //tail
     | FuncApp( BuiltInFunc Tail, x) -> 
-        match x with
+        match eval x with
         | SeqExp (head, tail) ->
             tail
         | _ ->
             failwith "Error getting tail of list/sequence"
 
-    //size: works on lists created by using nested pairs, e.g. SeqExp ( Literal (IntLit 1), SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null ))) 
+    //size of list
     | FuncApp( BuiltInFunc Size, x) -> 
         let rec sizeOf x =
             match x with
             | SeqExp (Null, Null) ->
                 0
             | SeqExp (head, Null) ->
-                1
+                1 
             | SeqExp (head, tail) ->
                 1 + (sizeOf tail)
             | _ ->
                 failwith "Error getting size of list"
-        Literal (IntLit (sizeOf x))
-
+        Literal (IntLit (x |> eval |> sizeOf))
 
     //unary built-in functions
     | FuncApp( BuiltInFunc op, x) -> 
@@ -125,7 +121,6 @@ let eval (input:Ast) : Ast =
         | Minus, Literal (IntLit n), Literal (IntLit m) ->
             Literal (IntLit (n - m))
         
-        //replace with church bools if needed
         //boolean ops
         | And, Literal (BoolLit n), Literal (BoolLit m) ->
             Literal (BoolLit (n && m))
@@ -145,20 +140,26 @@ let eval (input:Ast) : Ast =
             Literal (BoolLit (n = m))
 
         //Error
-        | _ -> pipePrint input
+        | _ -> input
 
     //////////////////  END: BUILT-IN FUNCTIONS  //////////////////
-            
+    | Combinator _ | SeqExp _ | Identifier _ | FuncApp _ | BuiltInFunc _ | Null | Literal _ -> input
 
-    | _ -> input
+    | IfExp _ -> input // this should be dealt with in bracket abstraction
+                       // but if for some reason it can't evaluate it,
+                       // it should be passed to output
+
+    | Lambda _          -> failwith "Lambda should not exist after bracket abstraction"
+    | FuncDefExp _      -> failwith "FuncDefExp should not exist after bracket abstraction"
+    | RoundExp _        -> failwith "RoundExp should not be returned by parser"
+    | FuncAppList _     -> failwith "FuncAppList should not be returned by parser"
+    | IdentifierList _  -> failwith "IdentifierList should not be returned by parser"
 
 
+/// Bracket abstraction and substituting functions when they are called by making use of function name to body bindings. 
 let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
     match input with
     | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null ->  input
-
-    | RoundExp x ->
-        bracketAbstract x bindings
 
     //    1.  T[x] => x
     // Check in bindings to see if that identfier has been defined
@@ -166,9 +167,8 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
         if bindings.ContainsKey x
         then bindings.[x]
         else Identifier x    // Could also return an error "Unkown ID"
-        
 
-    //sub literals into lambdas
+    //substitute expressions into lambdas
     | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
         let bindings = bindings.Add(name, bracketAbstract exp2 bindings)
         bracketAbstract exp1 bindings
@@ -210,6 +210,7 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
                 bracketAbstract expF bindings
             | _ -> failwith "Unexpected value in ifThenElse condition"
 
+    | RoundExp _        -> failwith "should not be returned by parser"
     | FuncAppList _     -> failwith "should not be returned by parser"
     | IdentifierList _  -> failwith "should not be returned by parser"
 
