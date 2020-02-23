@@ -137,23 +137,22 @@ let buildCarriedFunc funcParams funcBody rest =
 /// the itemsList.
 /// Operators in the same group have the same precedence (order within a group
 /// does not matter).
-/// TODO: this function should be simplified somehow.
-let matchAnyOp opGroups itemsList =
-    let matchAnyOpInGroup acc opGroup =
-        let folder acc item =
-            match acc with
-            | _, Some _ -> acc // Aleready found a match.
-            | idx, None ->
-                // Try to match the item at the current index, otherwise continue.
-                if List.contains item opGroup then idx, Some item else idx + 1, None
+let rec matchAnyOp opGroups itemsList =
+    /// Check if an item is present in an opGroup, and if so, return the item
+    /// and its index in the itemsList.
+    let itemInOpGroup opGroup acc item =
         match acc with
-        | Some _ -> acc // Found an operator in a group with higher precedence.
-        | None -> // Try to match the current operator group.
-            let inGroup = ((0, None), itemsList) ||> List.fold folder
-            match inGroup with
-            | (idx, Some op) -> Some (idx, op) // Found.
-            | (_, None) -> None 
-    (None, opGroups) ||> List.fold matchAnyOpInGroup
+        | _, Some _ -> acc // Aleready found a match.
+        | idx, None ->
+            // Try to match the item at the current index, otherwise continue.
+            if List.contains item opGroup then idx, Some item else idx + 1, None
+    match opGroups with
+    | [] -> None // No operator present in the itemsList.
+    | opGroup :: opGroups' ->
+        let idxAndOp = ((0, None), itemsList) ||> List.fold (itemInOpGroup opGroup)
+        match idxAndOp with
+        | (idx, Some op) -> Some (idx, op) // Found.
+        | (_, None) -> matchAnyOp opGroups' itemsList // Try next group.
 
 /// Transforms a list of Items into a tree of left associative function
 /// applications, respecting operators ordeing.
