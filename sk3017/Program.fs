@@ -6,11 +6,16 @@ open Expecto
 type TestInfo = (string * string * Ast * Result<Ast,string>) list
 
 
-// TODO refactor some tests
+// helper functions to shorten and decluter test definitions
+let trueL = Literal (BoolLit true)
+let falseL = Literal (BoolLit false)
 let intL n = Literal (IntLit n)
-let boolL b = Literal (BoolLit b)
 let stringL s = Literal (StringLit s)
-let lam n body = Lambda { LambdaParam = n; LambdaBody = body}
+let lam n body = 
+    Lambda { LambdaParam = n; LambdaBody = body}
+
+let binaryBuiltin builtin lhs rhs =
+    FuncApp (FuncApp (BuiltInFunc builtin, lhs), rhs)
 
 // some programs as AST's for testing with diffrent parameters
 let simpleRecAST b =
@@ -20,7 +25,7 @@ let simpleRecAST b =
             (IfExp (
                 Identifier "b",
                 Null,
-                FuncApp (Identifier "f", boolL true)
+                FuncApp (Identifier "f", trueL)
              ))
         Rest = FuncApp (Identifier "f",b)
     }
@@ -32,14 +37,10 @@ let factorialAST r =
             (IfExp ( 
                 FuncApp (FuncApp (BuiltInFunc Equal, Identifier "n"), intL 0),        
                 intL 1,
-                FuncApp(
-                    FuncApp (
-                        BuiltInFunc Mult,
-                        FuncApp ( Identifier "factorial", FuncApp (FuncApp (BuiltInFunc Minus, Identifier "n"), intL 1)) // f(n-1)
-                    ),
-                    Identifier "n"
+                ( binaryBuiltin Mult 
+                 (Identifier "n")
+                 ( FuncApp (Identifier "factorial", binaryBuiltin Minus (Identifier "n") (intL 1) ) )   
                 )
-                
             ))
         Rest = r
     }
@@ -49,7 +50,7 @@ let factorialAST r =
 let testId : TestInfo= 
     [ 
     "Literal int", "6", intL 6;
-    "Literal bool", "true", boolL true;
+    "Literal bool", "true", trueL;
     "Literal string", "\"abc\"" , stringL "abc";
     "Null", "Null", Null;
     "BuiltInFunc >",">", BuiltInFunc Greater;
@@ -70,9 +71,9 @@ let testOk : TestInfo=
     "Round expression (-10)", "(-10) -> -10", RoundExp (intL -10), (intL -10);
     "Nested Round expression (((Null)))", "(((Null)))", Null |> RoundExp |> RoundExp |> RoundExp, Null;
     "if true", "if true then \"abc\" else Null", 
-    IfExp (boolL true, stringL "abc", Null),  stringL "abc";
+    IfExp (trueL, stringL "abc", Null),  stringL "abc";
     "if false", "if false then \"abc\" else Null", 
-    IfExp (boolL false, stringL "abc", Null), Null;
+    IfExp (falseL, stringL "abc", Null), Null;
     "Function Definition", "let c = Null in c -> Null",
     FuncDefExp {FuncName="c"; FuncBody=Null; Rest=Identifier "c"}, Null;
     "Nested Function Definition", "let c = Null in let d = c in d -> Null",
@@ -84,18 +85,39 @@ let testOk : TestInfo=
     Lambda { LambdaParam = "a"; LambdaBody = FuncApp (Lambda { LambdaParam = "b"; LambdaBody = Identifier "b";}, Null );},
     Lambda { LambdaParam = "a"; LambdaBody = Null;};
 
-    "+", "7+8 -> 15", FuncApp (FuncApp (BuiltInFunc Plus, intL 7),intL 8), intL 15;
-    "-", "5-3 ->  2", FuncApp (FuncApp (BuiltInFunc Minus, intL 5),intL 3), intL 2;
-
+    ">", "5 > 1  -> true" , binaryBuiltin Greater   (intL 5) (intL 1), trueL;
+    "<", "3 < 0 -> false" , binaryBuiltin Less      (intL 3) (intL 0), falseL;
+    ">=","2 >= 4 -> false", binaryBuiltin GreaterEq (intL 2) (intL 4), falseL;
+    "<=","3 <= 3 -> true" , binaryBuiltin LessEq    (intL 3) (intL 3), trueL;
+    "= true" ,"9 = 9 -> true" , binaryBuiltin Equal (intL 9) (intL 9), trueL;
+    "= false","6 = 7 -> false", binaryBuiltin Equal (intL 6) (intL 7), falseL;
+    
+    "and false","T and F -> F", binaryBuiltin And trueL falseL, falseL;
+    "and true", "T and T -> T", binaryBuiltin And trueL trueL , trueL;
+    "or true",  "T or F  -> T", binaryBuiltin Or  trueL falseL, trueL;
+    "or false", "F or F  -> F", binaryBuiltin Or falseL falseL, falseL;
+    
+    "+", "7+8 -> 15", binaryBuiltin Plus  (intL 7) (intL 8), (intL 15);
+    "-", "5-3 ->  2", binaryBuiltin Minus (intL 5) (intL 3), (intL  2);
+    "*", "3*7 -> 21", binaryBuiltin Mult  (intL 3) (intL 7), (intL 21);
+    "/", "9/3 ->  3", binaryBuiltin Div   (intL 9) (intL 3), (intL  3);
+    
+    "chain builtin operations", "2 * 3 - 4 * 5 < 6 -> true",
+    binaryBuiltin Less
+        ( binaryBuiltin Minus
+                (binaryBuiltin Mult (intL 2) (intL 3))
+                (binaryBuiltin Mult (intL 4) (intL 5)) )
+        (intL 6),
+        trueL;
+    
     "Simple recursion", "let f c = if c then Null else (f true) in f false -> Null",
-    simpleRecAST <| boolL false, Null;
+    simpleRecAST <| falseL, Null;
     "Recursion - factorial (basecase)", "factorial 0 -> 1",
     factorialAST <| FuncApp (Identifier "factorial", intL 0), intL 1;
     "Recursion - factorial 5", "factorial 5 -> 120",
     factorialAST <| FuncApp (Identifier "factorial", intL 5), intL 120;
     "Recursion - factorial 10", "factorial 10 -> 120", 
     factorialAST <| FuncApp (Identifier "factorial", intL 11), intL 39916800;
-    
     ] 
     |> List.map (fun (n,d,i,o) -> (n,d,i,Ok o))
 
