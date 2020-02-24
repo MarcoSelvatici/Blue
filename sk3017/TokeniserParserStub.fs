@@ -74,17 +74,14 @@ type Ast =
     | BuiltInFunc of BuiltInFunc // E.g. builtinTimes, builtinPlus
     | RoundExp of Ast // possibly needed see techical note
     | IfExp of Ast * Ast * Ast
-    | SeqExp of Ast * Ast // A pair of two elements [a, b]. TODO: (syntactic sugar) Extend this to (untyped) lists [a, b, c, d] -> Seq(a, Seq(b, ...))
+    | SeqExp of Ast * Ast // A pair of two elements [a, b].
 
-// curried version
-// let <FuncName> <FuncParam> = <FuncBody> in <Rest>
 and FuncDefExpType = {
     FuncName: string;
-    FuncBody: Ast; // Contains <FuncParam>, <FuncBody>
+    FuncBody: Ast;
     Rest: Ast;
 }
 
-// Curried
 and LambdaType = {
     LambdaParam: string;
     LambdaBody: Ast;

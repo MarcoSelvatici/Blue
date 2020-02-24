@@ -13,16 +13,36 @@ let stringL s = Literal (StringLit s)
 let lam n body = Lambda { LambdaParam = n; LambdaBody = body}
 
 // some programs as AST's for testing with diffrent parameters
+let simpleRecAST b =
+    FuncDefExp {
+        FuncName="f"
+        FuncBody= lam "b"
+            (IfExp (
+                Identifier "b",
+                Null,
+                FuncApp (Identifier "f", boolL true)
+             ))
+        Rest = FuncApp (Identifier "f",b)
+    }
+
 let factorialAST r = 
     FuncDefExp { 
         FuncName="factorial";
         FuncBody= lam "n" 
             (IfExp ( 
-                FuncApp (FuncApp (BuiltInFunc Equal, intL 0), Identifier "n"), 
+                FuncApp (FuncApp (BuiltInFunc Equal, Identifier "n"), intL 0),        
                 intL 1,
-                FuncApp ( Identifier "factorial", FuncApp (FuncApp (BuiltInFunc Minus, intL 1), Identifier "n"))
-                    ) )
-        Rest = r}
+                FuncApp(
+                    FuncApp (
+                        BuiltInFunc Mult,
+                        FuncApp ( Identifier "factorial", FuncApp (FuncApp (BuiltInFunc Minus, Identifier "n"), intL 1)) // f(n-1)
+                    ),
+                    Identifier "n"
+                )
+                
+            ))
+        Rest = r
+    }
 
 
 /// tests with the same input and output asts
@@ -65,10 +85,16 @@ let testOk : TestInfo=
     Lambda { LambdaParam = "a"; LambdaBody = Null;};
 
     "+", "7+8 -> 15", FuncApp (FuncApp (BuiltInFunc Plus, intL 7),intL 8), intL 15;
+    "-", "5-3 ->  2", FuncApp (FuncApp (BuiltInFunc Minus, intL 5),intL 3), intL 2;
 
-    "Recursion - if + function definition", "factorial 5 -> 120",
-    factorialAST <| FuncApp (Identifier "factorial", intL 1),
-    intL 120;
+    "Simple recursion", "let f c = if c then Null else (f true) in f false -> Null",
+    simpleRecAST <| boolL false, Null;
+    "Recursion - factorial (basecase)", "factorial 0 -> 1",
+    factorialAST <| FuncApp (Identifier "factorial", intL 0), intL 1;
+    "Recursion - factorial 5", "factorial 5 -> 120",
+    factorialAST <| FuncApp (Identifier "factorial", intL 5), intL 120;
+    "Recursion - factorial 10", "factorial 10 -> 120", 
+    factorialAST <| FuncApp (Identifier "factorial", intL 11), intL 39916800;
     
     ] 
     |> List.map (fun (n,d,i,o) -> (n,d,i,Ok o))

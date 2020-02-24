@@ -14,10 +14,11 @@ type Enviourment = string list * Map<string, Ast>
 let extendEnv (boundVariables, variableMap) name body =
     name::boundVariables, Map.add name body variableMap
 
-/// adds name to boundVariables
+/// adds name to boundVariables, removes name from map
 /// * used to keep track of bound Variables in lambdas
+/// * since the new name is not yet tied to AST it should be removed from the map
 let extendBoundVar (boundVariables, variableMap) name = 
-    name::boundVariables, variableMap
+    name::boundVariables, Map.remove name variableMap
 
 /// adds name,body pair to the variableMap
 /// * used to assign value to bound Variables in lambdas
@@ -94,6 +95,8 @@ let (|BINBUILTIN|_|) (map,(|INTYPE|_|),output) (f, x)  =
     match (f, x) with
     | FuncApp (BuiltInFunc b, INTYPE l), INTYPE r when Map.containsKey b map 
         -> (Map.find b map) l r |> output |> Literal |> Ok |> Some
+    | FuncApp (BuiltInFunc b, Identifier l), INTYPE r when Map.containsKey b map 
+        -> FuncApp (f,x) |> Ok |> Some
     | FuncApp (BuiltInFunc b, lArg), rArg  when Map.containsKey b map
         -> Error <| sprintf "%A is unsuported for %A, %A" b lArg rArg |> Some
     | BuiltInFunc b, _ when Map.containsKey b map
@@ -103,13 +106,23 @@ let (|BINBUILTIN|_|) (map,(|INTYPE|_|),output) (f, x)  =
 
 // TODO : possibly delay evaluation of f or x
 let rec functionApplication env f x =
+    (*
+    printfn "functionApplication: " 
+    printf "f: "
+    print f |> ignore
+    printf "x: "
+    print x |> ignore
+    printf "env: "
+    print env |> ignore
+    printf "\n"
+    *)
     match evaluate env f, evaluate env x with
     | Error e, _ | _, Error e -> Error e
     | Ok fnc, Ok inp -> Ok (fnc , inp)
     |> Result.map (function
         // pass on - if funtion / argument is an identifier / non-reducable ifExp
         | Identifier _, _ | _, Identifier _ | IfExp _, _ | _, IfExp _ as nonReducable
-            -> Ok (FuncApp (nonReducable))
+            ->  Ok (FuncApp (nonReducable))
         // reduce - lambda (CHANGE HERE FOR NORMAL REDUCTION)
         | Lambda  { LambdaParam = name; LambdaBody = body;}, ast
             -> evaluate (extendVarMap env name ast) body
@@ -146,6 +159,13 @@ prf    | FuncApp of Ast * Ast
 *)
 
 and evaluate env ast =
+    (*
+    printf "evaluate: " 
+    print ast |> ignore
+    printf "env: "
+    print env |> ignore
+    printf "\n"
+    *)
     match ast with
     | FuncDefExp {FuncName = name; FuncBody = body; Rest = rest} -> 
         evaluate (extendEnv env name body) rest
@@ -160,8 +180,8 @@ and evaluate env ast =
         match evaluate env bool with
         | Ok (Literal (BoolLit true))  -> evaluate env bTrue
         | Ok (Literal (BoolLit false)) -> evaluate env bFalse
-        | Error e -> Error e
         | Ok ( exp ) -> Ok (IfExp (exp,bTrue,bFalse))
+        | Error e -> Error e
     | Identifier i -> 
         match Map.tryFind i (snd env) with
         | Some ast -> evaluate env ast
