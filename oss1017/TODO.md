@@ -1,19 +1,16 @@
 ## TO-DO List
 
 #### Testing
-- Create more test cases for built-in functions
-- Function definitions which contain lambdas and built-in functions
+- Create more test cases for recursion
+
 
 
 #### Evaluator
-- string implode/explode
-- Error passthrough/eval
-
-
-#### Advanced/ implement if implemented in tokeniser and parser
+- Edit list:
+	- what is []
+    - head and tail for []
 - Recursion: 
 	- Implement Y combinator
-	- test cases
-- Append 
+- Append / concatenate...
 - string eq
 
