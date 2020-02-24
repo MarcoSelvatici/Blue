@@ -94,6 +94,9 @@ let lookUpType ctx name =
 /// Infer the type of an ast, and return the substitutions, together with the
 /// type of the ast.
 let rec infer ctx ast : Result<Subst list * Type, string> =
+    let int2int   = [Plus; Minus; Div; Mult]
+    let int2bool  = [Greater; GreaterEq; Less; LessEq; Equal]
+    let bool2bool = [And; Or]
     match ast with
     | Literal (IntLit _)    -> Ok ([], Base Int)
     | Literal (BoolLit _)   -> Ok ([], Base Bool)
@@ -109,11 +112,44 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
         match i1, i2, i3 with
         | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e
         | Ok (s1, t1), Ok (s2, t2), Ok (s3, t3) ->
-            let rs4 = unify ctx t1 (Base Bool)
-            let rs5 = unify ctx t2 t3
+            let rs4 = unify ctx t1 (Base Bool) // Make sure the condition is bool.
+            let rs5 = unify ctx t2 t3 // Make sure both branches have same type.
             match rs4, rs5 with
             | Error e, _ | _, Error e -> Error e
             | Ok s4, Ok s5 -> Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
+
+    // TODO: this explicit handling of binary operators should not be necessary.
+    // but it forces the operator to have explicit arguments (already done by
+    // the parser though).
+    | FuncApp (FuncApp (BuiltInFunc binOp, arg1), arg2) -> // Binary operators.
+        let i1 = infer ctx arg1
+        let i2 = infer ctx arg2
+        match i1, i2 with
+        | Error e, _ | _, Error e -> Error e
+        | Ok (s1, t1), Ok (s2, t2) ->
+            let isInt2Int   = List.tryFind ((=) binOp) int2int
+            let isInt2Bool  = List.tryFind ((=) binOp) int2bool
+            let isBool2Bool = List.tryFind ((=) binOp) bool2bool
+            match isInt2Int, isInt2Bool, isBool2Bool with
+            | Some _, None, None -> // Int to Int.
+                let rs3 = unify ctx t1 (Base Int)
+                let rs4 = unify ctx t2 (Base Int)
+                match rs3, rs4 with
+                | Error e, _ | _, Error e -> Error e
+                | Ok s3, Ok s4 -> Ok (s1 @ s2 @ s3 @ s4, Base Int)
+            | None, Some _, None -> // Int to Bool.
+                let rs3 = unify ctx t1 (Base Int)
+                let rs4 = unify ctx t2 (Base Int)
+                match rs3, rs4 with
+                | Error e, _ | _, Error e -> Error e
+                | Ok s3, Ok s4 -> Ok (s1 @ s2 @ s3 @ s4, Base Bool)
+            | None, None, Some _ -> // Bool to Bool.
+                let rs3 = unify ctx t1 (Base Bool)
+                let rs4 = unify ctx t2 (Base Bool)
+                match rs3, rs4 with
+                | Error e, _ | _, Error e -> Error e
+                | Ok s3, Ok s4 -> Ok (s1 @ s2 @ s3 @ s4, Base Bool)
+            | _ -> Error <| sprintf "Binary opertator %A is not supported" binOp
 
 
 let typeCheck ast =
