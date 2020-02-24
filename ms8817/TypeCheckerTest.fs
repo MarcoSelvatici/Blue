@@ -32,7 +32,8 @@ let testCases = [
         Ok (Base Bool);
     "Logical or mismatch", FuncApp (FuncApp (BuiltInFunc Or, Literal (BoolLit false)), Literal (IntLit 3)),
         Error "Types Base Bool and Base Int are not compatable";
-    
+    "Complex if exp `if 2<3 then 2-3 else 2/3`", IfExp (FuncApp (FuncApp (BuiltInFunc Less, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Minus, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Div, Literal (IntLit 2)), Literal (IntLit 3))),
+        Ok (Base Int);
 ]
 
 let testTypeChecker (description, ast, expected) =
