@@ -229,7 +229,6 @@ let eval (input:Ast) : Result<Ast,string> =
         //Error
         | _ -> input |> Ok
 
-    //////////////////  END: BUILT-IN FUNCTIONS  //////////////////
     | Combinator _ | SeqExp _ | Identifier _ | FuncApp _ | BuiltInFunc _ | Null | Literal _ -> input |> Ok
 
     | IfExp _ -> input |> Ok    // this should be dealt with in bracket abstraction
@@ -281,7 +280,5 @@ let combinatorRuntime (input: Result<Ast,string>): Result<Ast,string> =
             match eval (interpret x) with
             | Ok x -> Ok x
             | Error x -> Error x
-            
         | Error x -> Error x
-
     | Error _ -> input

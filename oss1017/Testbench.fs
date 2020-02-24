@@ -63,6 +63,10 @@ let listTests = [
     Ok (FuncApp( BuiltInFunc Tail, SeqExp ( Literal (IntLit 1), SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null ))))),
     Ok (SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null )));
 
+    "List Tail error",
+    Ok (FuncApp( BuiltInFunc Tail, Literal (IntLit 10))),
+    Error "Error getting tail of list/sequence";
+
 ]
 
 let arithmeticTests = [
@@ -267,6 +271,10 @@ let ifThenElseTests = [
         Literal (StringLit "condition evaluated to false")
     )),
     Ok (Literal (StringLit "condition evaluated to true"));
+
+    "ifThenElse invalid cond",
+    Ok (IfExp ( Literal (StringLit "hello"), Literal (BoolLit true), Literal (BoolLit false))),
+    Error "Unexpected value in ifThenElse condition";
 ]
 
 let combinatorTests = [
@@ -337,7 +345,10 @@ let recursionTests = [
         FuncName = "fact"; 
         FuncBody = Lambda { 
             LambdaParam = "n";
-            LambdaBody = IfExp (FuncApp ( FuncApp (BuiltInFunc LessEq, Identifier "n"), Literal (IntLit 1) ),  Literal (IntLit 1), FuncApp ( FuncApp (BuiltInFunc Mult, Identifier "n"),  FuncApp ( Identifier "fact" , FuncApp ( FuncApp (BuiltInFunc Minus, Identifier "n"), Literal (IntLit 1) ) ) ) )
+            LambdaBody = IfExp (
+                FuncApp ( FuncApp (BuiltInFunc LessEq, Identifier "n"), Literal (IntLit 1) ),
+                Literal (IntLit 1),
+                FuncApp ( FuncApp (BuiltInFunc Mult, Identifier "n"),  FuncApp ( Identifier "fact" , FuncApp ( FuncApp (BuiltInFunc Minus, Identifier "n"), Literal (IntLit 1) ) ) ) )
             };
         Rest = FuncApp (Identifier "fact", Literal (IntLit 5))
     }),
