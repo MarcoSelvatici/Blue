@@ -59,21 +59,21 @@ let applySubstitutions ctx subs =
 /// Try to unify two types, and if successful returns a list of substitutions
 /// needed to do so.
 /// If this is not possible, return error.
-let rec unify ctx t1 t2 : Result<Subst list, string> =
+let rec unify t1 t2 : Result<Subst list, string> =
     match t1, t2 with
     | Base b1, Base b2 when b1 = b2 -> Ok []
-    | Gen g1, Gen g2 when g1 = g2 -> Ok []
+    //| Gen g1, Gen g2 when g1 = g2 -> Ok []
     | Fun (l, r), Fun (l', r') ->
         // Try to unify both sides.
-        match unify ctx l l' with
+        match unify l l' with
         | Error e -> Error e
-        | Ok subs -> match unify (applySubstitutions ctx subs) r r' with
+        | Ok subs -> match unify r r' with
                      | Error e -> Error e
                      | Ok subs' -> Ok <| subs @ subs'
-    | Base b, Gen g
-    | Gen g, Base b ->
-        // Can specialise the generic type g into the base type b.
-        Ok <| [{wildcard = g; newType = Base b}]
+    | t, Gen g
+    | Gen g, t ->
+        // Can specialise the generic type g into the type t.
+        Ok <| [{wildcard = g; newType = t}]
     | _ -> Error <| sprintf "Types %A and %A are not compatable" t1 t2
 
 /// Apply a given substitution list to a type, and return the resulting type.
@@ -101,6 +101,7 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
     | Literal (IntLit _)    -> Ok ([], Base Int)
     | Literal (BoolLit _)   -> Ok ([], Base Bool)
     | Literal (StringLit _) -> Ok ([], Base String)
+    | BuiltInFunc Plus -> Ok ([], Fun(Base Int, Fun(Base Int, Base Int)))
     | Identifier name ->
         match lookUpType ctx name with
         | None -> Error <| sprintf "Identifier %s is not bound" name
@@ -112,11 +113,25 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
         match i1, i2, i3 with
         | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e
         | Ok (s1, t1), Ok (s2, t2), Ok (s3, t3) ->
-            let rs4 = unify ctx t1 (Base Bool) // Make sure the condition is bool.
-            let rs5 = unify ctx t2 t3 // Make sure both branches have same type.
+            let rs4 = unify t1 (Base Bool) // Make sure the condition is bool.
+            let rs5 = unify t2 t3 // Make sure both branches have same type.
             match rs4, rs5 with
             | Error e, _ | _, Error e -> Error e
             | Ok s4, Ok s5 -> Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
+    | FuncApp (arg1, arg2) ->
+        let newWildcardId, ctx' = newId ctx
+        let newWildcard = Gen newWildcardId
+        match infer ctx' arg1 with
+        | Error e -> Error e
+        | Ok (s1, t1) ->
+            match infer (applySubstitutions ctx' s1) arg2 with
+            | Error e -> Error e
+            | Ok (s2, t2) ->
+                // We expect the t1 to be a lambda that takes t2 and returns
+                // a new type. Hence we unify t1 with t2 -> newType.
+                match unify (apply s2 t1) (Fun (t2, newWildcard)) with
+                | Error e -> Error e
+                | Ok s3 -> Ok (s3 @ s2 @ s1, apply s3 newWildcard)
 
     // TODO: this explicit handling of binary operators should not be necessary.
     // but it forces the operator to have explicit arguments (already done by
@@ -132,20 +147,20 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
             let isBool2Bool = List.tryFind ((=) binOp) bool2bool
             match isInt2Int, isInt2Bool, isBool2Bool with
             | Some _, None, None -> // Int to Int.
-                let rs3 = unify ctx t1 (Base Int)
-                let rs4 = unify ctx t2 (Base Int)
+                let rs3 = unify t1 (Base Int)
+                let rs4 = unify t2 (Base Int)
                 match rs3, rs4 with
                 | Error e, _ | _, Error e -> Error e
                 | Ok s3, Ok s4 -> Ok (s1 @ s2 @ s3 @ s4, Base Int)
             | None, Some _, None -> // Int to Bool.
-                let rs3 = unify ctx t1 (Base Int)
-                let rs4 = unify ctx t2 (Base Int)
+                let rs3 = unify t1 (Base Int)
+                let rs4 = unify t2 (Base Int)
                 match rs3, rs4 with
                 | Error e, _ | _, Error e -> Error e
                 | Ok s3, Ok s4 -> Ok (s1 @ s2 @ s3 @ s4, Base Bool)
             | None, None, Some _ -> // Bool to Bool.
-                let rs3 = unify ctx t1 (Base Bool)
-                let rs4 = unify ctx t2 (Base Bool)
+                let rs3 = unify t1 (Base Bool)
+                let rs4 = unify t2 (Base Bool)
                 match rs3, rs4 with
                 | Error e, _ | _, Error e -> Error e
                 | Ok s3, Ok s4 -> Ok (s1 @ s2 @ s3 @ s4, Base Bool)
@@ -154,4 +169,4 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
 
 let typeCheck ast =
     let ctx = {mappings = []; uniqueId = 0}
-    infer ctx ast
+    infer ctx ast |> Result.map (fun (_, t) -> t) // Just return the type.
