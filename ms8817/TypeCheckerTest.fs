@@ -54,6 +54,20 @@ let testCases = [
         Error "Types Base Bool and Base Int are not compatable";
     "Simple partial application not bound (\x. \y. y*x) x", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Mult, Identifier "y"), Identifier "x"))), Identifier "x"),
         Error "Identifier x is not bound";
+    "Simple `let x = 1 in x`", FuncDefExp {FuncName="x"; FuncBody=Literal (IntLit 1); Rest=Identifier "x"},
+        Ok (Base Int);
+    "Partially applied `let x y = y in x`", buildCarriedFunc ["x"; "y"] (Identifier "y") (Identifier "x"),
+        Ok (Fun(Gen 0, Gen 0));
+    "Partially applied int `let x y = y + 1 in x`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (Identifier "x"),
+        Ok (Fun(Base Int, Base Int));
+    "Fully applied int `let x y = y + 1 in x 4`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (FuncApp (Identifier "x", Literal (IntLit 4))),
+        Ok (Base Int);
+    "Scoping `let x y = y in y`", buildCarriedFunc ["x"; "y"] (Identifier "y") (Identifier "y"),
+        Error "Identifier y is not bound";
+    "Lambda as input `let x y = y 1 in x \x.x+1`", buildCarriedFunc ["x"; "y"] (FuncApp (Identifier "y", Literal (IntLit 1))) (FuncApp (Identifier "x", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Literal (IntLit 1))))),
+        Ok (Base Int);
+    "Different types `let f = \x.x in let g = f True in f 3`", buildCarriedFunc ["f"] (buildLambda "x" (Identifier "x")) (buildCarriedFunc ["g"] (FuncApp (Identifier "f", Literal (BoolLit true))) (FuncApp (Identifier "f", Literal (IntLit 3)))),
+        Ok (Base Int);
 ]
 
 let testTypeChecker (description, ast, expected) =

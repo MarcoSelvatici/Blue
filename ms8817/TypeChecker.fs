@@ -158,7 +158,15 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
         match infer ctx'' lam.LambdaBody with
         | Error e -> Error e
         | Ok (s1, t1) -> Ok (s1, Fun(apply s1 newWildcard, t1))
-
+    | FuncDefExp def ->
+        match infer ctx def.FuncBody with
+        | Error e -> Error e
+        | Ok (s1, t1) ->
+            let ctx' = applySubstitutions ctx s1
+            // TODO: Need to generalise t1?
+            match infer (extend ctx' def.FuncName t1) def.Rest with
+            | Error e -> Error e
+            | Ok (s2, t2) -> Ok (s1 @ s2, t2)
 
 let typeCheck ast =
     let ctx = {mappings = []; uniqueId = 0}
