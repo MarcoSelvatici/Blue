@@ -14,65 +14,87 @@ let print x =
  /// Print and return (used in pipeline)
 let pipePrint x =
     print x; x
-
+ 
 
 /// Bracket abstraction and substituting functions when they are called by making use of function name to body bindings. 
-let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Ast =
+let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string> =
     match input with
-    | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null ->  input
+    | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null -> input |> Ok
 
     //    1.  T[x] => x
     // Check in bindings to see if that identfier has been defined
     | Identifier x ->
         if bindings.ContainsKey x
-        then bindings.[x]
-        else Identifier x    // Could also return an error "Unkown ID"
-
+        then bindings.[x] |> Ok
+        //else Error <| sprintf "Undefined idetifier: \'%s\'" x
+        else Identifier x |> Ok
     //substitute expressions into lambdas
     | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
-        let bindings = bindings.Add(name, bracketAbstract exp2 bindings)
-        bracketAbstract exp1 bindings
-
+        match bracketAbstract exp2 bindings with
+        | Ok x ->
+            bracketAbstract exp1 (bindings.Add(name, x))
+        | Error x -> Error x
+        
     //    2.  T[(E₁ E₂)] => (T[E₁] T[E₂])
     | FuncApp (exp1, exp2) -> 
-        FuncApp (bracketAbstract exp1 bindings, bracketAbstract exp2 bindings)
-    
+        match bracketAbstract exp1 bindings, bracketAbstract exp2 bindings with
+        | Ok x, Ok y       -> FuncApp (x, y) |> Ok
+        | Error x, Error y -> Error <| x + y
+        | Error x, _       -> Error x
+        | _, Error y       -> Error y
+
     | Lambda x ->
         match x with
         //    3.  T[λx.E] => (K T[E]) (if x does not occur free in E)
         | { LambdaParam = name; LambdaBody = exp } when not (isFree name exp) ->
-            FuncApp (Combinator K, bracketAbstract exp bindings)
+            match bracketAbstract exp bindings with
+            | Ok x -> FuncApp (Combinator K, x) |> Ok
+            | Error x -> Error x
 
         //    4.  T[λx.x] => I
         | { LambdaParam = name; LambdaBody = Identifier exp } when name = exp ->
-            Combinator I
+            Combinator I |> Ok
 
         //    5.  T[λx.λy.E] => T[λx.T[λy.E]] (if x occurs free in E) 
         | { LambdaParam = name1; LambdaBody = Lambda { LambdaParam = name2; LambdaBody = exp } } when isFree name1 exp ->
-            bracketAbstract (Lambda { LambdaParam = name1; LambdaBody = bracketAbstract (Lambda { LambdaParam = name2; LambdaBody = exp } ) bindings } ) bindings
-
+            match bracketAbstract (Lambda { LambdaParam = name2; LambdaBody = exp } ) bindings with
+            | Ok x -> bracketAbstract (Lambda { LambdaParam = name1; LambdaBody = x } ) bindings
+            | Error x -> Error x
+            
         //    6.  T[λx.(E₁ E₂)] => (S T[λx.E₁] T[λx.E₂]) (if x occurs free in E₁ or E₂)
         | { LambdaParam = name; LambdaBody = FuncApp (exp1, exp2) } when isFree name exp1 || isFree name exp2 ->
-            FuncApp (FuncApp (Combinator S, bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp1 }) bindings ), bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp2 }) bindings )
+            let x = bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp1 }) bindings
+            let y = bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp2 }) bindings
+            match x, y with
+            | Ok x, Ok y       -> FuncApp (FuncApp (Combinator S, x ), y ) |> Ok 
+            | Error x, Error y -> Error <| x + y
+            | Error x, _       -> Error x
+            | _, Error y       -> Error y
+            
         | _ ->
             failwith "Error doing bracket abstraction"
     
     //function definitiions and bindings
     | FuncDefExp { FuncName = name; FuncBody = body; Rest = exp } ->
-        let bindings = bindings.Add(name, bracketAbstract body bindings)
-        bracketAbstract exp bindings
+        match bracketAbstract body bindings with
+        | Ok x ->
+            bracketAbstract exp (bindings.Add(name, x))
+        | Error x -> Error x
 
     | IfExp (condition,expT,expF) ->
-            match eval (bracketAbstract condition bindings) with
-            | Literal (BoolLit true)  -> 
-                bracketAbstract expT bindings
-            | Literal (BoolLit false) -> 
-                bracketAbstract expF bindings
-            | _ -> failwith "Unexpected value in ifThenElse condition"
+            match bracketAbstract condition bindings with
+            | Ok x -> 
+                match eval (x) with
+                | Ok (Literal (BoolLit true))  -> 
+                    bracketAbstract expT bindings
+                | Ok (Literal (BoolLit false)) -> 
+                    bracketAbstract expF bindings
+                | _ -> Error "Unexpected value in ifThenElse condition"
+            | Error x -> Error x
 
-    | RoundExp _        -> failwith "should not be returned by parser"
-    | FuncAppList _     -> failwith "should not be returned by parser"
-    | IdentifierList _  -> failwith "should not be returned by parser"
+    | RoundExp _        -> Error "Error: RoundExp should not be returned by parser"
+    | FuncAppList _     -> Error "Error: FuncAppList should not be returned by parser"
+    | IdentifierList _  -> Error "Error: IdentifierList should not be returned by parser"
 
 
 /// Determine if a variable is free in an expression
@@ -92,47 +114,54 @@ let isFree (var:string) (exp: Ast): bool =
 
 
 /// Evaluate Ast built-in functions
-let eval (input:Ast) : Ast =
+let eval (input:Ast) : Result<Ast,string> =
     match input with
     
     // implode string list
-    | FuncApp( BuiltInFunc Implode, x) -> 
+    | FuncApp( BuiltInFunc Implode, exp) -> 
         let rec imp lst =
             match lst with
             | SeqExp ( Literal (StringLit head) , Null) ->
-                head
+                head 
             | SeqExp (Literal (StringLit head), tail) ->
-                head + imp tail
+                head + imp tail 
             | _ ->
                 failwith "Error: cannot implode argument of type which is not string list"
-        x |> eval |> imp |> StringLit |> Literal
-
+        exp 
+        |> eval
+        |> (fun x ->
+                match x with
+                | Ok x -> 
+                    x |> imp |> StringLit |> Literal |> Ok
+                | Error _ -> x 
+            )
+            
     // explode string
     | FuncApp( BuiltInFunc Explode, x) -> 
         match eval x with
-        | Literal (StringLit x) ->
-            Seq.toList x |> List.map (string) |> buildList
+        | Ok (Literal (StringLit x)) ->
+            Seq.toList x |> List.map (string) |> buildList |> Ok
         | _ ->
-            failwith "Error: cannot explode argument of type which is not string"
+            Error "Error: cannot explode argument of type which is not string"
 
     //head
     | FuncApp( BuiltInFunc Head, x) -> 
         match eval x with
-        | SeqExp (head, tail) ->
-            head
+        | Ok (SeqExp (head, tail)) ->
+            head |> Ok
         | _ ->
-            failwith "Error getting head of list/sequence"
+            Error "Error getting head of list/sequence"
 
     //tail
     | FuncApp( BuiltInFunc Tail, x) -> 
         match eval x with
-        | SeqExp (head, tail) ->
-            tail
+        | Ok (SeqExp (head, tail)) ->
+            tail |> Ok
         | _ ->
-            failwith "Error getting tail of list/sequence"
+            Error "Error getting tail of list/sequence"
 
     //size of list
-    | FuncApp( BuiltInFunc Size, x) -> 
+    | FuncApp( BuiltInFunc Size, exp) -> 
         let rec sizeOf x =
             match x with
             | SeqExp (Null, Null) ->
@@ -143,7 +172,14 @@ let eval (input:Ast) : Ast =
                 1 + (sizeOf tail)
             | _ ->
                 failwith "Error getting size of list"
-        Literal (IntLit (x |> eval |> sizeOf))
+        exp
+        |> eval 
+        |> (fun x ->
+                match x with
+                | Ok x ->
+                    sizeOf x |> IntLit |> Literal |> Ok
+                | Error _ -> x
+            )
 
     //unary built-in functions
     | FuncApp( BuiltInFunc op, x) -> 
@@ -151,10 +187,10 @@ let eval (input:Ast) : Ast =
         match op, x' with
         
         //boolean op
-        | Not, Literal (BoolLit n) -> 
-            Literal (BoolLit (not n))
+        | Not, Ok (Literal (BoolLit n)) -> 
+            Literal (BoolLit (not n)) |> Ok
         | _ ->
-            failwith "Error evaluating built-in function with 1 argument"
+            Error "Error evaluating built-in function with 1 argument"
 
     // Built-in functon w/ 2 args
     | FuncApp( FuncApp( BuiltInFunc op, x), y) -> 
@@ -163,48 +199,48 @@ let eval (input:Ast) : Ast =
         match op, x', y' with
         
         //arithmetic ops
-        | Mult, Literal (IntLit n), Literal (IntLit m)  -> 
-            Literal (IntLit (n * m))
-        | Div, Literal (IntLit n), Literal (IntLit m)   ->
-            Literal (IntLit (n / m))
-        | Plus, Literal (IntLit n), Literal (IntLit m)  -> 
-            Literal (IntLit (n + m))
-        | Minus, Literal (IntLit n), Literal (IntLit m) ->
-            Literal (IntLit (n - m))
+        | Mult, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))  -> 
+            Literal (IntLit (n * m)) |> Ok
+        | Div,Ok (Literal (IntLit n)), Ok (Literal (IntLit m))    ->
+            Literal (IntLit (n / m)) |> Ok
+        | Plus, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))  -> 
+            Literal (IntLit (n + m)) |> Ok
+        | Minus, Ok (Literal (IntLit n)), Ok (Literal (IntLit m)) ->
+            Literal (IntLit (n - m)) |> Ok
         
         //boolean ops
-        | And, Literal (BoolLit n), Literal (BoolLit m) ->
-            Literal (BoolLit (n && m))
-        | Or, Literal (BoolLit n), Literal (BoolLit m)  ->
-            Literal (BoolLit (n || m))
+        | And, Ok (Literal (BoolLit n)), Ok (Literal (BoolLit m)) ->
+            Literal (BoolLit (n && m)) |> Ok
+        | Or, Ok (Literal (BoolLit n)), Ok (Literal (BoolLit m))  ->
+            Literal (BoolLit (n || m)) |> Ok
 
         //comparaison ops (bool)
-        | Greater, Literal (IntLit n), Literal (IntLit m)   ->
-            Literal (BoolLit (n > m))
-        | GreaterEq, Literal (IntLit n), Literal (IntLit m) ->
-            Literal (BoolLit (n >= m))
-        | Less, Literal (IntLit n), Literal (IntLit m)      ->
-            Literal (BoolLit (n < m))
-        | LessEq, Literal (IntLit n), Literal (IntLit m)    ->
-            Literal (BoolLit (n <= m))
-        | Equal, Literal (IntLit n), Literal (IntLit m)     ->
-            Literal (BoolLit (n = m))
+        | Greater, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))   ->
+            Literal (BoolLit (n > m)) |> Ok
+        | GreaterEq, Ok (Literal (IntLit n)), Ok (Literal (IntLit m)) ->
+            Literal (BoolLit (n >= m)) |> Ok
+        | Less, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))      ->
+            Literal (BoolLit (n < m)) |> Ok
+        | LessEq, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))    ->
+            Literal (BoolLit (n <= m)) |> Ok
+        | Equal, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))     ->
+            Literal (BoolLit (n = m)) |> Ok
 
         //Error
-        | _ -> input
+        | _ -> input |> Ok
 
     //////////////////  END: BUILT-IN FUNCTIONS  //////////////////
-    | Combinator _ | SeqExp _ | Identifier _ | FuncApp _ | BuiltInFunc _ | Null | Literal _ -> input
+    | Combinator _ | SeqExp _ | Identifier _ | FuncApp _ | BuiltInFunc _ | Null | Literal _ -> input |> Ok
 
-    | IfExp _ -> input // this should be dealt with in bracket abstraction
-                       // but if for some reason it can't evaluate it,
-                       // it should be passed to output
+    | IfExp _ -> input |> Ok    // this should be dealt with in bracket abstraction
+                                // but if for some reason it can't evaluate it,
+                                // it should be passed to output
 
-    | Lambda _          -> failwith "Lambda should not exist after bracket abstraction"
-    | FuncDefExp _      -> failwith "FuncDefExp should not exist after bracket abstraction"
-    | RoundExp _        -> failwith "RoundExp should not be returned by parser"
-    | FuncAppList _     -> failwith "FuncAppList should not be returned by parser"
-    | IdentifierList _  -> failwith "IdentifierList should not be returned by parser"
+    | Lambda _          -> Error "Lambda should not exist after bracket abstraction"
+    | FuncDefExp _      -> Error "FuncDefExp should not exist after bracket abstraction"
+    | RoundExp _        -> Error "RoundExp should not be returned by parser"
+    | FuncAppList _     -> Error "FuncAppList should not be returned by parser"
+    | IdentifierList _  -> Error "IdentifierList should not be returned by parser"
 
 
 /// Builds a list in our language out of an f# list
@@ -236,9 +272,16 @@ let rec interpret (exp:Ast) :Ast =
     | _ -> exp
 
 /// Evaluate the output of the parser using bracket abstraction, S K I Y combinators and the evaluation of built-in functions
-let combinatorRuntime (input: Ast): Ast = 
-    let bindings = Map []
-    (input, bindings)
-    ||> bracketAbstract
-    |> interpret
-    |> eval
+let combinatorRuntime (input: Result<Ast,string>): Result<Ast,string> = 
+    match input with
+    | Ok x -> 
+        let bindings = Map []
+        match bracketAbstract x bindings with
+        | Ok x ->
+            match eval (interpret x) with
+            | Ok x -> Ok x
+            | Error x -> Error x
+            
+        | Error x -> Error x
+
+    | Error _ -> input
