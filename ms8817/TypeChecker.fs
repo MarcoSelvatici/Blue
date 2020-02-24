@@ -56,7 +56,8 @@ let applySubstitutions ctx subs =
         fun ctx sub -> {ctx with mappings = specialise ctx.mappings sub}
     )
 
-/// Try to unify two types, and if successful returns a list of substitutions.
+/// Try to unify two types, and if successful returns a list of substitutions
+/// needed to do so.
 /// If this is not possible, return error.
 let rec unify ctx t1 t2 : Result<Subst list, string> =
     match t1, t2 with
@@ -75,6 +76,21 @@ let rec unify ctx t1 t2 : Result<Subst list, string> =
         Ok <| [{wildcard = g; newType = Base b}]
     | _ -> Error <| sprintf "Types %A and %A are not compatable" t1 t2
 
+/// Apply a given substitution list to a type, and return the resulting type.
+let rec apply subs t =
+    match t with
+    | Base _ -> t
+    | Gen wildcard ->
+        match List.tryFind (fun s -> s.wildcard = wildcard) subs with
+        | None -> Gen wildcard
+        | Some s -> s.newType
+    | Fun (t1, t2) ->
+        Fun (apply subs t1, apply subs t2)
+
+/// Try to lookup the type of an identifier.
+let lookUpType ctx name =
+    List.tryFind (fun (varName, _) -> name = varName) ctx.mappings
+
 /// Infer the type of an ast, and return the substitutions, together with the
 /// type of the ast.
 let rec infer ctx ast : Result<Subst list * Type, string> =
@@ -82,10 +98,24 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
     | Literal (IntLit _)    -> Ok ([], Base Int)
     | Literal (BoolLit _)   -> Ok ([], Base Bool)
     | Literal (StringLit _) -> Ok ([], Base String)
+    | Identifier name ->
+        match lookUpType ctx name with
+        | None -> Error <| sprintf "Identifier %s is not bound" name
+        | Some (_, t) -> Ok ([], t)
+    | IfExp (c, t, e) ->
+        let i1 = infer ctx c
+        let i2 = infer ctx t
+        let i3 = infer ctx e
+        match i1, i2, i3 with
+        | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e
+        | Ok (s1, t1), Ok (s2, t2), Ok (s3, t3) ->
+            let rs4 = unify ctx t1 (Base Bool)
+            let rs5 = unify ctx t2 t3
+            match rs4, rs5 with
+            | Error e, _ | _, Error e -> Error e
+            | Ok s4, Ok s5 -> Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
 
 
 let typeCheck ast =
     let ctx = {mappings = []; uniqueId = 0}
-    match infer ctx ast with
-    | Error e -> printfn "%s" e
-    | Ok t -> printfn "%A" t
+    infer ctx ast
