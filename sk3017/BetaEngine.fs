@@ -8,21 +8,41 @@ let print a =
 
 type Enviourment = string list * Map<string, Ast>
 
+//  3 function for maipulating the Envoiurment - boundVariables and varaibleMap
+
+/// adds name to boundVariables and (name,body) pair to the variableMap
 let extendEnv (boundVariables, variableMap) name body =
     name::boundVariables, Map.add name body variableMap
 
-let extendVarMap (boundVariables, variableMap) name body = 
-    boundVariables, Map.add name body variableMap
-
+/// adds name to boundVariables
+/// * used to keep track of bound Variables in lambdas
 let extendBoundVar (boundVariables, variableMap) name = 
     name::boundVariables, variableMap
 
+/// adds name,body pair to the variableMap
+/// * used to assign value to bound Variables in lambdas
+/// * should be used after extendBoundVar
+let extendVarMap (boundVariables, variableMap) name body = 
+    boundVariables, Map.add name body variableMap
 
-// TODO: delete - use result.map
-let passError f res = 
-    match res with
-    | Ok x -> Ok (f x)
-    | Error x -> res
+
+//  PAP for Literals, used as building block for builtin functions
+//  used for type-checking and unpacking the values
+//  boilerplate code
+
+let (|INTLIT|_|) x = 
+    match x with
+    | Literal (IntLit v) -> Some v
+    | _ -> None
+let (|BOOLLIT|_|) x = 
+    match x with
+    | Literal (BoolLit v) -> Some v
+    | _ -> None
+let (|STRINGLIT|_|) x = 
+    match x with
+    | Literal (StringLit v) -> Some v
+    | _ -> None
+//let (||_|) 
 
 (*
 BuiltInFunc
@@ -33,22 +53,9 @@ BuiltInFunc
     | Size
 *)
 
-/// PAP for Literals, used as building block for builtin functions
-let (|INTLIT|_|) x = 
-    match x with
-    | IntLit v -> Some v
-    | _ -> None
-let (|BOOLLIT|_|) x = 
-    match x with
-    | BoolLit v -> Some v
-    | _ -> None
-let (|STRINGLIT|_|) x = 
-    match x with
-    | StringLit v -> Some v
-    | _ -> None
 
-// can put all the lists into one
-// TODO: refactor
+// 3 datastructers containg information about builtin binary operators
+// - map 
 let binaryIntToBoolOperators = 
     [
     Greater,    (>); 
@@ -72,20 +79,20 @@ let binaryInttoIntOperators =
     Div,  (/);
     ] |> Map, (|INTLIT|_|), IntLit
 
-/// func: (|BINBUILTIN|_|)
-/// > PAP for binary built-in operators
-/// > if 'full match' is detected - the function is evaluated and result returned
-/// > if 'full match' is detected but the types are incorrect - Error is returned
-/// > if 1-ary application is detected - the whole expresion is returned
-/// > otherwise - the pattern doesn't match
+/// PAP buildier for binary built-in operators
+/// * if 'full match' is detected - the function is evaluated and result returned
+/// * if 'full match' is detected but the types are incorrect - Error is returned
+/// * if 1-ary application is detected - the whole expresion is returned
+/// * otherwise - the pattern doesn't match
 /// 
+/// parameters:
 /// - map - Map from Builtin token to F# function
 /// - (|INTYPE|_|) - PAP for matching the input type (both have to be the same) // TODO: change?
 /// - output - function that packages the output into desider type              // TODO: merge with map ?
 /// - f,x - left- and righthandside of function application
 let (|BINBUILTIN|_|) (map,(|INTYPE|_|),output) (f, x)  =
     match (f, x) with
-    | FuncApp (BuiltInFunc b, Literal (INTYPE l)), Literal (INTYPE r) when Map.containsKey b map 
+    | FuncApp (BuiltInFunc b, INTYPE l), INTYPE r when Map.containsKey b map 
         -> (Map.find b map) l r |> output |> Literal |> Ok |> Some
     | FuncApp (BuiltInFunc b, lArg), rArg  when Map.containsKey b map
         -> Error <| sprintf "%A is unsuported for %A, %A" b lArg rArg |> Some
@@ -99,8 +106,6 @@ let rec functionApplication env f x =
     match evaluate env f, evaluate env x with
     | Error e, _ | _, Error e -> Error e
     | Ok fnc, Ok inp -> Ok (fnc , inp)
-    |> 
-        print
     |> Result.map (function
         // pass on - if funtion / argument is an identifier / non-reducable ifExp
         | Identifier _, _ | _, Identifier _ | IfExp _, _ | _, IfExp _ as nonReducable
@@ -111,10 +116,6 @@ let rec functionApplication env f x =
         | BINBUILTIN binaryIntToBoolOperators  res -> res
         | BINBUILTIN binaryBoolToBoolOperators res -> res
         | BINBUILTIN binaryInttoIntOperators   res -> res
-        
-
-        // match l, r now ?
-
 
         // add FuncApp
         // add BuiltInFunc

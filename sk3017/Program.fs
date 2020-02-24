@@ -10,6 +10,20 @@ type TestInfo = (string * string * Ast * Result<Ast,string>) list
 let intL n = Literal (IntLit n)
 let boolL b = Literal (BoolLit b)
 let stringL s = Literal (StringLit s)
+let lam n body = Lambda { LambdaParam = n; LambdaBody = body}
+
+// some programs as AST's for testing with diffrent parameters
+let factorialAST r = 
+    FuncDefExp { 
+        FuncName="factorial";
+        FuncBody= lam "n" 
+            (IfExp ( 
+                FuncApp (FuncApp (BuiltInFunc Equal, intL 0), Identifier "n"), 
+                intL 1,
+                FuncApp ( Identifier "factorial", FuncApp (FuncApp (BuiltInFunc Minus, intL 1), Identifier "n"))
+                    ) )
+        Rest = r}
+
 
 /// tests with the same input and output asts
 let testId : TestInfo= 
@@ -49,8 +63,12 @@ let testOk : TestInfo=
     "Nested lambda internal reduction", "(\\a.(\\b.b)Null) -> (\\a.Null)", 
     Lambda { LambdaParam = "a"; LambdaBody = FuncApp (Lambda { LambdaParam = "b"; LambdaBody = Identifier "b";}, Null );},
     Lambda { LambdaParam = "a"; LambdaBody = Null;};
-    
+
     "+", "7+8 -> 15", FuncApp (FuncApp (BuiltInFunc Plus, intL 7),intL 8), intL 15;
+
+    "Recursion - if + function definition", "factorial 5 -> 120",
+    factorialAST <| FuncApp (Identifier "factorial", intL 1),
+    intL 120;
     
     ] 
     |> List.map (fun (n,d,i,o) -> (n,d,i,Ok o))
