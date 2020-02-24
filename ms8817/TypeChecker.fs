@@ -101,11 +101,20 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
     | Literal (IntLit _)    -> Ok ([], Base Int)
     | Literal (BoolLit _)   -> Ok ([], Base Bool)
     | Literal (StringLit _) -> Ok ([], Base String)
-    | BuiltInFunc Plus -> Ok ([], Fun(Base Int, Fun(Base Int, Base Int)))
     | Identifier name ->
         match lookUpType ctx name with
         | None -> Error <| sprintf "Identifier %s is not bound" name
         | Some (_, t) -> Ok ([], t)
+    | BuiltInFunc op ->
+        // TODO: this only support binary operators. Add cases for the others.
+        let isInt2Int   = List.tryFind ((=) op) int2int
+        let isInt2Bool  = List.tryFind ((=) op) int2bool
+        let isBool2Bool = List.tryFind ((=) op) bool2bool
+        match isInt2Int, isInt2Bool, isBool2Bool with
+        | Some _, None, None -> Ok ([], Fun(Base Int, Fun(Base Int, Base Int)))
+        | None, Some _, None -> Ok ([], Fun(Base Int, Fun(Base Int, Base Bool)))
+        | None, None, Some _ -> Ok ([], Fun(Base Bool, Fun(Base Bool, Base Bool)))
+        | _ -> Error <| sprintf "Binary opertator %A is not supported" op
     | IfExp (c, t, e) ->
         let i1 = infer ctx c
         let i2 = infer ctx t
@@ -132,40 +141,6 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
                 match unify (apply s2 t1) (Fun (t2, newWildcard)) with
                 | Error e -> Error e
                 | Ok s3 -> Ok (s3 @ s2 @ s1, apply s3 newWildcard)
-
-    // TODO: this explicit handling of binary operators should not be necessary.
-    // but it forces the operator to have explicit arguments (already done by
-    // the parser though).
-    | FuncApp (FuncApp (BuiltInFunc binOp, arg1), arg2) -> // Binary operators.
-        let i1 = infer ctx arg1
-        let i2 = infer ctx arg2
-        match i1, i2 with
-        | Error e, _ | _, Error e -> Error e
-        | Ok (s1, t1), Ok (s2, t2) ->
-            let isInt2Int   = List.tryFind ((=) binOp) int2int
-            let isInt2Bool  = List.tryFind ((=) binOp) int2bool
-            let isBool2Bool = List.tryFind ((=) binOp) bool2bool
-            match isInt2Int, isInt2Bool, isBool2Bool with
-            | Some _, None, None -> // Int to Int.
-                let rs3 = unify t1 (Base Int)
-                let rs4 = unify t2 (Base Int)
-                match rs3, rs4 with
-                | Error e, _ | _, Error e -> Error e
-                | Ok s3, Ok s4 -> Ok (s1 @ s2 @ s3 @ s4, Base Int)
-            | None, Some _, None -> // Int to Bool.
-                let rs3 = unify t1 (Base Int)
-                let rs4 = unify t2 (Base Int)
-                match rs3, rs4 with
-                | Error e, _ | _, Error e -> Error e
-                | Ok s3, Ok s4 -> Ok (s1 @ s2 @ s3 @ s4, Base Bool)
-            | None, None, Some _ -> // Bool to Bool.
-                let rs3 = unify t1 (Base Bool)
-                let rs4 = unify t2 (Base Bool)
-                match rs3, rs4 with
-                | Error e, _ | _, Error e -> Error e
-                | Ok s3, Ok s4 -> Ok (s1 @ s2 @ s3 @ s4, Base Bool)
-            | _ -> Error <| sprintf "Binary opertator %A is not supported" binOp
-
 
 let typeCheck ast =
     let ctx = {mappings = []; uniqueId = 0}

@@ -23,7 +23,16 @@ let testCases = [
     "Plus mismatch", FuncApp (FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (BoolLit true)),
         Error "Types Base Int and Base Bool are not compatable";
     "Plus bools", FuncApp (FuncApp (BuiltInFunc Plus, Literal (BoolLit false)), Literal (BoolLit true)),
-        Error "Types Base Int and Base Bool are not compatable"
+        Error "Types Base Int and Base Bool are not compatable";
+    "Greater than", FuncApp (FuncApp (BuiltInFunc Greater, Literal (IntLit 2)), Literal (IntLit 3)),
+        Ok (Base Bool);
+    "Less than mismatch", FuncApp (FuncApp (BuiltInFunc Less, Literal (BoolLit false)), Literal (IntLit 3)),
+        Error "Types Base Int and Base Bool are not compatable";
+    "Logical and", FuncApp (FuncApp (BuiltInFunc And, Literal (BoolLit false)), Literal (BoolLit true)),
+        Ok (Base Bool);
+    "Logical or mismatch", FuncApp (FuncApp (BuiltInFunc Or, Literal (BoolLit false)), Literal (IntLit 3)),
+        Error "Types Base Bool and Base Int are not compatable";
+    
 ]
 
 let testTypeChecker (description, ast, expected) =
