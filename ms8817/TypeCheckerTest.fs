@@ -68,6 +68,8 @@ let testCases = [
         Ok (Base Int);
     "Different types `let f = \x.x in let g = f True in f 3`", buildCarriedFunc ["f"] (buildLambda "x" (Identifier "x")) (buildCarriedFunc ["g"] (FuncApp (Identifier "f", Literal (BoolLit true))) (FuncApp (Identifier "f", Literal (IntLit 3)))),
         Ok (Base Int);
+    "No recursion `let x = x x in 1`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Literal (IntLit 1)),
+        Error "Identifier x is not bound"; // Recursion is not supported (yet).
 ]
 
 let testTypeChecker (description, ast, expected) =

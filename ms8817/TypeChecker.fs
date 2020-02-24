@@ -159,6 +159,9 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
         | Error e -> Error e
         | Ok (s1, t1) -> Ok (s1, Fun(apply s1 newWildcard, t1))
     | FuncDefExp def ->
+        // We infer the type of the body without keeping the function name in
+        // our context. This makes recursion impossible.
+        // TODO: remove this limitation?
         match infer ctx def.FuncBody with
         | Error e -> Error e
         | Ok (s1, t1) ->
@@ -171,3 +174,10 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
 let typeCheck ast =
     let ctx = {mappings = []; uniqueId = 0}
     infer ctx ast |> Result.map (fun (_, t) -> t) // Just return the type.
+
+// TODO:
+// - add lists support
+// - add other builtin funcs
+// - tests, many of them
+// - cleanup
+// - support recursion
