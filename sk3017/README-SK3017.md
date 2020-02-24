@@ -1,6 +1,18 @@
-Beta reduction engine for ASTs
+Beta reduction engine for the ASTs
 
-For now using the strict reduction order.
+For now the runtime system is using the strict reduction order. 
+
+```
+(\a. function of a) B ->
+(\a. function of a) C ->
+function of C
+
+where b is beta-reducible and c is not
+```
+
+Lambda expressions bodies are evaluated innermost first. 
+(TODO: understand implications)
+
 
 Function application 
 * -> run f if its function application.
@@ -11,3 +23,4 @@ Ideas:
 
 Questions:
 1. Should Booleans in the tree be reduced to literals ?
+2. Can the runtime have lazy beta reduction for lambdas but eager for let-expressions ?

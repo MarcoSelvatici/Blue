@@ -2,6 +2,10 @@ module BetaEngine
 
 open TokeniserParserStub
 
+let print a = 
+    printf "%A\n" a 
+    a
+
 type Enviourment = string list * Map<string, Ast>
 
 let extendEnv (boundVariables, variableMap) name body =
@@ -27,35 +31,91 @@ BuiltInFunc
     | Head
     | Tail
     | Size
-    // ComparisonOp
-    | Greater
-    | GreaterEq
-    | Less
-    | LessEq
-    | Equal
-    // LogicalOp
-    | And
-    | Or
-    // AdditiveOp
-    | Plus
-    | Minus
-    // MultiplicativeOp
-    | Mult
-    | Div
 *)
 
+/// PAP for Literals, used as building block for builtin functions
+let (|INTLIT|_|) x = 
+    match x with
+    | IntLit v -> Some v
+    | _ -> None
+let (|BOOLLIT|_|) x = 
+    match x with
+    | BoolLit v -> Some v
+    | _ -> None
+let (|STRINGLIT|_|) x = 
+    match x with
+    | StringLit v -> Some v
+    | _ -> None
+
+// can put all the lists into one
+// TODO: refactor
+let binaryIntToBoolOperators = 
+    [
+    Greater,    (>); 
+    GreaterEq,  (>=); 
+    Less,       (<); 
+    LessEq,     (<=); 
+    Equal,      (=);  
+    ] |> Map, (|INTLIT|_|), BoolLit
+
+let binaryBoolToBoolOperators = 
+    [
+    And, (&&); 
+    Or,  (||);
+    ] |> Map, (|BOOLLIT|_|), BoolLit
+
+let binaryInttoIntOperators = 
+    [
+    Plus, (+);
+    Minus,(-);   
+    Mult, (*); 
+    Div,  (/);
+    ] |> Map, (|INTLIT|_|), IntLit
+
+/// func: (|BINBUILTIN|_|)
+/// > PAP for binary built-in operators
+/// > if 'full match' is detected - the function is evaluated and result returned
+/// > if 'full match' is detected but the types are incorrect - Error is returned
+/// > if 1-ary application is detected - the whole expresion is returned
+/// > otherwise - the pattern doesn't match
+/// 
+/// - map - Map from Builtin token to F# function
+/// - (|INTYPE|_|) - PAP for matching the input type (both have to be the same) // TODO: change?
+/// - output - function that packages the output into desider type              // TODO: merge with map ?
+/// - f,x - left- and righthandside of function application
+let (|BINBUILTIN|_|) (map,(|INTYPE|_|),output) (f, x)  =
+    match (f, x) with
+    | FuncApp (BuiltInFunc b, Literal (INTYPE l)), Literal (INTYPE r) when Map.containsKey b map 
+        -> (Map.find b map) l r |> output |> Literal |> Ok |> Some
+    | FuncApp (BuiltInFunc b, lArg), rArg  when Map.containsKey b map
+        -> Error <| sprintf "%A is unsuported for %A, %A" b lArg rArg |> Some
+    | BuiltInFunc b, _ when Map.containsKey b map
+        -> FuncApp (f,x) |> Ok |> Some
+    | _ -> None
+
+
+// TODO : possibly delay evaluation of f or x
 let rec functionApplication env f x =
     match evaluate env f, evaluate env x with
     | Error e, _ | _, Error e -> Error e
     | Ok fnc, Ok inp -> Ok (fnc , inp)
+    |> 
+        print
     |> Result.map (function
-        // pass on - if funtion / argument is an identifier / non-reducable if 
-        | (Identifier _, _) | (_, Identifier _) | (IfExp _, _) | (_, IfExp _) as nonReducable
+        // pass on - if funtion / argument is an identifier / non-reducable ifExp
+        | Identifier _, _ | _, Identifier _ | IfExp _, _ | _, IfExp _ as nonReducable
             -> Ok (FuncApp (nonReducable))
         // reduce - lambda (CHANGE HERE FOR NORMAL REDUCTION)
         | Lambda  { LambdaParam = name; LambdaBody = body;}, ast
             -> evaluate (extendVarMap env name ast) body
+        | BINBUILTIN binaryIntToBoolOperators  res -> res
+        | BINBUILTIN binaryBoolToBoolOperators res -> res
+        | BINBUILTIN binaryInttoIntOperators   res -> res
         
+
+        // match l, r now ?
+
+
         // add FuncApp
         // add BuiltInFunc
 

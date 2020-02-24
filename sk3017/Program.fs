@@ -5,12 +5,18 @@ open Expecto
 
 type TestInfo = (string * string * Ast * Result<Ast,string>) list
 
+
+// TODO refactor some tests
+let intL n = Literal (IntLit n)
+let boolL b = Literal (BoolLit b)
+let stringL s = Literal (StringLit s)
+
 /// tests with the same input and output asts
 let testId : TestInfo= 
     [ 
-    "Literal int", "6", Literal ( IntLit 6 );
-    "Literal bool", "true", Literal (BoolLit true);
-    "Literal string", "\"abc\"" , Literal (StringLit "abc");
+    "Literal int", "6", intL 6;
+    "Literal bool", "true", boolL true;
+    "Literal string", "\"abc\"" , stringL "abc";
     "Null", "Null", Null;
     "BuiltInFunc >",">", BuiltInFunc Greater;
     "BuiltInFunc <","<", BuiltInFunc Less;
@@ -27,12 +33,12 @@ let testId : TestInfo=
 /// tests that should return reduced (Ok ast)
 let testOk : TestInfo= 
     [
-    "Round expression (-10)", "(-10) -> -10", RoundExp (Literal (IntLit -10)), Literal (IntLit -10);
+    "Round expression (-10)", "(-10) -> -10", RoundExp (intL -10), (intL -10);
     "Nested Round expression (((Null)))", "(((Null)))", Null |> RoundExp |> RoundExp |> RoundExp, Null;
     "if true", "if true then \"abc\" else Null", 
-    IfExp ((Literal (BoolLit true)), Literal (StringLit "abc"), Null), Literal (StringLit "abc"); 
+    IfExp (boolL true, stringL "abc", Null),  stringL "abc";
     "if false", "if false then \"abc\" else Null", 
-    IfExp ((Literal (BoolLit false)), Literal (StringLit "abc"), Null), Null;
+    IfExp (boolL false, stringL "abc", Null), Null;
     "Function Definition", "let c = Null in c -> Null",
     FuncDefExp {FuncName="c"; FuncBody=Null; Rest=Identifier "c"}, Null;
     "Nested Function Definition", "let c = Null in let d = c in d -> Null",
@@ -43,6 +49,9 @@ let testOk : TestInfo=
     "Nested lambda internal reduction", "(\\a.(\\b.b)Null) -> (\\a.Null)", 
     Lambda { LambdaParam = "a"; LambdaBody = FuncApp (Lambda { LambdaParam = "b"; LambdaBody = Identifier "b";}, Null );},
     Lambda { LambdaParam = "a"; LambdaBody = Null;};
+    
+    "+", "7+8 -> 15", FuncApp (FuncApp (BuiltInFunc Plus, intL 7),intL 8), intL 15;
+    
     ] 
     |> List.map (fun (n,d,i,o) -> (n,d,i,Ok o))
 
