@@ -34,6 +34,26 @@ let testCases = [
         Error "Types Base Bool and Base Int are not compatable";
     "Complex if exp `if 2<3 then 2-3 else 2/3`", IfExp (FuncApp (FuncApp (BuiltInFunc Less, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Minus, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Div, Literal (IntLit 2)), Literal (IntLit 3))),
         Ok (Base Int);
+    "Simple lambda", buildLambda "x" (Identifier "x"),
+        Ok (Fun(Gen 0, Gen 0));
+    "Simple lambda int", buildLambda "x" (Literal (IntLit 1)),
+        Ok (Fun(Gen 0, Base Int));
+    "Simple lambda int plus", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Literal (IntLit 3))),
+        Ok (Fun(Base Int, Base Int));
+    "Simple lambda plus", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "x")),
+        Ok (Fun(Base Int, Base Int));
+    "Simple lambda unbound", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "y")),
+        Error "Identifier y is not bound";
+    "Nested lambdas", buildLambda "x" (buildLambda "y" (Identifier "y")),
+        Ok (Fun(Gen 0, Fun(Gen 1, Gen 1)));
+    "Simple partial application (\x. \y. y*x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Mult, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
+        Ok (Fun(Base Int, Base Int));
+    "Simple partial application bool (\x. \y. y<x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
+        Ok (Fun(Base Int, Base Bool));
+    "Simple partial application mismatch (\x. \y. y && x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc And, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
+        Error "Types Base Bool and Base Int are not compatable";
+    "Simple partial application not bound (\x. \y. y*x) x", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Mult, Identifier "y"), Identifier "x"))), Identifier "x"),
+        Error "Identifier x is not bound";
 ]
 
 let testTypeChecker (description, ast, expected) =

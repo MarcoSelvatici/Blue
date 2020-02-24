@@ -27,8 +27,18 @@ type Context = {
 /// Return a tuple containing a unique id and the new context.
 let newId ctx = ctx.uniqueId, {ctx with uniqueId = ctx.uniqueId + 1}
 
-/// Extend a context with a new variable and its type.
-let extend ctx id idType = {ctx with mappings = (id, idType) :: ctx.mappings}
+/// Extend a context with a new variable and its type. If the variable is
+/// already present, it gets overridden (this allows variable shadowing in inner
+/// scopes).
+let extend ctx varName varType =
+    let tryIndex =
+        List.tryFindIndex (fun (name, _) -> name = varName) ctx.mappings
+    match tryIndex with
+    | None -> // New variable.
+        {ctx with mappings = (varName, varType) :: ctx.mappings}
+    | Some idx -> // Replace the previous one.
+        let l, r = List.splitAt idx ctx.mappings
+        {ctx with mappings = l @ [varName, varType] @ List.tail r}
 
 type Subst = {
     wildcard: int;
@@ -129,7 +139,7 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
             | Ok s4, Ok s5 -> Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
     | FuncApp (arg1, arg2) ->
         let newWildcardId, ctx' = newId ctx
-        let newWildcard = Gen newWildcardId
+        let newWildcard = Gen newWildcardId // Return type of the func application.
         match infer ctx' arg1 with
         | Error e -> Error e
         | Ok (s1, t1) ->
@@ -141,6 +151,14 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
                 match unify (apply s2 t1) (Fun (t2, newWildcard)) with
                 | Error e -> Error e
                 | Ok s3 -> Ok (s3 @ s2 @ s1, apply s3 newWildcard)
+    | LambdaExp lam ->
+        let newWildcardId, ctx' = newId ctx
+        let newWildcard = Gen newWildcardId // For the lambda bound variable.
+        let ctx'' = extend ctx' lam.LambdaParam newWildcard
+        match infer ctx'' lam.LambdaBody with
+        | Error e -> Error e
+        | Ok (s1, t1) -> Ok (s1, Fun(apply s1 newWildcard, t1))
+
 
 let typeCheck ast =
     let ctx = {mappings = []; uniqueId = 0}
