@@ -26,8 +26,10 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string
     | Identifier x ->
         if bindings.ContainsKey x
         then bindings.[x] |> Ok
-        //else Error <| sprintf "Undefined idetifier: \'%s\'" x
+        // An error could be returned if identifier is not in bindings: possible err msg is below
+        //else Error <| sprintf "Undefined identifier: \'%s\'" x
         else Identifier x |> Ok
+
     //substitute expressions into lambdas
     | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
         match bracketAbstract exp2 bindings with
@@ -39,7 +41,7 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string
     | FuncApp (exp1, exp2) -> 
         match bracketAbstract exp1 bindings, bracketAbstract exp2 bindings with
         | Ok x, Ok y       -> FuncApp (x, y) |> Ok
-        | Error x, Error y -> Error <| x + y
+        | Error x, Error y -> Error <|  x + ", " + y
         | Error x, _       -> Error x
         | _, Error y       -> Error y
 
@@ -67,12 +69,12 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string
             let y = bracketAbstract ( Lambda { LambdaParam = name; LambdaBody = exp2 }) bindings
             match x, y with
             | Ok x, Ok y       -> FuncApp (FuncApp (Combinator S, x ), y ) |> Ok 
-            | Error x, Error y -> Error <| x + y
+            | Error x, Error y -> Error <| x + ", " + y
             | Error x, _       -> Error x
             | _, Error y       -> Error y
             
         | _ ->
-            failwith "Error doing bracket abstraction"
+            Error <| sprintf "Unable to bracket abstract lambda %A" x
     
     //function definitiions and bindings
     | FuncDefExp { FuncName = name; FuncBody = body; Rest = exp } ->
@@ -92,9 +94,9 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string
                 | _ -> Error "Unexpected value in ifThenElse condition"
             | Error x -> Error x
 
-    | RoundExp _        -> Error "Error: RoundExp should not be returned by parser"
-    | FuncAppList _     -> Error "Error: FuncAppList should not be returned by parser"
-    | IdentifierList _  -> Error "Error: IdentifierList should not be returned by parser"
+    | RoundExp _        -> Error "RoundExp should not be returned by parser"
+    | FuncAppList _     -> Error "FuncAppList should not be returned by parser"
+    | IdentifierList _  -> Error "IdentifierList should not be returned by parser"
 
 
 /// Determine if a variable is free in an expression
@@ -107,6 +109,9 @@ let isFree (var:string) (exp: Ast): bool =
             -> free exp1 @ free exp2
         | Lambda { LambdaParam = name; LambdaBody = exp1 }
             -> List.filter (fun x -> x <> name) (free exp1)
+
+        // also need to check if var is in seq and other Ast type....
+
         | _ 
             -> []
 
@@ -122,19 +127,22 @@ let eval (input:Ast) : Result<Ast,string> =
         let rec imp lst =
             match lst with
             | SeqExp ( Literal (StringLit head) , Null) ->
-                head 
+                Some head 
             | SeqExp (Literal (StringLit head), tail) ->
-                head + imp tail 
+                match imp tail with
+                | None -> None
+                | Some x -> Some (head + x)              
             | _ ->
-                failwith "Error: cannot implode argument of type which is not string list"
-        exp 
-        |> eval
-        |> (fun x ->
-                match x with
-                | Ok x -> 
-                    x |> imp |> StringLit |> Literal |> Ok
-                | Error _ -> x 
-            )
+                None
+        
+        match eval exp with
+        | Ok x -> 
+            match imp x with
+            | None -> Error "Cannot implode argument of type which is not string list"
+            | Some x -> x |> StringLit |> Literal |> Ok
+            
+        | Error x -> Error x 
+            
             
     // explode string
     | FuncApp( BuiltInFunc Explode, x) -> 
@@ -142,7 +150,7 @@ let eval (input:Ast) : Result<Ast,string> =
         | Ok (Literal (StringLit x)) ->
             Seq.toList x |> List.map (string) |> buildList |> Ok
         | _ ->
-            Error "Error: cannot explode argument of type which is not string"
+            Error "cannot explode argument of type which is not string"
 
     //head
     | FuncApp( BuiltInFunc Head, x) -> 
@@ -171,15 +179,15 @@ let eval (input:Ast) : Result<Ast,string> =
             | SeqExp (head, tail) ->
                 1 + (sizeOf tail)
             | _ ->
-                failwith "Error getting size of list"
-        exp
-        |> eval 
-        |> (fun x ->
-                match x with
-                | Ok x ->
-                    sizeOf x |> IntLit |> Literal |> Ok
-                | Error _ -> x
-            )
+               -1
+
+        match eval exp with
+        | Ok x ->
+            let len = sizeOf x
+            if len <> -1
+            then len |> IntLit |> Literal |> Ok
+            else Error <| sprintf "Error getting size of list: Invalid input: %A" x
+        | Error x -> Error x            
 
     //unary built-in functions
     | FuncApp( BuiltInFunc op, x) -> 
@@ -190,7 +198,7 @@ let eval (input:Ast) : Result<Ast,string> =
         | Not, Ok (Literal (BoolLit n)) -> 
             Literal (BoolLit (not n)) |> Ok
         | _ ->
-            Error "Error evaluating built-in function with 1 argument"
+            Error <| sprintf "Error evaluating built-in function with 1 argument: opertor \'%A\'" op
 
     // Built-in functon w/ 2 args
     | FuncApp( FuncApp( BuiltInFunc op, x), y) -> 
@@ -202,7 +210,9 @@ let eval (input:Ast) : Result<Ast,string> =
         | Mult, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))  -> 
             Literal (IntLit (n * m)) |> Ok
         | Div,Ok (Literal (IntLit n)), Ok (Literal (IntLit m))    ->
-            Literal (IntLit (n / m)) |> Ok
+            if m = 0
+            then Error "Division by 0"
+            else Literal (IntLit (n / m)) |> Ok     
         | Plus, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))  -> 
             Literal (IntLit (n + m)) |> Ok
         | Minus, Ok (Literal (IntLit n)), Ok (Literal (IntLit m)) ->
@@ -226,7 +236,9 @@ let eval (input:Ast) : Result<Ast,string> =
         | Equal, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))     ->
             Literal (BoolLit (n = m)) |> Ok
 
-        //Error
+        //Error  
+        // Passthrough for partially applied functions
+        // if we only wanted fully evaluated and reduced expressions this should return an error
         | _ -> input |> Ok
 
     | Combinator _ | SeqExp _ | Identifier _ | FuncApp _ | BuiltInFunc _ | Null | Literal _ -> input |> Ok
@@ -270,6 +282,7 @@ let rec interpret (exp:Ast) :Ast =
         else interpret (FuncApp (exp1', exp2'))
     | _ -> exp
 
+
 /// Evaluate the output of the parser using bracket abstraction, S K I Y combinators and the evaluation of built-in functions
 let combinatorRuntime (input: Result<Ast,string>): Result<Ast,string> = 
     match input with
@@ -279,6 +292,6 @@ let combinatorRuntime (input: Result<Ast,string>): Result<Ast,string> =
         | Ok x ->
             match eval (interpret x) with
             | Ok x -> Ok x
-            | Error x -> Error x
-        | Error x -> Error x
-    | Error _ -> input
+            | Error x -> Error <| "SKI runtime error: Built-in function evaluation Error: \n" + x
+        | Error x -> Error <| "SKI runtime error: Bracket Abstraction Error: \n" + x
+    | Error x -> Error <| "Invalid Ast supplied as input to SKI Runtime: \n" + x

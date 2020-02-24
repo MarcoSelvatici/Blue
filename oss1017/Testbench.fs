@@ -19,9 +19,17 @@ let stringTests = [
     Ok (FuncApp (BuiltInFunc Explode, Literal (StringLit "Hello, World."))),
     "Hello, World." |> Seq.toList |> List.map string |> buildList StringLit |> Ok;
 
+    "Explode error",
+    Ok (FuncApp (BuiltInFunc Explode, Null)),
+    Error "SKI runtime error: Built-in function evaluation Error: \ncannot explode argument of type which is not string";
+
     "implode",
     Ok (FuncApp (BuiltInFunc Implode, "Hello, World." |> Seq.toList |> List.map string |> buildList StringLit)),
     Ok (Literal (StringLit "Hello, World."));
+
+    "implode Error",
+    Ok (FuncApp (BuiltInFunc Implode, Null)),
+    Error "SKI runtime error: Built-in function evaluation Error: \nCannot implode argument of type which is not string list";
 
     "implode explode",
     Ok (FuncApp ( BuiltInFunc Implode, FuncApp (BuiltInFunc Explode, Literal (StringLit "Hello, World.")))),
@@ -47,6 +55,10 @@ let listTests = [
     Ok (FuncApp( BuiltInFunc Size, (IntLit, []) ||> buildList)), 
     Ok (Literal (IntLit 0));
 
+    "ListSize Error", 
+    Ok (FuncApp( BuiltInFunc Size, Literal (StringLit "I'm a string!"))), 
+    Error "SKI runtime error: Built-in function evaluation Error: \nError getting size of list: Invalid input: Literal (StringLit \"I'm a string!\")";
+
     "List Size string",
     Ok (FuncApp( BuiltInFunc Size, SeqExp ( Literal (StringLit "this is a list"), Null))),
     Ok (Literal (IntLit 1));
@@ -57,7 +69,7 @@ let listTests = [
 
     "List Head error",
     Ok (FuncApp( BuiltInFunc Head, Literal (IntLit 10))),
-    Error "Error getting head of list/sequence";
+    Error "SKI runtime error: Built-in function evaluation Error: \nError getting head of list/sequence";
 
     "List tail",
     Ok (FuncApp( BuiltInFunc Tail, SeqExp ( Literal (IntLit 1), SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null ))))),
@@ -65,7 +77,7 @@ let listTests = [
 
     "List Tail error",
     Ok (FuncApp( BuiltInFunc Tail, Literal (IntLit 10))),
-    Error "Error getting tail of list/sequence";
+    Error "SKI runtime error: Built-in function evaluation Error: \nError getting tail of list/sequence";
 
 ]
 
@@ -86,6 +98,10 @@ let arithmeticTests = [
     "Div",
     Ok (FuncApp( FuncApp( BuiltInFunc Div, Literal (IntLit 4)), Literal (IntLit 2))),
     Ok (Literal (IntLit 2));
+
+    "Div 0 Error",
+    Ok (FuncApp( FuncApp( BuiltInFunc Div, Literal (IntLit 4)), Literal (IntLit 0))),
+    Error "SKI runtime error: Built-in function evaluation Error: \nDivision by 0";
 
 ]
 
@@ -130,6 +146,18 @@ let booleanTests = [
     "equal (true)",
     Ok (FuncApp( FuncApp( BuiltInFunc Equal, Literal (IntLit 2)), Literal (IntLit 2))),
     Ok (Literal (BoolLit true));
+
+    "not (true)",
+    Ok (FuncApp( BuiltInFunc Not, Literal (BoolLit true))),
+    Ok (Literal (BoolLit false));
+
+    "not (false)",
+    Ok (FuncApp( BuiltInFunc Not, Literal (BoolLit false))),
+    Ok (Literal (BoolLit true));
+
+    "not (error)",
+    Ok (FuncApp( BuiltInFunc Not, Literal (IntLit 1))),
+    Error "SKI runtime error: Built-in function evaluation Error: \nError evaluating built-in function with 1 argument: opertor \'Not\'" ;
 
 ]
 
@@ -245,6 +273,21 @@ let funcDefTests = [
     }),
     Ok (Literal (IntLit 10));
 
+    "double fn def with same ID",
+    Ok(
+        FuncDefExp {
+            FuncName = "f";
+            FuncBody = 
+                FuncDefExp {
+                    FuncName = "f";
+                    FuncBody = Literal (IntLit 10); 
+                    Rest = Identifier "f";
+                }
+            Rest = FuncApp( FuncApp( BuiltInFunc Minus, Identifier "f"), Literal (IntLit 2));
+        }
+    ),
+    Ok (Literal (IntLit 8));
+
 ]
 
 let ifThenElseTests = [
@@ -274,7 +317,7 @@ let ifThenElseTests = [
 
     "ifThenElse invalid cond",
     Ok (IfExp ( Literal (StringLit "hello"), Literal (BoolLit true), Literal (BoolLit false))),
-    Error "Unexpected value in ifThenElse condition";
+    Error "SKI runtime error: Bracket Abstraction Error: \nUnexpected value in ifThenElse condition";
 ]
 
 let combinatorTests = [
@@ -383,8 +426,6 @@ let basicPassThroughTests = [
 
 let generalTests = [
 
-
-
     "combination of several tests",
     Ok (FuncApp( FuncApp( BuiltInFunc Equal, FuncApp( BuiltInFunc Head, SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null )))), FuncApp( FuncApp( BuiltInFunc Mult, Literal (IntLit 1)), Literal (IntLit 2)))),
     Ok (Literal (BoolLit true));
@@ -399,6 +440,29 @@ let generalTests = [
     
 ]
 
+let generalErrorTests = [
+
+    "Invalid input to runtime",
+    Error "Type Error",
+    Error "Invalid Ast supplied as input to SKI Runtime: \nType Error";
+
+    "invalid exp in input: RoundExp",
+    Ok (RoundExp Null),
+    Error "SKI runtime error: Bracket Abstraction Error: \nRoundExp should not be returned by parser";
+
+    "invalid exp in input: FuncAppList",
+    Ok (FuncAppList [Null]),
+    Error "SKI runtime error: Bracket Abstraction Error: \nFuncAppList should not be returned by parser";
+
+    "invalid exp in input: IdentifierList",
+    Ok (IdentifierList [""]),
+    Error "SKI runtime error: Bracket Abstraction Error: \nIdentifierList should not be returned by parser";
+
+    "Lambda input error",
+    Ok (Lambda { LambdaParam = "x";LambdaBody = SeqExp (Identifier "x",Null)}),
+    Error <| sprintf "SKI runtime error: Bracket Abstraction Error: \nUnable to bracket abstract lambda: %A" {LambdaParam = "x";LambdaBody = Identifier "z"};
+
+]
 
 let testCases = [
     listTests;
@@ -412,6 +476,7 @@ let testCases = [
     recursionTests;
     basicPassThroughTests;
     stringTests;
+    generalErrorTests;
 ]
 
 /// Run an Expecto test given a 3-tuple containing the test name, the input to the runtime and the expected output
@@ -481,7 +546,18 @@ let main argv =
             }
         }
 
-     
+
+    let TC4 = 
+        FuncDefExp {
+            FuncName = "f";
+            FuncBody = 
+                FuncDefExp {
+                    FuncName = "f";
+                    FuncBody = Literal (IntLit 10); 
+                    Rest = Identifier "f";
+                }
+            Rest = FuncApp( FuncApp( BuiltInFunc Minus, Identifier "f"), Literal (IntLit 2));
+        }
 
     //// RUN ALL EXPECTO TESTS ////
     testAll()
