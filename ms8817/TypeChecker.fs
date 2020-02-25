@@ -50,7 +50,7 @@ let extend ctx varName varType =
         l @ [varName, varType] @ List.tail r
 
 /// Return a new context with the applied substitutions.
-let applySubstitutions ctx subs =
+let applyToCtx subs ctx =
     /// Apply a substitution: set all the occurrences of a specific wildcard to the
     /// type given, and return the new context.
     let rec specialise ctx sub : Var list =
@@ -172,7 +172,7 @@ and inferFuncApp uid ctx f arg =
     | uid, Ok (s1, t1) ->
         // Infer the type of the second argument applying the substitutions from
         // the first inference.
-        match infer uid (applySubstitutions ctx s1) arg with
+        match infer uid (applyToCtx s1 ctx) arg with
         | uid, Error e -> uid, Error e
         | uid, Ok (s2, t2) ->
             // We expect the t1 to be a lambda that takes t2 and returns
@@ -195,7 +195,7 @@ and inferFuncDefExp uid ctx def =
     match infer uid ctx def.FuncBody with
     | uid, Error e -> uid, Error e
     | uid, Ok (s1, t1) ->
-        let ctx' = applySubstitutions ctx s1
+        let ctx' = applyToCtx s1 ctx
         match infer uid (extend ctx' def.FuncName t1) def.Rest with
         | uid, Error e -> uid, Error e
         | uid, Ok (s2, t2) -> uid, Ok (s1 @ s2, t2)
@@ -222,6 +222,7 @@ let typeCheck ast =
     |> function // Just return the type.
        | _, Ok (_, t) -> Ok t
        | _, Error e -> Error e
+
 // TODO:
 // - add other builtin funcs
 // - tests, many of them
