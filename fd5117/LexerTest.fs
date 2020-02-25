@@ -11,7 +11,7 @@ let toktest1 =
 [<Tests>]
 let toktest2 =
     testCase "test 2 for tokenise function" <| fun () ->
-        Expect.equal (tokeniseT3 "=a=4.5") [] "testing tokenising for u.u"
+        Expect.equal (tokeniseT3 "head tail true false fuckoff strEq 0") [] "testing tokenising for u.u"
 
 
 // Run this to run all current tests

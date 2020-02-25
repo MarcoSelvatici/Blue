@@ -2,8 +2,7 @@ module Lexer
 
 type BuiltInFunc =
     // Builtin with no special treatment
-    | BNot
-    | BAssign
+    | BNot        // OK
     | BHead
     | BTail
     | BSize
@@ -12,48 +11,48 @@ type BuiltInFunc =
     | BAppend
     | BStrEq
     // ComparisonOp
-    | BGreater
-    | BGreaterEq
-    | BLess
-    | BLessEq
-    | BEqual
+    | BGreater    // OK
+    | BGreaterEq  // OK
+    | BLess       // OK
+    | BLessEq     // OK
+    | BEqual      // OK
     // LogicalOp
-    | BAnd
-    | BOr
+    | BAnd        // OK
+    | BOr         // OK
     // BitwiseOp
-    | BBitAnd
-    | BBitOr
+    | BBitAnd     // OK
+    | BBitOr      // OK
     // AdditiveOp
-    | BPlus
-    | BMinus
+    | BPlus       // OK
+    | BMinus      // OK
     // MultiplicativeOp
-    | BMult
-    | BDiv
+    | BMult       // OK
+    | BDiv        // OK
 
 type Literal =
-    | IntLit of int
+    | IntLit of int 
     | BoolLit of bool
-    | CharLit of char
-    | StringLit of string
+    | CharLit of char // OK
+    | StringLit of string // OK
 
 type Token =
-    | TLiteral of Literal
+    | TLiteral of Literal 
     | TIdentifier of string
     | TBuiltInFunc of BuiltInFunc
     
-    // Keywords
+    // Keywords 
     | KLet
     | KRec
-    | KEq
+    | KEq            // OK
     | KIn
     | KNi
-    | KComma
-    | KOpenRound
-    | KCloseRound
-    | KOpenSquare
-    | KCloseSquare
-    | KLambda
-    | KDot
+    | KComma         // OK
+    | KOpenRound     // OK
+    | KCloseRound    // OK
+    | KOpenSquare    // OK
+    | KCloseSquare   // OK
+    | KLambda        // OK
+    | KDot           // OK
     | KIf
     | KThen
     | KElse
@@ -61,6 +60,20 @@ type Token =
     | KNull
 
 // If other, build recursively a single token.
+let rec buildNumber number input =
+    match input with 
+    | currChar::tl when List.contains currChar (['0'..'9']) -> buildNumber (number + string currChar) tl
+    | ' '::tl -> number, input
+    | [] -> number, input
+    | _ -> failwithf "lexing error, number contains non numeric char"
+
+let rec buildWord word input =
+    match input with 
+    | currChar::tl when List.contains currChar (['a'..'z']@['A'..'Z']) -> buildWord (word + string currChar) tl
+    | ' '::tl -> word, input
+    | [] -> word, input
+    | _ -> failwithf "lexing error, unrecognised non-alphabetic character"
+
 let rec buildComment input =
     match input with 
     | currChar::tl when not <| currChar.Equals('\n') -> buildComment tl
@@ -95,10 +108,12 @@ let tokeniseT3 (str: string) : Token list =
     // Recursively trying to match a token. 
     let rec tokenise (input: char list) : Token list =
         match input with
-        | ' '::tl -> tokenise tl
         | '.'::tl -> [KDot] @ tokenise tl
+        | ','::tl -> [KComma] @ tokenise tl
         | '('::tl -> [KOpenRound] @ tokenise tl
         | ')'::tl -> [KCloseRound] @ tokenise tl
+        | '['::tl -> [KOpenSquare] @ tokenise tl
+        | ']'::tl -> [KCloseSquare] @ tokenise tl
         | '\\'::tl -> [KLambda] @ tokenise tl
         | '+'::tl -> [BPlus |> TBuiltInFunc] @ tokenise tl
         | '-'::tl -> [BMinus |> TBuiltInFunc] @ tokenise tl
@@ -121,7 +136,7 @@ let tokeniseT3 (str: string) : Token list =
         | '='::tl -> 
            match tl with
            | '='::tl' -> [BEqual |> TBuiltInFunc] @ tokenise tl'
-           | _ -> [BAssign |> TBuiltInFunc] @ tokenise tl
+           | _ -> [KEq] @ tokenise tl
         | '&'::tl -> 
            match tl with
            | '&'::tl' -> [BAnd |> TBuiltInFunc] @ tokenise tl'
@@ -137,7 +152,23 @@ let tokeniseT3 (str: string) : Token list =
             let c, rest = buildChar tl
             [c |> CharLit |> TLiteral] @ tokenise rest
         | [] -> []
-        | _ -> []
-            // Other case, lets match the whole string and return it.
-            
+        | ' '::tl -> tokenise tl
+        | currChar::tl when List.contains currChar (['0'..'9']) ->
+            let number, rest = buildNumber "" input
+            [int number |> IntLit |> TLiteral] @ tokenise rest
+        | currChar::tl when List.contains currChar (['a'..'z']@['A'..'Z']) -> 
+            let word, rest = buildWord "" input
+            match (string word) with 
+            | "true" -> [true |> BoolLit |> TLiteral] @ tokenise rest
+            | "false" -> [false |> BoolLit |> TLiteral] @ tokenise rest
+            | "head" -> [BHead |> TBuiltInFunc] @ tokenise rest
+            | "tail" -> [BTail |> TBuiltInFunc] @ tokenise rest
+            | "size" -> [BSize |> TBuiltInFunc] @ tokenise rest
+            | "implode" -> [BImplode |> TBuiltInFunc] @ tokenise rest
+            | "explode" -> [BExplode |> TBuiltInFunc] @ tokenise rest
+            | "append" -> [BAppend |> TBuiltInFunc] @ tokenise rest
+            | "strEq" -> [BStrEq |> TBuiltInFunc] @ tokenise rest
+            | _ -> [word |> TIdentifier] @ tokenise rest
+        | _ -> failwithf "lexing error, unrecognised character"
+           
     tokenise <| Seq.toList str 
