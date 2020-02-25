@@ -33,17 +33,8 @@ type Subst = {
 // Helper functions //
 //==================//
 
-// Note: using a mutable value is not the only way to generate unique ids.
-// One could return the next uinque id at the end of each infer call, but this
-// would make the whole code more cluttery, since there would be the need to
-// handle (or just "forward") an extra param in many functions that would not
-// use it otherwise. Both solutions have pros and cons. 
-let mutable uniqueId = 0;
-/// Return new unique id.
-let newId () =
-    uniqueId <- uniqueId + 1
-    uniqueId
-let resetUniqueId () = uniqueId <- 0
+/// Return a new Generic identifier, and the updated uid.
+let newGen uid = Gen uid, uid + 1
 
 /// Extend a context with a new variable and its type. If the variable is
 /// already present, it gets overridden (this allows variable shadowing in inner
@@ -119,10 +110,10 @@ let isBinaryOp op = List.contains op (int2int @ int2bool @ bool2bool)
 // Inference functions //
 //=====================//
 
-let inferIdentifier ctx name =
+let inferIdentifier uid ctx name =
     match lookUpType ctx name with
-    | None -> Error <| sprintf "Identifier %s is not bound" name
-    | Some (_, t) -> Ok ([], t)
+    | None -> uid, Error <| sprintf "Identifier %s is not bound" name
+    | Some (_, t) -> uid, Ok ([], t)
 
 let inferBinOp op =
     let isInt2Int   = List.tryFind ((=) op) int2int
@@ -134,102 +125,103 @@ let inferBinOp op =
     | None, None, Some _ -> Ok ([], Fun(Base Bool, Fun(Base Bool, Base Bool)))
     | _ -> impossible "type checker, inferBinOp"
 
-let inferListOp op =
-    let tHead = Gen <| newId ()
-    let tTail = Gen <| newId ()
+let inferListOp uid op =
+    let tHead, uid = newGen uid
+    let tTail, uid = newGen uid
     match op with
-    | Head -> Ok ([], Fun (Pair (tHead, tTail), tHead))
-    | Tail -> Ok ([], Fun (Pair (tHead, tTail), tTail))
-    | Size -> Ok ([], Fun (Pair (tHead, tTail), Base Int))
+    | Head -> uid, Ok ([], Fun (Pair (tHead, tTail), tHead))
+    | Tail -> uid, Ok ([], Fun (Pair (tHead, tTail), tTail))
+    | Size -> uid, Ok ([], Fun (Pair (tHead, tTail), Base Int))
     | Append ->
-        let tNewHead = Gen <| newId ()
-        Ok ([], Fun (tNewHead, Fun (Pair (tHead, tTail), Pair (tNewHead, Pair (tHead, tTail)))))
+        let tNewHead, uid = newGen uid
+        uid, Ok ([], Fun (tNewHead, Fun (Pair (tHead, tTail), Pair (tNewHead, Pair (tHead, tTail)))))
     | _ -> impossible "type checker, inferListOp"
 
-let inferBuiltInFunc f =
+let inferBuiltInFunc uid f =
     let isListOp op = List.contains op [Head; Tail; Size; Append]
     match f with
-    | op when isBinaryOp op -> inferBinOp op
-    | op when isListOp op -> inferListOp op
-    | StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
-    | _ -> Error <| sprintf "Type checking for %A is not implemented" f
+    | op when isBinaryOp op -> uid, inferBinOp op
+    | op when isListOp op -> inferListOp uid op
+    | StrEq -> uid, Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
+    | _ -> uid, Error <| sprintf "Type checking for %A is not implemented" f
 
-let rec inferIfExp ctx c t e =
-    let i1 = infer ctx c
-    let i2 = infer ctx t
-    let i3 = infer ctx e
+let rec inferIfExp uid ctx c t e =
+    let uid, i1 = infer uid ctx c
+    let uid, i2 = infer uid ctx t
+    let uid, i3 = infer uid ctx e
     match i1, i2, i3 with
-    | Error e, _, _ | _, Error e, _ | _, _, Error e -> Error e
+    | Error e, _, _ | _, Error e, _ | _, _, Error e -> uid, Error e
     | Ok (s1, t1), Ok (s2, t2), Ok (s3, t3) ->
         let rs4 = unify t1 (Base Bool) // Make sure the condition is bool.
         let rs5 = unify t2 t3 // Make sure both branches have same type.
         match rs4, rs5 with
-        | Error e, _ | _, Error e -> Error e
-        | Ok s4, Ok s5 -> Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
+        | Error e, _ | _, Error e -> uid, Error e
+        | Ok s4, Ok s5 -> uid, Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
 
-and inferSeqExp ctx head tail =
-    let i1 = infer ctx head
-    let i2 = infer ctx tail
+and inferSeqExp uid ctx head tail =
+    let uid, i1 = infer uid ctx head
+    let uid, i2 = infer uid ctx tail
     match i1, i2 with
-    | Error e, _ | _, Error e -> Error e
-    | Ok (s1, t1), Ok (s2, t2) -> Ok (s1 @ s2, Pair (t1, t2))
+    | Error e, _ | _, Error e -> uid, Error e
+    | Ok (s1, t1), Ok (s2, t2) -> uid, Ok (s1 @ s2, Pair (t1, t2))
 
-and inferFuncApp ctx f arg =
-    let newWildcard = Gen <| newId () // Return type of the func application.
-    match infer ctx f with
-    | Error e -> Error e
-    | Ok (s1, t1) ->
+and inferFuncApp uid ctx f arg =
+    let newWildcard, uid = newGen uid // Return type of the func application.
+    match infer uid ctx f with
+    | _, Error e -> uid, Error e
+    | uid, Ok (s1, t1) ->
         // Infer the type of the second argument applying the substitutions from
         // the first inference.
-        match infer (applySubstitutions ctx s1) arg with
-        | Error e -> Error e
-        | Ok (s2, t2) ->
+        match infer uid (applySubstitutions ctx s1) arg with
+        | uid, Error e -> uid, Error e
+        | uid, Ok (s2, t2) ->
             // We expect the t1 to be a lambda that takes t2 and returns
             // a new type. Hence we unify t1 with t2 -> newType.
             match unify (apply s2 t1) (Fun (t2, newWildcard)) with
-            | Error e -> Error e
-            | Ok s3 -> Ok (s1 @ s2 @ s3, apply s3 newWildcard)
+            | Error e -> uid, Error e
+            | Ok s3 -> uid, Ok (s1 @ s2 @ s3, apply s3 newWildcard)
 
-and inferLambdaExp ctx lam =
-    let newWildcard = Gen <| newId () // For the lambda bound variable.
+and inferLambdaExp uid ctx lam =
+    let newWildcard, uid = newGen uid // For the lambda bound variable.
     let ctx' = extend ctx lam.LambdaParam newWildcard
-    match infer ctx' lam.LambdaBody with
-    | Error e -> Error e
-    | Ok (s1, t1) -> Ok (s1, Fun(apply s1 newWildcard, t1))
+    match infer uid ctx' lam.LambdaBody with
+    | uid2, Error e -> uid2, Error e
+    | uid2, Ok (s1, t1) -> uid2, Ok (s1, Fun(apply s1 newWildcard, t1))
 
-and inferFuncDefExp ctx def =
+and inferFuncDefExp uid ctx def =
     // We infer the type of the body without keeping the function name in
     // our context. This makes recursion impossible.
     // TODO: remove this limitation?
-    match infer ctx def.FuncBody with
-    | Error e -> Error e
-    | Ok (s1, t1) ->
+    match infer uid ctx def.FuncBody with
+    | uid, Error e -> uid, Error e
+    | uid, Ok (s1, t1) ->
         let ctx' = applySubstitutions ctx s1
-        match infer (extend ctx' def.FuncName t1) def.Rest with
-        | Error e -> Error e
-        | Ok (s2, t2) -> Ok (s1 @ s2, t2)
+        match infer uid (extend ctx' def.FuncName t1) def.Rest with
+        | uid, Error e -> uid, Error e
+        | uid, Ok (s2, t2) -> uid, Ok (s1 @ s2, t2)
 
 /// Infer the type of an ast, and return the substitutions, together with the
 /// type of the ast.
-and infer ctx ast : Result<Subst list * Type, string> =
+and infer uid ctx ast : int * Result<Subst list * Type, string> =
     match ast with
-    | Null                  -> Ok ([], Base NullType)
-    | Literal (IntLit _)    -> Ok ([], Base Int)
-    | Literal (BoolLit _)   -> Ok ([], Base Bool)
-    | Literal (StringLit _) -> Ok ([], Base String)
-    | Identifier name       -> inferIdentifier ctx name
-    | BuiltInFunc f         -> inferBuiltInFunc f
-    | IfExp (c, t, e)       -> inferIfExp ctx c t e
-    | SeqExp (head, tail)   -> inferSeqExp ctx head tail
-    | FuncApp (f, arg)      -> inferFuncApp ctx f arg
-    | LambdaExp lam         -> inferLambdaExp ctx lam
-    | FuncDefExp def        -> inferFuncDefExp ctx def
-    | _ -> Error <| sprintf "Type checking for %A is not implemented" ast
+    | Null                  -> uid, Ok ([], Base NullType)
+    | Literal (IntLit _)    -> uid, Ok ([], Base Int)
+    | Literal (BoolLit _)   -> uid, Ok ([], Base Bool)
+    | Literal (StringLit _) -> uid, Ok ([], Base String)
+    | Identifier name       -> inferIdentifier uid ctx name
+    | BuiltInFunc f         -> inferBuiltInFunc uid f
+    | IfExp (c, t, e)       -> inferIfExp uid ctx c t e
+    | SeqExp (head, tail)   -> inferSeqExp uid ctx head tail
+    | FuncApp (f, arg)      -> inferFuncApp uid ctx f arg
+    | LambdaExp lam         -> inferLambdaExp uid ctx lam
+    | FuncDefExp def        -> inferFuncDefExp uid ctx def
+    | _ -> uid, Error <| sprintf "Type checking for %A is not implemented" ast
 
 let typeCheck ast =
-    resetUniqueId ()
-    infer [] ast |> Result.map (fun (_, t) -> t) // Just return the type.
-
+    infer 0 [] ast
+    |> function // Just return the type.
+       | _, Ok (_, t) -> Ok t
+       | _, Error e -> Error e
 // TODO:
 // - add other builtin funcs
 // - tests, many of them
