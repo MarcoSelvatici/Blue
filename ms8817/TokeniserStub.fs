@@ -8,11 +8,15 @@ let print x =
     printfn "%A" x
 
 type BuiltInFunc =
-    // UnaryOp
+    // Builtin with no special treatment
     | Not
     | Head
     | Tail
     | Size
+    | Implode
+    | Explode
+    | Append
+    | StrEq
     // ComparisonOp
     | Greater
     | GreaterEq
@@ -55,9 +59,6 @@ type Token =
     | KThen
     | KElse
     | KFi
-    | KAppend
     | KNull
-    | KStrEq
-    | KImplode
-    | KExplode
-    
+
+
