@@ -70,6 +70,13 @@ let testCases = [
         Ok (Base Int);
     "No recursion `let x = x x in 1`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Literal (IntLit 1)),
         Error "Identifier x is not bound"; // Recursion is not supported (yet).
+    "Simple StrEq", BuiltInFunc StrEq,
+        Ok (Fun(Base String, Fun (Base String, Base Bool)));
+    "Partially applied StrEq", FuncApp (BuiltInFunc StrEq, Literal (StringLit "hello")),
+        Ok (Fun (Base String, Base Bool));
+    "String equality in ifExp", IfExp ( FuncApp (FuncApp (BuiltInFunc StrEq, Literal (StringLit "s1")), Literal (StringLit "s2")), Literal (IntLit 1), Literal (IntLit 1)),
+        Ok (Base Int);
+    
 ]
 
 let testTypeChecker (description, ast, expected) =

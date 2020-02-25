@@ -115,7 +115,7 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
         match lookUpType ctx name with
         | None -> Error <| sprintf "Identifier %s is not bound" name
         | Some (_, t) -> Ok ([], t)
-    | BuiltInFunc op ->
+    | BuiltInFunc op when List.contains op (int2int @ int2bool @ bool2bool)->
         // TODO: this only support binary operators. Add cases for the others.
         let isInt2Int   = List.tryFind ((=) op) int2int
         let isInt2Bool  = List.tryFind ((=) op) int2bool
@@ -124,7 +124,9 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
         | Some _, None, None -> Ok ([], Fun(Base Int, Fun(Base Int, Base Int)))
         | None, Some _, None -> Ok ([], Fun(Base Int, Fun(Base Int, Base Bool)))
         | None, None, Some _ -> Ok ([], Fun(Base Bool, Fun(Base Bool, Base Bool)))
-        | _ -> Error <| sprintf "Binary opertator %A is not supported" op
+        | _ -> impossible "type checker, BuiltinFunc binary op"
+    | BuiltInFunc StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
+    | BuiltInFunc StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
     | IfExp (c, t, e) ->
         let i1 = infer ctx c
         let i2 = infer ctx t
