@@ -124,30 +124,26 @@ let inferBinOp op =
     | Some _, None, None -> Ok ([], Fun(Base Int, Fun(Base Int, Base Int)))
     | None, Some _, None -> Ok ([], Fun(Base Int, Fun(Base Int, Base Bool)))
     | None, None, Some _ -> Ok ([], Fun(Base Bool, Fun(Base Bool, Base Bool)))
-    | _ -> impossible "type checker, BuiltinFunc binary op"
+    | _ -> impossible "type checker, inferBinOp"
 
-let inferBuiltInFunc f =
-    match f with
-    | op when isBinaryOp op -> inferBinOp op
-    | StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
-    // TODO: refactor those.
-    | Head ->
-        let tHead = Gen <| newId ()
-        let tTail = Gen <| newId ()
-        Ok ([], Fun (Pair (tHead, tTail), tHead))
-    | Tail ->
-        let tHead = Gen <| newId ()
-        let tTail = Gen <| newId ()
-        Ok ([], Fun (Pair (tHead, tTail), tTail))
-    | Size ->
-        let tHead = Gen <| newId ()
-        let tTail = Gen <| newId ()
-        Ok ([], Fun (Pair (tHead, tTail), Base Int))
+let inferListOp op =
+    let tHead = Gen <| newId ()
+    let tTail = Gen <| newId ()
+    match op with
+    | Head -> Ok ([], Fun (Pair (tHead, tTail), tHead))
+    | Tail -> Ok ([], Fun (Pair (tHead, tTail), tTail))
+    | Size -> Ok ([], Fun (Pair (tHead, tTail), Base Int))
     | Append ->
-        let tHead = Gen <| newId ()
-        let tTail = Gen <| newId ()
         let tNewHead = Gen <| newId ()
         Ok ([], Fun (tNewHead, Fun (Pair (tHead, tTail), Pair (tNewHead, Pair (tHead, tTail)))))
+    | _ -> impossible "type checker, inferListOp"
+
+let inferBuiltInFunc f =
+    let isListOp op = List.contains op [Head; Tail; Size; Append]
+    match f with
+    | op when isBinaryOp op -> inferBinOp op
+    | op when isListOp op -> inferListOp op
+    | StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
     // TODO
 
 let rec inferIfExp ctx c t e =
