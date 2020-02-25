@@ -3,13 +3,13 @@ module Lexer
 type BuiltInFunc =
     // Builtin with no special treatment
     | BNot        // OK
-    | BHead
-    | BTail
-    | BSize
-    | BImplode
-    | BExplode
-    | BAppend
-    | BStrEq
+    | BHead       // OK
+    | BTail       // OK
+    | BSize       // OK
+    | BImplode    // OK
+    | BExplode    // OK
+    | BAppend     // OK
+    | BStrEq      // OK
     // ComparisonOp
     | BGreater    // OK
     | BGreaterEq  // OK
@@ -30,22 +30,22 @@ type BuiltInFunc =
     | BDiv        // OK
 
 type Literal =
-    | IntLit of int 
-    | BoolLit of bool
-    | CharLit of char // OK
-    | StringLit of string // OK
+    | IntLit of int        // OK
+    | BoolLit of bool      // OK
+    | CharLit of char      // OK
+    | StringLit of string  // OK
 
 type Token =
-    | TLiteral of Literal 
+    | TLiteral of Literal       
     | TIdentifier of string
     | TBuiltInFunc of BuiltInFunc
     
     // Keywords 
-    | KLet
-    | KRec
+    | KLet           // OK
+    | KRec           // OK
     | KEq            // OK
-    | KIn
-    | KNi
+    | KIn            // OK
+    | KNi            // OK
     | KComma         // OK
     | KOpenRound     // OK
     | KCloseRound    // OK
@@ -53,24 +53,26 @@ type Token =
     | KCloseSquare   // OK
     | KLambda        // OK
     | KDot           // OK
-    | KIf
-    | KThen
-    | KElse
-    | KFi
-    | KNull
+    | KIf            // OK
+    | KThen          // OK
+    | KElse          // OK
+    | KFi            // OK
+    | KNull          // OK
 
 // If other, build recursively a single token.
 let rec buildNumber number input =
     match input with 
     | currChar::tl when List.contains currChar (['0'..'9']) -> buildNumber (number + string currChar) tl
-    | ' '::tl -> number, input
+    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'&';'|';' ']) 
+                   -> number, input
     | [] -> number, input
     | _ -> failwithf "lexing error, number contains non numeric char"
 
 let rec buildWord word input =
     match input with 
     | currChar::tl when List.contains currChar (['a'..'z']@['A'..'Z']) -> buildWord (word + string currChar) tl
-    | ' '::tl -> word, input
+    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'&';'|';' ']) 
+                   -> word, input
     | [] -> word, input
     | _ -> failwithf "lexing error, unrecognised non-alphabetic character"
 
@@ -168,6 +170,15 @@ let tokeniseT3 (str: string) : Token list =
             | "explode" -> [BExplode |> TBuiltInFunc] @ tokenise rest
             | "append" -> [BAppend |> TBuiltInFunc] @ tokenise rest
             | "strEq" -> [BStrEq |> TBuiltInFunc] @ tokenise rest
+            | "let" -> [KLet] @ tokenise rest
+            | "rec" -> [KRec] @ tokenise rest
+            | "in" -> [KIn] @ tokenise rest
+            | "ni" -> [KNi] @ tokenise rest
+            | "if" -> [KIf] @ tokenise rest
+            | "then" -> [KThen] @ tokenise rest
+            | "else" -> [KElse] @ tokenise rest
+            | "fi" -> [KFi] @ tokenise rest
+            | "null" -> [KNull] @ tokenise rest
             | _ -> [word |> TIdentifier] @ tokenise rest
         | _ -> failwithf "lexing error, unrecognised character"
            
