@@ -139,6 +139,10 @@ let inferBuiltInFunc f =
         let tHead = Gen <| newId ()
         let tTail = Gen <| newId ()
         Ok ([], Fun (Pair (tHead, tTail), tHead))
+    | Tail ->
+        let tHead = Gen <| newId ()
+        let tTail = Gen <| newId ()
+        Ok ([], Fun (Pair (tHead, tTail), tTail))
     // TODO
 
 let rec inferIfExp ctx c t e =

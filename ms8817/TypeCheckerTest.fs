@@ -94,6 +94,14 @@ let testCases = [
         Ok (Base String);
     "Applied Head `head [\x.x<1, 1, true]`", FuncApp (BuiltInFunc Head, SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
         Ok (Fun (Base Int, Base Bool));
+    "Simple Tail", BuiltInFunc Tail,
+        Ok (Fun (Pair (Gen 1, Gen 2), Gen 2));
+    "Applied Tail `tail [1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 4), Null)), 
+        Ok (Base NullType);
+    "Applied Tail `tail ['hello', 1, true]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
+        Ok (Pair (Base Int, Pair (Base Bool, Base NullType)));
+    "Applied Tail `tail [1, \x.x<1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), Null))),
+        Ok (Pair (Fun (Base Int, Base Bool), Base NullType));
 ]
 
 let testTypeChecker (description, ast, expected) =
