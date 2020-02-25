@@ -99,8 +99,8 @@ let rec apply subs t =
     match t with
     | Base _ -> t
     | Gen wildcard -> subWildcard wildcard
-    | Fun (t1, t2) | Pair (t1, t2) ->
-        Fun (apply subs t1, apply subs t2)
+    | Fun (t1, t2) -> Fun (apply subs t1, apply subs t2)
+    | Pair (t1, t2) -> Pair (apply subs t1, apply subs t2)
 
 /// Try to lookup the type of an identifier.
 let lookUpType ctx name =
@@ -131,6 +131,16 @@ let inferBinOp op =
     | None, None, Some _ -> Ok ([], Fun(Base Bool, Fun(Base Bool, Base Bool)))
     | _ -> impossible "type checker, BuiltinFunc binary op"
 
+let inferBuiltInFunc f =
+    match f with
+    | op when isBinaryOp op -> inferBinOp op
+    | StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
+    | Head ->
+        let tHead = Gen <| newId ()
+        let tTail = Gen <| newId ()
+        Ok ([], Fun (Pair (tHead, tTail), tHead))
+    // TODO
+
 let rec inferIfExp ctx c t e =
     let i1 = infer ctx c
     let i2 = infer ctx t
@@ -151,15 +161,14 @@ and inferSeqExp ctx head tail =
     | Error e, _ | _, Error e -> Error e
     | Ok (s1, t1), Ok (s2, t2) -> Ok (s1 @ s2, Pair (t1, t2))
 
-and inferFuncApp ctx arg1 arg2 =
-    let newWildcardId = newId ()
-    let newWildcard = Gen newWildcardId // Return type of the func application.
-    match infer ctx arg1 with
+and inferFuncApp ctx f arg =
+    let newWildcard = Gen <| newId () // Return type of the func application.
+    match infer ctx f with
     | Error e -> Error e
     | Ok (s1, t1) ->
         // Infer the type of the second argument applying the substitutions from
         // the first inference.
-        match infer (applySubstitutions ctx s1) arg2 with
+        match infer (applySubstitutions ctx s1) arg with
         | Error e -> Error e
         | Ok (s2, t2) ->
             // We expect the t1 to be a lambda that takes t2 and returns
@@ -169,8 +178,7 @@ and inferFuncApp ctx arg1 arg2 =
             | Ok s3 -> Ok (s1 @ s2 @ s3, apply s3 newWildcard)
 
 and inferLambdaExp ctx lam =
-    let newWildcardId = newId ()
-    let newWildcard = Gen newWildcardId // For the lambda bound variable.
+    let newWildcard = Gen <| newId () // For the lambda bound variable.
     let ctx' = extend ctx lam.LambdaParam newWildcard
     match infer ctx' lam.LambdaBody with
     | Error e -> Error e
@@ -197,14 +205,13 @@ and infer ctx ast : Result<Subst list * Type, string> =
     | Literal (BoolLit _)   -> Ok ([], Base Bool)
     | Literal (StringLit _) -> Ok ([], Base String)
     | Identifier name -> inferIdentifier ctx name
-    | BuiltInFunc op when isBinaryOp op -> inferBinOp op
-    | BuiltInFunc StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
-    //| BuiltInFunc Head -> Ok ([], Fun (Gen))
+    | BuiltInFunc f -> inferBuiltInFunc f
     | IfExp (c, t, e) -> inferIfExp ctx c t e
     | SeqExp (head, tail) -> inferSeqExp ctx head tail
-    | FuncApp (arg1, arg2) -> inferFuncApp ctx arg1 arg2
+    | FuncApp (f, arg) -> inferFuncApp ctx f arg
     | LambdaExp lam -> inferLambdaExp ctx lam
     | FuncDefExp def -> inferFuncDefExp ctx def
+    | _ -> Error <| sprintf "Type checking for %A is not implemented" ast
 
 let typeCheck ast =
     resetUniqueId ()

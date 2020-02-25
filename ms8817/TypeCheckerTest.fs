@@ -86,6 +86,14 @@ let testCases = [
         Ok (Pair (Base Int, Pair (Fun (Gen 1, Gen 1), Base NullType)));
     "Unique ids `[\x.x, \y.y]`", SeqExp (buildLambda "y" (Identifier "y"), SeqExp (buildLambda "x" (Identifier "x"), Null)),
         Ok (Pair (Fun (Gen 1, Gen 1), Pair ( Fun (Gen 2, Gen 2), Base NullType)));
+    "Simple Head", BuiltInFunc Head,
+        Ok (Fun (Pair (Gen 1, Gen 2), Gen 1));
+    "Applied Head `head [1]`", FuncApp (BuiltInFunc Head, SeqExp (Literal (IntLit 4), Null)), 
+        Ok (Base Int);
+    "Applied Head `head ['hello', 1, true]`", FuncApp (BuiltInFunc Head, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
+        Ok (Base String);
+    "Applied Head `head [\x.x<1, 1, true]`", FuncApp (BuiltInFunc Head, SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
+        Ok (Fun (Base Int, Base Bool));
 ]
 
 let testTypeChecker (description, ast, expected) =
