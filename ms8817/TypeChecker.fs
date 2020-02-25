@@ -3,6 +3,10 @@ module TypeChecker
 open TokeniserStub
 open Parser
 
+//=======//
+// Types //
+//=======//
+
 type Base =
     | Int
     | Bool
@@ -17,8 +21,17 @@ and Type =
 
 type Var = string * Type
 
-/// mappings: map every identifier to its type.
+/// Map every identifier to its type.
 type Context = Var list
+
+type Subst = {
+    wildcard: int;
+    newType: Type;
+}
+
+//==================//
+// Helper functions //
+//==================//
 
 // Note: using a mutable value is not the only way to generate unique ids.
 // One could return the next uinque id at the end of each infer call, but this
@@ -44,11 +57,6 @@ let extend ctx varName varType =
     | Some idx -> // Replace the previous one.
         let l, r = List.splitAt idx ctx
         l @ [varName, varType] @ List.tail r
-
-type Subst = {
-    wildcard: int;
-    newType: Type;
-}
 
 /// Return a new context with the applied substitutions.
 let applySubstitutions ctx subs =
@@ -144,7 +152,7 @@ let inferBuiltInFunc f =
     | op when isBinaryOp op -> inferBinOp op
     | op when isListOp op -> inferListOp op
     | StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
-    // TODO
+    | _ -> Error <| sprintf "Type checking for %A is not implemented" f
 
 let rec inferIfExp ctx c t e =
     let i1 = infer ctx c
@@ -205,17 +213,17 @@ and inferFuncDefExp ctx def =
 /// type of the ast.
 and infer ctx ast : Result<Subst list * Type, string> =
     match ast with
-    | Null -> Ok ([], Base NullType)
+    | Null                  -> Ok ([], Base NullType)
     | Literal (IntLit _)    -> Ok ([], Base Int)
     | Literal (BoolLit _)   -> Ok ([], Base Bool)
     | Literal (StringLit _) -> Ok ([], Base String)
-    | Identifier name -> inferIdentifier ctx name
-    | BuiltInFunc f -> inferBuiltInFunc f
-    | IfExp (c, t, e) -> inferIfExp ctx c t e
-    | SeqExp (head, tail) -> inferSeqExp ctx head tail
-    | FuncApp (f, arg) -> inferFuncApp ctx f arg
-    | LambdaExp lam -> inferLambdaExp ctx lam
-    | FuncDefExp def -> inferFuncDefExp ctx def
+    | Identifier name       -> inferIdentifier ctx name
+    | BuiltInFunc f         -> inferBuiltInFunc f
+    | IfExp (c, t, e)       -> inferIfExp ctx c t e
+    | SeqExp (head, tail)   -> inferSeqExp ctx head tail
+    | FuncApp (f, arg)      -> inferFuncApp ctx f arg
+    | LambdaExp lam         -> inferLambdaExp ctx lam
+    | FuncDefExp def        -> inferFuncDefExp ctx def
     | _ -> Error <| sprintf "Type checking for %A is not implemented" ast
 
 let typeCheck ast =
