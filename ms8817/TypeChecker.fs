@@ -7,13 +7,13 @@ type Base =
     | Int
     | Bool
     | String
-    // | List of ... TODO
+    | NullType // To terminate lists.
 
-/// Typed variable. A string
-type Type =
+and Type =
     | Base of Base
     | Gen of int // Generic type with unique identifier.
     | Fun of Type * Type
+    | Pair of Type * Type // Used for lists.
 
 type Var = string * Type
 
@@ -72,16 +72,14 @@ let applySubstitutions ctx subs =
 let rec unify t1 t2 : Result<Subst list, string> =
     match t1, t2 with
     | Base b1, Base b2 when b1 = b2 -> Ok []
-    //| Gen g1, Gen g2 when g1 = g2 -> Ok []
-    | Fun (l, r), Fun (l', r') ->
+    | Fun (l, r), Fun (l', r') | Pair (l, r), Pair (l', r') ->
         // Try to unify both sides.
         match unify l l' with
         | Error e -> Error e
         | Ok subs -> match unify r r' with
                      | Error e -> Error e
                      | Ok subs' -> Ok <| subs @ subs'
-    | t, Gen g
-    | Gen g, t ->
+    | t, Gen g | Gen g, t ->
         // Can specialise the generic type g into the type t.
         Ok <| [{wildcard = g; newType = t}]
     | _ -> Error <| sprintf "Types %A and %A are not compatable" t1 t2
@@ -94,7 +92,7 @@ let rec apply subs t =
         match List.tryFind (fun s -> s.wildcard = wildcard) subs with
         | None -> Gen wildcard
         | Some s -> s.newType
-    | Fun (t1, t2) ->
+    | Fun (t1, t2) | Pair (t1, t2) ->
         Fun (apply subs t1, apply subs t2)
 
 /// Try to lookup the type of an identifier.
@@ -108,6 +106,7 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
     let int2bool  = [Greater; GreaterEq; Less; LessEq; Equal]
     let bool2bool = [And; Or]
     match ast with
+    | Null -> Ok ([], Base NullType)
     | Literal (IntLit _)    -> Ok ([], Base Int)
     | Literal (BoolLit _)   -> Ok ([], Base Bool)
     | Literal (StringLit _) -> Ok ([], Base String)
@@ -126,7 +125,6 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
         | None, None, Some _ -> Ok ([], Fun(Base Bool, Fun(Base Bool, Base Bool)))
         | _ -> impossible "type checker, BuiltinFunc binary op"
     | BuiltInFunc StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
-    | BuiltInFunc StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
     | IfExp (c, t, e) ->
         let i1 = infer ctx c
         let i2 = infer ctx t
@@ -139,6 +137,12 @@ let rec infer ctx ast : Result<Subst list * Type, string> =
             match rs4, rs5 with
             | Error e, _ | _, Error e -> Error e
             | Ok s4, Ok s5 -> Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
+    | SeqExp (head, tail) ->
+        let i1 = infer ctx head
+        let i2 = infer ctx tail
+        match i1, i2 with
+        | Error e, _ | _, Error e -> Error e
+        | Ok (s1, t1), Ok (s2, t2) -> Ok (s1 @ s2, Pair (t1, t2))
     | FuncApp (arg1, arg2) ->
         let newWildcardId, ctx' = newId ctx
         let newWildcard = Gen newWildcardId // Return type of the func application.

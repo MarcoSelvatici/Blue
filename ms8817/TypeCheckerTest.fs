@@ -76,7 +76,14 @@ let testCases = [
         Ok (Fun (Base String, Base Bool));
     "String equality in ifExp", IfExp ( FuncApp (FuncApp (BuiltInFunc StrEq, Literal (StringLit "s1")), Literal (StringLit "s2")), Literal (IntLit 1), Literal (IntLit 1)),
         Ok (Base Int);
-    
+    "Empty SeqExp", SeqExp (Null, Null),
+        Ok (Pair (Base NullType, Base NullType));
+    "Simple SeqExp", SeqExp (Literal (IntLit 1), Null),
+        Ok (Pair (Base Int, Base NullType));
+    "Simple SeqExp with base types `[1 , 'hello', true]`", SeqExp (Literal (IntLit 1), SeqExp (Literal (StringLit "hello"), SeqExp (Literal (BoolLit true), Null))),
+        Ok (Pair (Base Int, Pair (Base String, Pair (Base Bool, Base NullType))));
+    "Simple  SeqExp with Lambda `[1 , \x.x]`", SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (Identifier "x"), Null)),
+        Ok (Pair (Base Int, Pair (Fun (Gen 0, Gen 0), Base NullType)));
 ]
 
 let testTypeChecker (description, ast, expected) =
