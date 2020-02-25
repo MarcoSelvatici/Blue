@@ -62,30 +62,37 @@ let toMap (lst, inputMatcher, outputTransformer) =
     List.map (fun (n,f) -> n, f >>> outputTransformer) lst |> Map, inputMatcher
 
 // (BuiltInFunc) * (int -> int -> bool) 
-let binIntToBool = 
-    let mapping = 
+let binIntToBool =     
+    (   
         [
         Greater,   (>); 
         GreaterEq, (>=); 
         Less,      (<); 
         LessEq,    (<=); 
         Equal,     (=);  
-        ] 
-    ( mapping, (|INTLIT|_|) , BoolLit>>Literal )
+        ] , (|INTLIT|_|) , BoolLit>>Literal 
+    )
     |> toMap
     
 let binBoolToBool = 
-    [
-    And, (&&); 
-    Or,  (||);
-    ] |> Map, (|BOOLLIT|_|), BoolLit
+    (   
+        [
+        And, (&&); 
+        Or,  (||);
+        ] , (|BOOLLIT|_|), BoolLit>>Literal 
+    )
+    |> toMap
+
 let binIntToInt = 
-    [
-    //Plus, (+);
-    Minus,(-);   
-    Mult, (*); 
-    Div,  (/);
-    ] |> Map, (|INTLIT|_|), IntLit
+    (
+        [
+        Plus, (+);
+        Minus,(-);   
+        Mult, (*); 
+        Div,  (/);
+        ], (|INTLIT|_|), IntLit>>Literal
+    ) 
+    |> toMap
 
 /// PAP buildier for binary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned
