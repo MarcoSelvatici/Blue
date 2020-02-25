@@ -88,17 +88,12 @@ let rec unify t1 t2 : Result<Subst list, string> =
 
 /// Apply a given substitution list to a type, and return the resulting type.
 let rec apply subs t =
-    /// Recursively substitute a wildcard with its type if any.
-    /// If there is no substitution possible, return the wildcard as is.
-    let rec subWildcard wildcard =
-        match List.tryFind (fun s -> s.wildcard = wildcard) subs with
-        | None -> Gen wildcard
-        | Some s -> match s.newType with
-                    | Gen wildcard' -> subWildcard wildcard'
-                    | _ -> s.newType
     match t with
     | Base _ -> t
-    | Gen wildcard -> subWildcard wildcard
+    | Gen wildcard ->
+        match List.tryFind (fun s -> s.wildcard = wildcard) subs with
+        | None -> Gen wildcard // No substitution found. Return wildcard.
+        | Some s -> apply subs (s.newType) // Try to substitute the new type.
     | Fun (t1, t2) -> Fun (apply subs t1, apply subs t2)
     | Pair (t1, t2) -> Pair (apply subs t1, apply subs t2)
 
@@ -135,6 +130,7 @@ let inferBuiltInFunc f =
     match f with
     | op when isBinaryOp op -> inferBinOp op
     | StrEq -> Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
+    // TODO: refactor those.
     | Head ->
         let tHead = Gen <| newId ()
         let tTail = Gen <| newId ()
@@ -143,6 +139,15 @@ let inferBuiltInFunc f =
         let tHead = Gen <| newId ()
         let tTail = Gen <| newId ()
         Ok ([], Fun (Pair (tHead, tTail), tTail))
+    | Size ->
+        let tHead = Gen <| newId ()
+        let tTail = Gen <| newId ()
+        Ok ([], Fun (Pair (tHead, tTail), Base Int))
+    | Append ->
+        let tHead = Gen <| newId ()
+        let tTail = Gen <| newId ()
+        let tNewHead = Gen <| newId ()
+        Ok ([], Fun (tNewHead, Fun (Pair (tHead, tTail), Pair (tNewHead, Pair (tHead, tTail)))))
     // TODO
 
 let rec inferIfExp ctx c t e =
