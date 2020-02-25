@@ -47,7 +47,7 @@ let factorialAST r =
     }
 
 
-/// tests with the same input and output asts
+/// tests with the same input and output ASTs
 let testId : TestInfo= 
     [ 
     "Literal int", "6", intL 6;
@@ -66,7 +66,7 @@ let testId : TestInfo=
     ] 
     |> List.map (fun (n,d,i) -> (n,sprintf "%s -> %s" d d,i,Ok i))
 
-/// tests that should return reduced (Ok ast)
+/// tests that should return reduced (Ok AST)
 let testOk : TestInfo= 
     [
     "Round expression (-10)", "(-10) -> -10", RoundExp (intL -10), (intL -10);
@@ -168,3 +168,4 @@ let main argv =
     0 
 
 // TODO add test thatt chack that names defined in lambdas dont mix with that in definitions
+// TODO add tests for head and tail

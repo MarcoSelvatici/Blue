@@ -27,7 +27,7 @@ let extendVarMap (boundVariables, variableMap) name body =
     boundVariables, Map.add name body variableMap
 
 
-//  PAP for Literals, used as building block for builtin functions
+//  PAP for Literals, building block for builtIn functions
 //  used for type-checking and unpacking the values
 //  boilerplate code
 
@@ -47,6 +47,22 @@ let (|SEQEXP|_|) x =
     match x with 
     | SeqExp (l,r) -> Some (l,r)
     | _ -> None
+let (|NULL|_|) x =
+    match x with
+    | Null -> Some (Null)
+    | _ -> None
+
+
+(*
+ Not
+    | Head
+    | Tail
+    | Size
+    | Implode
+    | Explode
+    | Append
+    | StrEq
+*)
 
 (*
 BuiltInFunc
@@ -57,42 +73,64 @@ BuiltInFunc
     | Size
 *)
 
-let toMap (lst, inputMatcher, outputTransformer) =
-    let (>>>) f g a b = g ( f a b )
-    List.map (fun (n,f) -> n, f >>> outputTransformer) lst |> Map, inputMatcher
+let internal joinBuiltInData (list1, inputMatcher) (list2, inputMatcher2) =
+    if inputMatcher = inputMatcher2 
+    then (list1 @ list2, inputMatcher)
+    else ([], inputMatcher)
 
-// (BuiltInFunc) * (int -> int -> bool) 
-let binIntToBool =     
-    (   
-        [
-        Greater,   (>); 
-        GreaterEq, (>=); 
-        Less,      (<); 
-        LessEq,    (<=); 
-        Equal,     (=);  
-        ] , (|INTLIT|_|) , BoolLit>>Literal 
-    )
-    |> toMap
-    
-let binBoolToBool = 
-    (   
-        [
-        And, (&&); 
-        Or,  (||);
-        ] , (|BOOLLIT|_|), BoolLit>>Literal 
-    )
-    |> toMap
 
-let binIntToInt = 
-    (
-        [
-        Plus, (+);
-        Minus,(-);   
-        Mult, (*); 
-        Div,  (/);
-        ], (|INTLIT|_|), IntLit>>Literal
-    ) 
-    |> toMap
+let UnToMap (lst, inputMatcher, outputTransformer) =
+    (List.map (fun (n,f) -> n, f >> outputTransformer) lst |> Map , inputMatcher)
+
+let unListToAst =
+    ( [
+        Head, (fun (l,r) -> l);   
+        Tail, (fun (l,r) -> r);         
+      ], (|SEQEXP|_|), (fun (x:Ast) -> x) ) // addnotation needed to make the function non-generic
+    |> UnToMap
+
+let (|UNBUILTIN|_|) (map,(|INTYPE|_|)) (f, x) = 
+    match (f, x) with
+    | BuiltInFunc b, INTYPE value when Map.containsKey b map 
+        -> (Map.find b map) value |> Ok |> Some
+    | BuiltInFunc b, arg when Map.containsKey b map 
+        -> Error <| sprintf "%A is unsuported for %A" b arg |> Some
+    | _ -> None
+
+/// Binary Builtin
+
+let mapBin outputTransformer lst =
+    List.map (fun (n,fn) -> n, (fun f g l r -> g (f l r)) fn outputTransformer) lst
+
+let binInt = 
+    let binIntToBool =     
+        mapBin (BoolLit>>Literal)
+         [
+            Greater,   (>); 
+            GreaterEq, (>=); 
+            Less,      (<); 
+            LessEq,    (<=); 
+            Equal,     (=);  
+        ]          
+    let binIntToInt = 
+        mapBin (IntLit>>Literal)
+         [
+            Plus, (+);
+            Minus,(-);   
+            Mult, (*); 
+            Div,  (/);
+         ] 
+
+    binIntToBool @ binIntToInt |> Map, (|INTLIT|_|) 
+
+let binBool = 
+    let binBoolToBool = 
+        mapBin (BoolLit>>Literal) 
+         [
+            And, (&&); 
+            Or,  (||);
+         ] 
+    binBoolToBool |> Map, (|BOOLLIT|_|)
 
 /// PAP buildier for binary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned
@@ -139,9 +177,8 @@ let rec functionApplication env f x =
         // reduce - lambda (CHANGE HERE FOR NORMAL REDUCTION)
         | Lambda  { LambdaParam = name; LambdaBody = body;}, ast
             -> evaluate (extendVarMap env name ast) body
-        | BINBUILTIN binIntToBool  res -> res
-        | BINBUILTIN binBoolToBool res -> res
-        | BINBUILTIN binIntToInt   res -> res
+        | BINBUILTIN binInt  res -> res
+        | BINBUILTIN binBool res -> res
 
         // add FuncApp
         // add BuiltInFunc
