@@ -8,7 +8,9 @@
   <ItemGroup>
     <Compile Include="TokeniserStub.fs" />
     <Compile Include="Parser.fs" />
-    <Compile Include="ParserTest.fs" />
+    <!-- Compile Include="ParserTest.fs" /-->
+    <Compile Include="TypeChecker.fs" />
+    <Compile Include="TypeCheckerTest.fs" />
   </ItemGroup>
 
   <ItemGroup>
