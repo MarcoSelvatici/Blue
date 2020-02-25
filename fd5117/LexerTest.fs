@@ -5,7 +5,7 @@ open Expecto
 [<Tests>]
 let toktest1 =
     testCase "test 1 for tokenise function" <| fun () ->
-        Expect.equal (tokeniseT3 "\"4s\tdsd\"") [] 
+        Expect.equal (tokeniseT3 "\"4s\'dsd\"\'3\'") [] 
                       "testing tokenising for ([(...)])"
 
 [<Tests>]

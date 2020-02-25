@@ -33,6 +33,7 @@ type BuiltInFunc =
 type Literal =
     | IntLit of int
     | BoolLit of bool
+    | CharLit of char
     | StringLit of string
 
 type Token =
@@ -67,23 +68,28 @@ let rec buildComment input =
 
 let rec buildString str input =
     match input with 
-    | currChar::tl when not <| (currChar.Equals('\"') || 
-                                currChar.Equals('\\')) -> buildString (str + string currChar) tl
+    | currChar::tl when not <| List.contains currChar ['\\';'\"'] -> buildString (str + string currChar) tl
     | currChar::tl when currChar.Equals('\\') ->      
                         match tl with
-                        | esc::tl' when esc.Equals('a') || 
-                                        esc.Equals('b') ||  
-                                        esc.Equals('f') ||  
-                                        esc.Equals('n') ||  
-                                        esc.Equals('r') ||  
-                                        esc.Equals('t') ||  
-                                        esc.Equals('v') ||  
-                                        esc.Equals('\\') ||  
-                                        esc.Equals('\"') ||  
-                                        esc.Equals('\'') -> buildString (str + string ('\\' + esc)) tl'
+                        | esc::tl' when List.contains esc ['a';'b';'f';'n';'r';'t';'v';'\\';'\"';'\'']
+                            -> buildString (str + string ('\\' + esc)) tl'
+                
                         | _ -> failwithf "lexing error, expected valid ESC sequence" 
     | currChar::tl when currChar.Equals('\"') -> str, tl
     | _ -> failwithf "lexing error, expecting \""
+
+let rec buildChar input =
+    match input with 
+    | currChar::tl when not <| List.contains currChar ['\\';'\''] -> 
+                   match tl with 
+                   |'\''::tl' -> currChar, tl'
+                   | _ -> failwithf "lexing error, expecting \'"
+    | currChar::tl when currChar.Equals('\\') ->      
+                        match tl with
+                        | esc::tl' when List.contains esc ['a';'b';'f';'n';'r';'t';'v';'\\';'\"';'\'']
+                            -> ('\\' + esc), tl'
+                        | _ -> failwithf "lexing error, expected valid ESC sequence" 
+    | _ -> failwithf "lexing error, char cannot be empty"
 
 let tokeniseT3 (str: string) : Token list =
     // Recursively trying to match a token. 
@@ -127,6 +133,9 @@ let tokeniseT3 (str: string) : Token list =
         | '\"'::tl -> 
             let str, rest = buildString "" tl
             [str |> StringLit |> TLiteral] @ tokenise rest
+        | '\''::tl -> 
+            let c, rest = buildChar tl
+            [c |> CharLit |> TLiteral] @ tokenise rest
         | [] -> []
         | _ -> []
             // Other case, lets match the whole string and return it.
