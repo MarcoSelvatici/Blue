@@ -35,9 +35,9 @@ let testCases = [
     "Complex if exp `if 2<3 then 2-3 else 2/3`", IfExp (FuncApp (FuncApp (BuiltInFunc Less, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Minus, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Div, Literal (IntLit 2)), Literal (IntLit 3))),
         Ok (Base Int);
     "Simple lambda", buildLambda "x" (Identifier "x"),
-        Ok (Fun(Gen 0, Gen 0));
+        Ok (Fun(Gen 1, Gen 1));
     "Simple lambda int", buildLambda "x" (Literal (IntLit 1)),
-        Ok (Fun(Gen 0, Base Int));
+        Ok (Fun(Gen 1, Base Int));
     "Simple lambda int plus", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Literal (IntLit 3))),
         Ok (Fun(Base Int, Base Int));
     "Simple lambda plus", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "x")),
@@ -45,7 +45,7 @@ let testCases = [
     "Simple lambda unbound", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "y")),
         Error "Identifier y is not bound";
     "Nested lambdas", buildLambda "x" (buildLambda "y" (Identifier "y")),
-        Ok (Fun(Gen 0, Fun(Gen 1, Gen 1)));
+        Ok (Fun(Gen 1, Fun(Gen 2, Gen 2)));
     "Simple partial application (\x. \y. y*x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Mult, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
         Ok (Fun(Base Int, Base Int));
     "Simple partial application bool (\x. \y. y<x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
@@ -57,7 +57,7 @@ let testCases = [
     "Simple `let x = 1 in x`", FuncDefExp {FuncName="x"; FuncBody=Literal (IntLit 1); Rest=Identifier "x"},
         Ok (Base Int);
     "Partially applied `let x y = y in x`", buildCarriedFunc ["x"; "y"] (Identifier "y") (Identifier "x"),
-        Ok (Fun(Gen 0, Gen 0));
+        Ok (Fun(Gen 1, Gen 1));
     "Partially applied int `let x y = y + 1 in x`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (Identifier "x"),
         Ok (Fun(Base Int, Base Int));
     "Fully applied int `let x y = y + 1 in x 4`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (FuncApp (Identifier "x", Literal (IntLit 4))),
@@ -82,8 +82,10 @@ let testCases = [
         Ok (Pair (Base Int, Base NullType));
     "Simple SeqExp with base types `[1 , 'hello', true]`", SeqExp (Literal (IntLit 1), SeqExp (Literal (StringLit "hello"), SeqExp (Literal (BoolLit true), Null))),
         Ok (Pair (Base Int, Pair (Base String, Pair (Base Bool, Base NullType))));
-    "Simple  SeqExp with Lambda `[1 , \x.x]`", SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (Identifier "x"), Null)),
-        Ok (Pair (Base Int, Pair (Fun (Gen 0, Gen 0), Base NullType)));
+    "Simple SeqExp with Lambda `[1 , \x.x]`", SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (Identifier "x"), Null)),
+        Ok (Pair (Base Int, Pair (Fun (Gen 1, Gen 1), Base NullType)));
+    "Unique ids `[\x.x, \y.y]`", SeqExp (buildLambda "y" (Identifier "y"), SeqExp (buildLambda "x" (Identifier "x"), Null)),
+        Ok (Pair (Fun (Gen 1, Gen 1), Pair ( Fun (Gen 2, Gen 2), Base NullType)));
 ]
 
 let testTypeChecker (description, ast, expected) =
@@ -95,7 +97,8 @@ let testTypeChecker (description, ast, expected) =
 let tests = testList "Type checker test" <| List.map testTypeChecker testCases
 
 let testAll() =
-    runTestsInAssembly defaultConfig [||] |> ignore
+    // Tests cannot run in parallel since the code uses a mutable variable.
+    runTestsInAssembly {defaultConfig with parallel=false} [||] |> ignore
 
 [<EntryPoint>]
 let main argv =
