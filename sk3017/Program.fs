@@ -13,6 +13,8 @@ let intL n = Literal (IntLit n)
 let stringL s = Literal (StringLit s)
 let lam n body = 
     Lambda { LambdaParam = n; LambdaBody = body}
+let def name body rest = 
+    FuncDefExp {FuncName=name; FuncBody=body; Rest=rest}
 
 let binaryBuiltin builtin lhs rhs =
     FuncApp (FuncApp (BuiltInFunc builtin, lhs), rhs)
@@ -29,7 +31,6 @@ let simpleRecAST b =
              ))
         Rest = FuncApp (Identifier "f",b)
     }
-
 let factorialAST r = 
     FuncDefExp { 
         FuncName="factorial";
@@ -108,8 +109,17 @@ let testOk : TestInfo=
                 (binaryBuiltin Mult (intL 2) (intL 3))
                 (binaryBuiltin Mult (intL 4) (intL 5)) )
         (intL 6),
-        trueL;
-    
+    trueL;
+
+    "Function Definition and arithmetic", "let c = 10 in c * 6 + c / 2 + c -> 75",
+    def "c" (intL 10)( binaryBuiltin Plus
+                    ( binaryBuiltin Mult (Identifier "c") (intL 6) )
+                    ( binaryBuiltin Plus 
+                        (binaryBuiltin Div (Identifier "c") (intL 2))
+                        (Identifier "c")
+                    ) ),
+    intL 75;
+        
     "Simple recursion", "let f c = if c then Null else (f true) in f false -> Null",
     simpleRecAST <| falseL, Null;
     "Recursion - factorial (basecase)", "factorial 0 -> 1",
@@ -128,6 +138,10 @@ let testErr : TestInfo=
     "Identifier", "foo", Identifier "foo", "Identifier \'foo\' is not defined";
     "Function Application List", "[]", FuncAppList [], "What? parser returned FuncAppList";
     "Identifier List", "[]", IdentifierList [],"What? parser returned IdentifierList";
+
+    "> wrong type", "3 > Null", binaryBuiltin Greater (intL 3) Null, "Greater is unsuported for Literal (IntLit 3), Null";
+    "= wrong type" ,"true = 1", binaryBuiltin Equal trueL (intL 1), "Equal is unsuported for Literal (BoolLit true), Literal (IntLit 1)";
+
     "Lambda \\a.b", "\\a.b", Lambda { LambdaParam = "a"; LambdaBody = Identifier "b"},"Identifier \'b\' is not defined";
     ]
     |> List.map (fun (n,d,i,o) -> (n,d,i,Error o))
@@ -152,3 +166,5 @@ let main argv =
     allTests()
     Console.ReadKey() |> ignore
     0 
+
+// TODO add test thatt chack that names defined in lambdas dont mix with that in definitions

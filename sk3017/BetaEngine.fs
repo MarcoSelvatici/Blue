@@ -43,7 +43,6 @@ let (|STRINGLIT|_|) x =
     match x with
     | Literal (StringLit v) -> Some v
     | _ -> None
-
 let (|SEQEXP|_|) x = 
     match x with 
     | SeqExp (l,r) -> Some (l,r)
@@ -58,19 +57,23 @@ BuiltInFunc
     | Size
 *)
 
-
+let toMap (lst, inputMatcher, outputTransformer) =
+    let (>>>) f g a b = g ( f a b )
+    List.map (fun (n,f) -> n, f >>> outputTransformer) lst |> Map, inputMatcher
 
 // (BuiltInFunc) * (int -> int -> bool) 
 let binIntToBool = 
-    [
-    //Greater,    (>); 
-    GreaterEq,  (>=); 
-    Less,       (<); 
-    LessEq,     (<=); 
-    Equal,      (=);  
-    ] |> Map, (|INTLIT|_|) , BoolLit
+    let mapping = 
+        [
+        Greater,   (>); 
+        GreaterEq, (>=); 
+        Less,      (<); 
+        LessEq,    (<=); 
+        Equal,     (=);  
+        ] 
+    ( mapping, (|INTLIT|_|) , BoolLit>>Literal )
+    |> toMap
     
-
 let binBoolToBool = 
     [
     And, (&&); 
@@ -78,7 +81,7 @@ let binBoolToBool =
     ] |> Map, (|BOOLLIT|_|), BoolLit
 let binIntToInt = 
     [
-    Plus, (+);
+    //Plus, (+);
     Minus,(-);   
     Mult, (*); 
     Div,  (/);
@@ -93,63 +96,17 @@ let binIntToInt =
 /// parameters:
 /// - map - Map from Builtin token to F# function
 /// - (|INTYPE|_|) - PAP for matching the input type (both have to be the same) // TODO: change?
-/// - output - function that packages the output into desider type              // TODO: merge with map ?
 /// - f,x - left- and righthandside of function application
-let (|BINBUILTIN|_|) (map,(|INTYPE|_|),output) (f, x)  =
+let (|BINBUILTIN|_|) (map,(|INTYPE|_|)) (f, x)  =
     match (f, x) with
     | FuncApp (BuiltInFunc b, INTYPE l), INTYPE r when Map.containsKey b map 
-        -> (Map.find b map) l r |> output |> Literal |> Ok |> Some
+        -> (Map.find b map) l r |> Ok |> Some
     | FuncApp (BuiltInFunc b, Identifier l), INTYPE r when Map.containsKey b map 
         -> FuncApp (f,x) |> Ok |> Some
     | FuncApp (BuiltInFunc b, lArg), rArg  when Map.containsKey b map
         -> Error <| sprintf "%A is unsuported for %A, %A" b lArg rArg |> Some
     | BuiltInFunc b, _ when Map.containsKey b map
         -> FuncApp (f,x) |> Ok |> Some
-    | _ -> None
-
-(*
-type internal BuilinOutcome =
-    | Fail
-    | Delay
-    | Err of BuiltInFunc * list<Ast>
-    | Success of BuiltInFunc * list<Ast>
-
-let rec builtInRec (map, inputMatchLst) (f, x)  =
-    match inputMatchLst with
-        | (inputCheck)::[] -> (
-            match f, x with 
-            | BuiltInFunc b, x when Map.containsKey b map && inputCheck x
-                -> Success (b, [x])
-            | BuiltInFunc b, Identifier x when Map.containsKey b map
-                -> Delay
-            | BuiltInFunc b, x when Map.containsKey b map
-                -> Err (b, [x])
-            | _ -> Fail )
-
-        | _ -> failwithf "i shit in the bed"
-
-let (|BUILTIN|_|) (map, inputMatchLst) (f, x) =
-    match builtInRec (map, inputMatchLst) (f, x) with
-    | Fail -> None
-    | Delay -> FuncApp (f,x) |> Ok |> Some
-    // | Err msg -> Error msg |> Some # find first 'false' in list and then return upsie
-    | Success (builin, argList) 
-        -> (Map.find builin map) argList
-*)
-
-    
-let (|BUILTIN|_|) map (f, x) =
-    // note it reverses the list
-    // can add max depth for safety
-    let rec (|FLATBUILTIN|_|) (f, x)  =
-        match f, x with 
-        | _, Identifier i -> None // skips indentifiers
-        | BuiltInFunc b, _ ->  (b, [x]) |> Some
-        | FuncApp (FLATBUILTIN (b, argLst)), _ -> (b, x::argLst) |> Some
-        | _ -> None
-
-    match (f,x) with
-    | FLATBUILTIN (builIn, argLst) -> (Map.find builIn map) argLst
     | _ -> None
 
 
@@ -245,3 +202,5 @@ and evaluate env ast =
 // top level function
 let runAst ast =
     evaluate ([],Map.empty) ast
+
+ // TODO: add error contructor
