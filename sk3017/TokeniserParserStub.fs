@@ -1,9 +1,9 @@
-
 module TokeniserParserStub
 
 //=============//
 // Token types //
 //=============//
+
 type BuiltInFunc =
     // UnaryOp
     | Not
@@ -31,33 +31,6 @@ type Literal =
     | BoolLit of bool
     | StringLit of string
 
-type Token =
-    | TLiteral of Literal
-    | TIdentifier of string
-    | TBuiltInFunc of BuiltInFunc
-    // Keywords
-    | KLet
-    | KRec
-    | KEq
-    | KIn
-    | KNi
-    | KComma
-    | KOpenRound
-    | KCloseRound
-    | KOpenSquare
-    | KCloseSquare
-    | KLambda
-    | KDot
-    | KIf
-    | KThen
-    | KElse
-    | KFi
-    | KAppend
-    | KNull
-    | KStrEq
-    | KImplode
-    | KExplode
-
 //==========//
 // Ast type //
 //==========//
@@ -65,7 +38,7 @@ type Token =
 type Ast =
     | FuncDefExp of FuncDefExpType // function definition(s) followed by expression
     | Lambda of LambdaType // anonymous function
-    | FuncApp of Ast * Ast
+    | FuncApp of (Ast * Ast)
     | FuncAppList of Ast list
     | Null // used with pair to make lists
     | Literal of Literal

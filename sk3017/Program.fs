@@ -41,7 +41,7 @@ let factorialAST r =
                  (Identifier "n")
                  ( FuncApp (Identifier "factorial", binaryBuiltin Minus (Identifier "n") (intL 1) ) )   
                 )
-            ))
+            ) )
         Rest = r
     }
 

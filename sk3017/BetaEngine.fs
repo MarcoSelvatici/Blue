@@ -16,7 +16,7 @@ let extendEnv (boundVariables, variableMap) name body =
 
 /// adds name to boundVariables, removes name from map
 /// * used to keep track of bound Variables in lambdas
-/// * since the new name is not yet tied to AST it should be removed from the map
+/// * since the new name is not yet tied to an AST it should be removed from the map
 let extendBoundVar (boundVariables, variableMap) name = 
     name::boundVariables, Map.remove name variableMap
 
@@ -43,7 +43,11 @@ let (|STRINGLIT|_|) x =
     match x with
     | Literal (StringLit v) -> Some v
     | _ -> None
-//let (||_|) 
+
+let (|SEQEXP|_|) x = 
+    match x with 
+    | SeqExp (l,r) -> Some (l,r)
+    | _ -> None
 
 (*
 BuiltInFunc
@@ -55,24 +59,24 @@ BuiltInFunc
 *)
 
 
-// 3 datastructers containg information about builtin binary operators
-// - map 
-let binaryIntToBoolOperators = 
+
+// (BuiltInFunc) * (int -> int -> bool) 
+let binIntToBool = 
     [
-    Greater,    (>); 
+    //Greater,    (>); 
     GreaterEq,  (>=); 
     Less,       (<); 
     LessEq,     (<=); 
     Equal,      (=);  
-    ] |> Map, (|INTLIT|_|), BoolLit
+    ] |> Map, (|INTLIT|_|) , BoolLit
+    
 
-let binaryBoolToBoolOperators = 
+let binBoolToBool = 
     [
     And, (&&); 
     Or,  (||);
     ] |> Map, (|BOOLLIT|_|), BoolLit
-
-let binaryInttoIntOperators = 
+let binIntToInt = 
     [
     Plus, (+);
     Minus,(-);   
@@ -103,6 +107,51 @@ let (|BINBUILTIN|_|) (map,(|INTYPE|_|),output) (f, x)  =
         -> FuncApp (f,x) |> Ok |> Some
     | _ -> None
 
+(*
+type internal BuilinOutcome =
+    | Fail
+    | Delay
+    | Err of BuiltInFunc * list<Ast>
+    | Success of BuiltInFunc * list<Ast>
+
+let rec builtInRec (map, inputMatchLst) (f, x)  =
+    match inputMatchLst with
+        | (inputCheck)::[] -> (
+            match f, x with 
+            | BuiltInFunc b, x when Map.containsKey b map && inputCheck x
+                -> Success (b, [x])
+            | BuiltInFunc b, Identifier x when Map.containsKey b map
+                -> Delay
+            | BuiltInFunc b, x when Map.containsKey b map
+                -> Err (b, [x])
+            | _ -> Fail )
+
+        | _ -> failwithf "i shit in the bed"
+
+let (|BUILTIN|_|) (map, inputMatchLst) (f, x) =
+    match builtInRec (map, inputMatchLst) (f, x) with
+    | Fail -> None
+    | Delay -> FuncApp (f,x) |> Ok |> Some
+    // | Err msg -> Error msg |> Some # find first 'false' in list and then return upsie
+    | Success (builin, argList) 
+        -> (Map.find builin map) argList
+*)
+
+    
+let (|BUILTIN|_|) map (f, x) =
+    // note it reverses the list
+    // can add max depth for safety
+    let rec (|FLATBUILTIN|_|) (f, x)  =
+        match f, x with 
+        | _, Identifier i -> None // skips indentifiers
+        | BuiltInFunc b, _ ->  (b, [x]) |> Some
+        | FuncApp (FLATBUILTIN (b, argLst)), _ -> (b, x::argLst) |> Some
+        | _ -> None
+
+    match (f,x) with
+    | FLATBUILTIN (builIn, argLst) -> (Map.find builIn map) argLst
+    | _ -> None
+
 
 // TODO : possibly delay evaluation of f or x
 let rec functionApplication env f x =
@@ -126,9 +175,9 @@ let rec functionApplication env f x =
         // reduce - lambda (CHANGE HERE FOR NORMAL REDUCTION)
         | Lambda  { LambdaParam = name; LambdaBody = body;}, ast
             -> evaluate (extendVarMap env name ast) body
-        | BINBUILTIN binaryIntToBoolOperators  res -> res
-        | BINBUILTIN binaryBoolToBoolOperators res -> res
-        | BINBUILTIN binaryInttoIntOperators   res -> res
+        | BINBUILTIN binIntToBool  res -> res
+        | BINBUILTIN binBoolToBool res -> res
+        | BINBUILTIN binIntToInt   res -> res
 
         // add FuncApp
         // add BuiltInFunc
