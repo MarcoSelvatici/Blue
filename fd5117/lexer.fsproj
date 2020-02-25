@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <Compile Include="Lexer.fs" />
+    <Compile Include="LexerTest.fs" />
   </ItemGroup>
 
   <ItemGroup>

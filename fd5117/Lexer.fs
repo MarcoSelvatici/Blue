@@ -1,64 +1,63 @@
-open System
+module Lexer
 
-// type ESC =  
-//     | "\\a" // alert
-//     | "\\b" // backspace
-//     | "\\f" // form feed
-//     | "\\n" // new line
-//     | "\\r" // carriage return
-//     | "\\t" // tab
-//     | "\\v" // vertical tab
-//     | "\\\\" // backslash
-//     | "\\" + '\"' // quotation mark
-//     | "\\\'" // apostrophe
+type BuiltInFunc =
+    // Builtin with no special treatment
+    | BNot
+    | BAssign
+    | BHead
+    | BTail
+    | BSize
+    | BImplode
+    | BExplode
+    | BAppend
+    | BStrEq
+    // ComparisonOp
+    | BGreater
+    | BGreaterEq
+    | BLess
+    | BLessEq
+    | BEqual
+    // LogicalOp
+    | BAnd
+    | BOr
+    // BitwiseOp
+    | BBitAnd
+    | BBitOr
+    // AdditiveOp
+    | BPlus
+    | BMinus
+    // MultiplicativeOp
+    | BMult
+    | BDiv
 
-type Keyword = 
+type Literal =
+    | IntLit of int
+    | BoolLit of bool
+    | StringLit of string
+
+type Token =
+    | TLiteral of Literal
+    | TIdentifier of string
+    | TBuiltInFunc of BuiltInFunc
+    
+    // Keywords
     | KLet
     | KRec
-    | KOpenRound // char OK
-    | KCloseRound // char OK
-    | KLambda // char OK
-    | KDot // char OK
+    | KEq
+    | KIn
+    | KNi
+    | KComma
+    | KOpenRound
+    | KCloseRound
+    | KOpenSquare
+    | KCloseSquare
+    | KLambda
+    | KDot
     | KIf
     | KThen
     | KElse
     | KFi
-    | KIn
-    | KPlus // char OK
-    | KMinus // char OK
-    | KMult // char OK
-    | KDiv // char OK
-    | KGreater // char OK
-    | KGreaterEq // OK
-    | KLess // char OK
-    | KLessEq // OK
-    | KEqual // OK
-    | KAssign // char OK
-    | KBitWiseAnd  // char OK
-    | KBitwiseOr // char OK
-    | KCompareAnd // OK
-    | KCompareOr // OK
-    | KNot // char OK
-    | KHead 
-    | KTail
-    | KSize
-    | KAppend
     | KNull
-    | KStrEq
-    | KImplode
-    | KExplode
-
-type Literal =
-    | BoolLit of bool
-    | IntLit of int
-    | StrLit of string
-
-type Token =
-    | TIdentifier of string
-    | TLit of Literal
-    | TKey of Keyword
-
-
 
 // If other, build recursively a single token.
 let rec buildComment input =
@@ -66,45 +65,68 @@ let rec buildComment input =
     | currChar::tl when not <| currChar.Equals('\n') -> buildComment tl
     | _ -> input
 
+let rec buildString str input =
+    match input with 
+    | currChar::tl when not <| (currChar.Equals('\"') || 
+                                currChar.Equals('\\')) -> buildString (str + string currChar) tl
+    | currChar::tl when currChar.Equals('\\') ->      
+                        match tl with
+                        | esc::tl' when esc.Equals('a') || 
+                                        esc.Equals('b') ||  
+                                        esc.Equals('f') ||  
+                                        esc.Equals('n') ||  
+                                        esc.Equals('r') ||  
+                                        esc.Equals('t') ||  
+                                        esc.Equals('v') ||  
+                                        esc.Equals('\\') ||  
+                                        esc.Equals('\"') ||  
+                                        esc.Equals('\'') -> buildString (str + string ('\\' + esc)) tl'
+                        | _ -> failwithf "lexing error, expected valid ESC sequence" 
+    | currChar::tl when currChar.Equals('\"') -> str, tl
+    | _ -> failwithf "lexing error, expecting \""
+
 let tokeniseT3 (str: string) : Token list =
     // Recursively trying to match a token. 
     let rec tokenise (input: char list) : Token list =
         match input with
         | ' '::tl -> tokenise tl
-        | '.'::tl -> [KDot |> TKey] @ tokenise tl
-        | '('::tl -> [KOpenRound |> TKey] @ tokenise tl
-        | ')'::tl -> [KCloseRound |> TKey] @ tokenise tl
-        | '\\'::tl -> [KLambda |> TKey] @ tokenise tl
-        | '+'::tl -> [KPlus |> TKey] @ tokenise tl
-        | '-'::tl -> [KMinus |> TKey] @ tokenise tl
-        | '*'::tl -> [KMult |> TKey] @ tokenise tl
+        | '.'::tl -> [KDot] @ tokenise tl
+        | '('::tl -> [KOpenRound] @ tokenise tl
+        | ')'::tl -> [KCloseRound] @ tokenise tl
+        | '\\'::tl -> [KLambda] @ tokenise tl
+        | '+'::tl -> [BPlus |> TBuiltInFunc] @ tokenise tl
+        | '-'::tl -> [BMinus |> TBuiltInFunc] @ tokenise tl
+        | '*'::tl -> [BMult |> TBuiltInFunc] @ tokenise tl
         | '/'::tl -> 
            match tl with 
            | '/'::tl' -> 
                 let rest = buildComment tl'
                 tokenise rest
-           | _ -> [KDiv |> TKey] @ tokenise tl 
-        | '!'::tl -> [KNot |> TKey] @ tokenise tl
+           | _ -> [BDiv |> TBuiltInFunc] @ tokenise tl 
+        | '!'::tl -> [BNot |> TBuiltInFunc] @ tokenise tl
         | '>'::tl -> 
            match tl with
-           | '='::tl' -> [KGreaterEq |> TKey] @ tokenise tl'
-           | _ -> [KGreater |> TKey] @ tokenise tl
+           | '='::tl' -> [BGreaterEq |> TBuiltInFunc] @ tokenise tl'
+           | _ -> [BGreater |> TBuiltInFunc] @ tokenise tl
         | '<'::tl -> 
            match tl with
-           | '='::tl' -> [KLessEq |> TKey] @ tokenise tl'
-           | _ -> [KLess |> TKey] @ tokenise tl
+           | '='::tl' -> [BLessEq |> TBuiltInFunc] @ tokenise tl'
+           | _ -> [BLess |> TBuiltInFunc] @ tokenise tl
         | '='::tl -> 
            match tl with
-           | '='::tl' -> [KEqual |> TKey] @ tokenise tl'
-           | _ -> [KAssign |> TKey] @ tokenise tl
+           | '='::tl' -> [BEqual |> TBuiltInFunc] @ tokenise tl'
+           | _ -> [BAssign |> TBuiltInFunc] @ tokenise tl
         | '&'::tl -> 
            match tl with
-           | '&'::tl' -> [KCompareAnd |> TKey] @ tokenise tl'
-           | _ -> [KBitWiseAnd |> TKey] @ tokenise tl
+           | '&'::tl' -> [BAnd |> TBuiltInFunc] @ tokenise tl'
+           | _ -> [BBitAnd |> TBuiltInFunc] @ tokenise tl
         | '|'::tl -> 
            match tl with
-           | '|'::tl' -> [KCompareOr |> TKey] @ tokenise tl'
-           | _ -> [KBitwiseOr |> TKey] @ tokenise tl
+           | '|'::tl' -> [BOr |> TBuiltInFunc] @ tokenise tl'
+           | _ -> [BBitOr |> TBuiltInFunc] @ tokenise tl
+        | '\"'::tl -> 
+            let str, rest = buildString "" tl
+            [str |> StringLit |> TLiteral] @ tokenise rest
         | [] -> []
         | _ -> []
             // Other case, lets match the whole string and return it.
