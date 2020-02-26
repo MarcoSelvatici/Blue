@@ -31,6 +31,7 @@ type BuiltInFunc =
 
 type Literal =
     | IntLit of int        // OK
+    | FloatLit of float    // OK
     | BoolLit of bool      // OK
     | CharLit of char      // OK
     | StringLit of string  // OK
@@ -59,22 +60,29 @@ type Token =
     | KFi            // OK
     | KNull          // OK
 
+let esc = ['\a';'\b';'\f';'\n';'\r';'\t';'\v';'\\';'\"';'\'']
 // If other, build recursively a single token.
-let rec buildNumber number input =
+let rec buildNumber isFloat number input =
     match input with 
-    | currChar::tl when List.contains currChar (['0'..'9']) -> buildNumber (number + string currChar) tl
+    | currChar::tl when List.contains currChar (['0'..'9']) -> buildNumber isFloat (number + string currChar) tl
+    | currChar::tl when (currChar.Equals('.') && (not isFloat)) -> 
+                   match tl with 
+                   | num::tl' when List.contains num (['0'..'9']) ->
+                        buildNumber true (number + string currChar) tl
+                   | _ -> failwithf "lexing error, expecting decimal digit after dot"
     | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'&';'|';' ']) 
-                   -> number, input
-    | [] -> number, input
+                   -> isFloat, number, input
+    | [] -> isFloat, number, input
     | _ -> failwithf "lexing error, number contains non numeric char"
 
 let rec buildWord word input =
-    match input with 
+    match input with
     | currChar::tl when List.contains currChar (['a'..'z']@['A'..'Z']) -> buildWord (word + string currChar) tl
-    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'&';'|';' ']) 
-                   -> word, input
+    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'&';'|';' ']@esc) 
+                  -> word, input
     | [] -> word, input
-    | _ -> failwithf "lexing error, unrecognised non-alphabetic character"
+    | currChar::tl -> failwithf "lexing error, unrecognised non-alphabetic character: %c" currChar
+    | _ -> failwithf "lexing error, unexpected behaviour" 
 
 let rec buildComment input =
     match input with 
@@ -154,10 +162,11 @@ let tokeniseT3 (str: string) : Token list =
             let c, rest = buildChar tl
             [c |> CharLit |> TLiteral] @ tokenise rest
         | [] -> []
-        | ' '::tl -> tokenise tl
+        | currChar::tl  when List.contains currChar ([' ']@esc) -> tokenise tl
         | currChar::tl when List.contains currChar (['0'..'9']) ->
-            let number, rest = buildNumber "" input
-            [int number |> IntLit |> TLiteral] @ tokenise rest
+            let isFloat, number, rest = buildNumber false "" input
+            if isFloat then [float number |> FloatLit |> TLiteral] @ tokenise rest
+            else [int number |> IntLit |> TLiteral] @ tokenise rest
         | currChar::tl when List.contains currChar (['a'..'z']@['A'..'Z']) -> 
             let word, rest = buildWord "" input
             match (string word) with 
@@ -180,6 +189,7 @@ let tokeniseT3 (str: string) : Token list =
             | "fi" -> [KFi] @ tokenise rest
             | "null" -> [KNull] @ tokenise rest
             | _ -> [word |> TIdentifier] @ tokenise rest
-        | _ -> failwithf "lexing error, unrecognised character"
+        | currChar::tl -> failwithf "lexing error, unrecognised character %c" currChar
+        | _ -> failwithf "lexing error, unexpected behaviour"
            
     tokenise <| Seq.toList str 
