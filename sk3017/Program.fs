@@ -15,7 +15,13 @@ let lam n body =
     Lambda { LambdaParam = n; LambdaBody = body}
 let def name body rest = 
     FuncDefExp {FuncName=name; FuncBody=body; Rest=rest}
+let rec buildList list =
+    match list with
+    | [] -> Null
+    | ele::rest -> SeqExp(ele, buildList rest)
 
+let unaryBuiltin builtin arg = 
+    FuncApp (BuiltInFunc builtin, arg)
 let binaryBuiltin builtin lhs rhs =
     FuncApp (FuncApp (BuiltInFunc builtin, lhs), rhs)
 
@@ -46,7 +52,6 @@ let factorialAST r =
         Rest = r
     }
 
-
 /// tests with the same input and output ASTs
 let testId : TestInfo= 
     [ 
@@ -69,6 +74,9 @@ let testId : TestInfo=
 /// tests that should return reduced (Ok AST)
 let testOk : TestInfo= 
     [
+    "buildList empty","buildList [] -> Null", buildList [], Null;
+    "buildList","buildList [Null; Null] -> [Null; Null]", buildList [Null; Null], SeqExp (Null, SeqExp (Null, Null));
+    
     "Round expression (-10)", "(-10) -> -10", RoundExp (intL -10), (intL -10);
     "Nested Round expression (((Null)))", "(((Null)))", Null |> RoundExp |> RoundExp |> RoundExp, Null;
     "if true", "if true then \"abc\" else Null", 
@@ -86,6 +94,7 @@ let testOk : TestInfo=
     Lambda { LambdaParam = "a"; LambdaBody = FuncApp (Lambda { LambdaParam = "b"; LambdaBody = Identifier "b";}, Null );},
     Lambda { LambdaParam = "a"; LambdaBody = Null;};
 
+    // arithmetic
     ">", "5 > 1  -> true" , binaryBuiltin Greater   (intL 5) (intL 1), trueL;
     "<", "3 < 0 -> false" , binaryBuiltin Less      (intL 3) (intL 0), falseL;
     ">=","2 >= 4 -> false", binaryBuiltin GreaterEq (intL 2) (intL 4), falseL;
@@ -97,6 +106,9 @@ let testOk : TestInfo=
     "and true", "T and T -> T", binaryBuiltin And trueL trueL , trueL;
     "or true",  "T or F  -> T", binaryBuiltin Or  trueL falseL, trueL;
     "or false", "F or F  -> F", binaryBuiltin Or falseL falseL, falseL;
+
+    "not T", "not T -> F", unaryBuiltin Not trueL, falseL;
+    "not F", "not F -> R", unaryBuiltin Not falseL, trueL;
     
     "+", "7+8 -> 15", binaryBuiltin Plus  (intL 7) (intL 8), (intL 15);
     "-", "5-3 ->  2", binaryBuiltin Minus (intL 5) (intL 3), (intL  2);
@@ -120,11 +132,19 @@ let testOk : TestInfo=
                     ) ),
     intL 75;
 
+    // string
     "String Equality true", "StrEq \"word\" \"word\" -> true",
     binaryBuiltin StrEq (stringL "word") (stringL "word"), trueL;
     "String Equality false", "StrEq \"EIE\" \"EEE\" -> false",
     binaryBuiltin StrEq (stringL "EIE") (stringL "EEE"), falseL;
 
+    // lists
+    "Head", "Head [1 2 3] -> 1", unaryBuiltin Head (buildList [intL 1;intL 2;intL 3]), intL(1);
+    "Head with identifiers", "\\c. Head [c, c] -> \\c.c", 
+    lam "c" (unaryBuiltin Head (buildList [Identifier "c"; Identifier "c"])), lam "c" (Identifier "c");
+    "Tail", "Tail [1 2 3] -> [2 3]", unaryBuiltin Tail (buildList [intL 1;intL 2;intL 3]), buildList [intL 2; intL 3];
+
+    // recursion
     "Simple recursion", "let f c = if c then Null else (f true) in f false -> Null",
     simpleRecAST <| falseL, Null;
     "Recursion - factorial (basecase)", "factorial 0 -> 1",
@@ -147,6 +167,8 @@ let testErr : TestInfo=
     "> wrong type", "3 > Null", binaryBuiltin Greater (intL 3) Null, "Greater is unsuported for Literal (IntLit 3), Null";
     "= wrong type" ,"true = 1", binaryBuiltin Equal trueL (intL 1), "Equal is unsuported for Literal (BoolLit true), Literal (IntLit 1)";
     "String Equality wrong type" , "StrEq \"dog\" Null", binaryBuiltin StrEq (stringL "dog") Null, "StrEq is unsuported for Literal (StringLit \"dog\"), Null";
+
+    "Head wrong type", "Head Null", unaryBuiltin Head Null, "Head is unsuported for Null";
 
     "Lambda \\a.b", "\\a.b", Lambda { LambdaParam = "a"; LambdaBody = Identifier "b"},"Identifier \'b\' is not defined";
     ]
@@ -174,5 +196,4 @@ let main argv =
     0 
 
 // TODO add test thatt chack that names defined in lambdas dont mix with that in definitions
-// TODO add tests for head and tail
-// TODO add test for string equality
+// TODO add tests for list append
