@@ -194,7 +194,7 @@ let main argv =
     allTests()
 
     (*
-    factorialAST <| FuncApp (Identifier "factorial", intL 0)
+    unaryBuiltin Not trueL
     |> runAst
     |> print
     |> ignore

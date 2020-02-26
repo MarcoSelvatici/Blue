@@ -49,86 +49,7 @@ let rec (|LIST|_|) x =
     | SeqExp (hd, LIST tlLst) -> Some (hd::tlLst)
     | _ -> None
 
-(*
-   | Explode   String -> AST 
-*)
-
-let mapOutputUnary outputTransformer lst  =
-    List.map (fun (n,f) -> n, f >> outputTransformer) lst
-
-let bBool =
-    // bool -> Ast
-    mapOutputUnary (BoolLit>>Literal)
-     [ // bool -> bool
-        Not, not
-     ]
-    |> Map, (|BOOLLIT|_|)
-
-let bSeq =
-    [   // Seq -> Ast 
-        Head, (fun (l,r) -> l); // addnotation needed to make the function non-generic
-        Tail, (fun (l,r) -> r);         
-    ] 
-    |> Map, (|SEQEXP|_|)
-
-let bList =
-     // List -> Ast
-    [
-        mapOutputUnary (IntLit>>Literal)
-         [ // List -> int
-            Size, (fun (l:Ast list) -> List.length l)
-         ];
-    (*
-        mapUn (Implode) | Implode   List -> String (tricky?) -> AST // coz its like typing the thing
-    *) 
-    ] |> List.concat  
-    |> Map, (|LIST|_|)
-
-/// Binary Builtin
-let mapBin outputTransformer lst =
-    List.map (fun (n,fn) -> n, (fun f g l r -> g (f l r)) fn outputTransformer) lst
-
-let bIntInt = 
-    [  // int -> int -> Ast   
-        mapBin (BoolLit>>Literal)
-         [  // int -> int -> bool
-            Greater,   (>); 
-            GreaterEq, (>=); 
-            Less,      (<); 
-            LessEq,    (<=); 
-            Equal,     (=);  
-        ];          
-        mapBin (IntLit>>Literal)
-         [ // int -> int -> int
-            Plus, (+);
-            Minus,(-);   
-            Mult, (*); 
-            Div,  (/);
-         ]; 
-    ] |> List.concat
-    |> Map, (|INTLIT|_|), (|INTLIT|_|)
-
-let bStringString =
-    // string -> string -> Ast
-    mapBin (BoolLit>>Literal)
-         // string -> string -> bool
-     [ StrEq, (fun (a:string) b -> a = b)]
-    |> Map, (|STRINGLIT|_|), (|STRINGLIT|_|)
-
-let bBoolBool = 
-    // bool -> bool -> Ast
-    mapBin (BoolLit>>Literal)
-     [ // bool -> bool -> bool
-        And, (&&); 
-        Or,  (||);
-     ] 
-    |> Map, (|BOOLLIT|_|), (|BOOLLIT|_|)
-
-let bASTList =
-    //  Ast -> List -> Ast
-    [ Append, (fun l r -> SeqExp (l,r)) ]
-    |> Map, (fun (x:Ast) -> Some x), (|LISTLAZY|_|)
-
+// TODO: add description
 /// PAP buildier for unary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned
 /// * if 'full match' is detected but the types are incorrect - Error is returned
@@ -138,14 +59,43 @@ let bASTList =
 /// - map - Map from Builtin token to F# function
 /// - (|INTYPE|_|) - PAP for matching (and unpacking) the input type
 /// - f,x - left- and righthandside of function application
-let (|UNBUILTIN|_|) (map,(|INTYPE|_|)) (f, x) = 
-    match (f, x) with
-    | BuiltInFunc b, INTYPE value when Map.containsKey b map 
-        -> (Map.find b map) value |> Ok |> Some
-    | BuiltInFunc b, arg when Map.containsKey b map 
-        -> Error <| sprintf "%A is unsuported for %A" b arg |> Some
-    | _ -> None
+let buildUnaryBuiltIn b f (|InType|_|) (argLst, originalAst) =
+    match argLst with
+    | (InType x)::[] -> Ok (f x)
+    // | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_ -> Ok originalAst // TODO: CAN DELETE THIS ROW ?
+    | arg::[] 
+        -> Error <| sprintf "%A is unsuported for %A" b arg
+    | _ -> Error <| sprintf "What? buildUnaryBuiltIn %A %A" b argLst 
 
+let mapInputOutputUnary inputTransformer outputTransformer lstBind =
+    let mapOutputUnary lst =
+        List.map (fun (n,fn) -> n, fn >> outputTransformer) lst
+    let mapInputUnary lst =
+        List.map (fun (name,fn) -> (name,buildUnaryBuiltIn name fn inputTransformer) ) lst
+    
+    lstBind |> mapOutputUnary |> mapInputUnary 
+
+(*
+   | Explode   String -> AST 
+*)
+
+let UnaryBuiltIn =
+    [
+        mapInputOutputUnary (|BOOLLIT|_|) (BoolLit>>Literal)
+         [ Not, not ]; // bool -> bool
+
+        mapInputOutputUnary (|LIST|_|) (IntLit>>Literal)
+         [ Size, List.length ] // List -> int
+
+        mapInputOutputUnary (|SEQEXP|_|) id
+         [  // Seq -> Ast 
+            Head, (fun (hd,tl) -> hd);
+            Tail, (fun (hd,tl) -> tl);         
+         ]; 
+
+    ] |> List.concat |> Map
+
+//TODO: read
 /// PAP buildier for binary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned
 /// * if 'full match' is detected but the types are incorrect - Error is returned
@@ -157,38 +107,26 @@ let (|UNBUILTIN|_|) (map,(|INTYPE|_|)) (f, x) =
 /// - (|InTypeL|_|) - PAP for matching (and unpacking) the left Ast input type
 /// - (|InTypeR|_|) - PAP for matching (and unpacking) the right Ast input type
 /// - f,x - left- and righthandside of function application
-let (|BINBUILTIN|_|) (map,(|InTypeL|_|),(|InTypeR|_|)) (f, x)  =
-    match (f, x) with
-    | FuncApp (BuiltInFunc b, InTypeL l), InTypeR r when Map.containsKey b map 
-        -> (Map.find b map) l r |> Ok |> Some
-    | FuncApp (BuiltInFunc b, Identifier l), InTypeR r when Map.containsKey b map 
-        -> FuncApp (f,x) |> Ok |> Some
-    | FuncApp (BuiltInFunc b, lArg), rArg  when Map.containsKey b map
-        -> Error <| sprintf "%A is unsuported for %A, %A" b lArg rArg |> Some
-    | BuiltInFunc b, _ when Map.containsKey b map
-        -> FuncApp (f,x) |> Ok |> Some
-    | _ -> None
-
+/// 
 // b passed for error - reporting
 // list is reversed
 let buildBinaryBuiltIn b f (|InTypeL|_|) (|InTypeR|_|) (argLst, originalAst) =
     match argLst with
-    | (InTypeL r)::(InTypeR l)::[] -> Ok (f l r)
-    | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_    // TODO: CAN DELETE THIS ROW ?
+    | (InTypeL val2)::(InTypeR val1)::[] -> Ok (f val1 val2)
+    // | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_    // TODO: CAN DELETE THIS ROW ?
     | _::(Identifier _)::_ | _::(FuncApp _)::_ | _::(IfExp _)::_ | _::[]  
         -> Ok originalAst
-    | rArg::lArg::[] 
-        -> Error <| sprintf "%A is unsuported for %A, %A" b lArg rArg
+    | arg2::arg1::[] 
+        -> Error <| sprintf "%A is unsuported for %A, %A" b arg1 arg2
     | _ -> Error <| sprintf "What? BINBUILTIN2 %A %A" b argLst 
 
 let mapInputOutputBin inputTransformer1 inputTransformer2 outputTransformer lstBind =
-    let mapOutputBin outputTransformer lstBind =
-        List.map (fun (n,fn) -> n, (fun f g l r -> g (f l r)) fn outputTransformer) lstBind
-    let mapInputBin inputTransformer1 inputTransformer2 lstBind =
-        List.map (fun (name,fn) -> (name,buildBinaryBuiltIn name fn inputTransformer1 inputTransformer2) ) lstBind
-        
-    mapOutputBin outputTransformer lstBind
-    |> mapInputBin inputTransformer1 inputTransformer2
+    let mapOutputBin lst =
+        List.map (fun (name,fn) -> name, (fun val1 val2 -> outputTransformer (fn val1 val2 ))) lst
+    let mapInputBin lst =
+        List.map (fun (name,fn) -> (name,buildBinaryBuiltIn name fn inputTransformer1 inputTransformer2) ) lst
+    
+    lstBind |> mapOutputBin |> mapInputBin 
 
 let BinaryBuiltIn = 
     [   
@@ -197,11 +135,9 @@ let BinaryBuiltIn =
             And, (&&); 
             Or,  (||);
          ];
-
+        
         mapInputOutputBin (|STRINGLIT|_|) (|STRINGLIT|_|) (BoolLit>>Literal) 
-         [  // string -> string -> bool
-            StrEq, (=)
-         ];
+         [   StrEq, (=) ]; // string -> string -> bool
         
         mapInputOutputBin (|INTLIT|_|) (|INTLIT|_|) (BoolLit>>Literal)
          [  // int -> int -> bool
@@ -211,7 +147,7 @@ let BinaryBuiltIn =
             LessEq,    (<=); 
             Equal,     (=);  
          ];
-
+        
         mapInputOutputBin (|INTLIT|_|) (|INTLIT|_|) (IntLit>>Literal)
          [ // int -> int -> int
             Plus, (+);
@@ -219,20 +155,12 @@ let BinaryBuiltIn =
             Mult, (*); 
             Div,  (/);
          ]; 
-
+        
         mapInputOutputBin Some (|LISTLAZY|_|) id
-         [ //  Ast -> SeqExp -> Ast
-            Append, (fun l r -> SeqExp (l,r));
-         ];
-    ] 
-    |> List.concat |> Map
-   
-    
-let (|BuiltInMatch|_|) map (b,argLst,orginalAst) =
-    if Map.containsKey b map 
-    then Some ( (Map.find b map) (argLst, orginalAst))
-    else None
+         [  Append, (fun l r -> SeqExp (l,r)); ]; //  Ast -> SeqExp -> Ast
 
+    ] |> List.concat |> Map
+   
 // todo add descrciption
 // list of n or less
 let rec (|FlatArgBuiltIn|_|) n (f, x)  =
@@ -252,16 +180,8 @@ let FlatAndMatch n map (f, x) =
     | _ -> None
 
 let (|BinaryBuiltinMatch|_|) = FlatAndMatch 2 BinaryBuiltIn
+let  (|UnaryBuiltinMatch|_|) = FlatAndMatch 1 UnaryBuiltIn
 
-
-let (|BUILTIN|_|) (f,x)= 
-    match (f,x) with 
-    | UNBUILTIN  bBool         res 
-    | UNBUILTIN  bSeq          res -> Some (res)
-    //| BinaryBuiltinMatch res -> Some (res)
-    //| D res -> Some (res)
-    //| FlatArgBuiltIn 2 (BuiltInMatch BinaryBuiltIn res) -> Some (res)
-    | _ -> None
 
 // TODO : possibly delay evaluation of f or x
 let rec functionApplication env f x =
@@ -274,7 +194,8 @@ let rec functionApplication env f x =
     printf "env: "
     print env |> ignore
     printf "\n"
-    *)       
+    *)
+
     match evaluate env f, evaluate env x with
     | Error e, _ | _, Error e -> Error e
     | Ok fnc, Ok inp -> Ok (fnc , inp)
@@ -285,9 +206,9 @@ let rec functionApplication env f x =
         // reduce - lambda (CHANGE HERE FOR NORMAL REDUCTION)
         | Lambda  { LambdaParam = name; LambdaBody = body;}, ast
             -> evaluate (extendVarMap env name ast) body
-        | BUILTIN res -> res
         | BinaryBuiltinMatch res -> res
-        // add FuncApp
+        | UnaryBuiltinMatch res -> res
+        // add FuncApp (done ? )
         // add BuiltInFunc
 
         // fail on
@@ -323,6 +244,7 @@ and evaluate env ast =
     print env |> ignore
     printf "\n"
     *)
+
     match ast with
     | FuncDefExp {FuncName = name; FuncBody = body; Rest = rest} -> 
         evaluate (extendEnv env name body) rest
