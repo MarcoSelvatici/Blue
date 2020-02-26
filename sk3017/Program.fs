@@ -151,7 +151,7 @@ let testOk : TestInfo=
     factorialAST <| FuncApp (Identifier "factorial", intL 0), intL 1;
     "Recursion - factorial 5", "factorial 5 -> 120",
     factorialAST <| FuncApp (Identifier "factorial", intL 5), intL 120;
-    "Recursion - factorial 10", "factorial 10 -> 120", 
+    "Recursion - factorial 10", "factorial 10 -> 39916800", 
     factorialAST <| FuncApp (Identifier "factorial", intL 11), intL 39916800;
     ] 
     |> List.map (fun (n,d,i,o) -> (n,d,i,Ok o))
@@ -192,9 +192,18 @@ let allTests() =
 [<EntryPoint>]
 let main argv =
     allTests()
+
+    (*
+    factorialAST <| FuncApp (Identifier "factorial", intL 0)
+    |> runAst
+    |> print
+    |> ignore
+    *)
+
     Console.ReadKey() |> ignore
     0 
 
 // TODO add test thatt chack that names defined in lambdas dont mix with that in definitions
 // TODO add tests for list append , 
 // size tests
+// IF IDENTIFIER 
