@@ -11,19 +11,19 @@ type Enviourment = string list * Map<string, Ast>
 //  3 function for maipulating the Envoiurment - boundVariables and varaibleMap
 
 /// adds name to boundVariables and (name,body) pair to the variableMap
-let extendEnv (boundVariables, variableMap) name body =
+let extendEnv (boundVariables, variableMap) name body : Enviourment =
     name::boundVariables, Map.add name body variableMap
 
 /// adds name to boundVariables, removes name from map
 /// * used to keep track of bound Variables in lambdas
 /// * since the new name is not yet tied to an AST it should be removed from the map
-let extendBoundVar (boundVariables, variableMap) name = 
+let extendBoundVar (boundVariables, variableMap) name : Enviourment = 
     name::boundVariables, Map.remove name variableMap
 
 /// adds name,body pair to the variableMap
 /// * used to assign value to bound Variables in lambdas
 /// * should be used after extendBoundVar
-let extendVarMap (boundVariables, variableMap) name body = 
+let extendVarMap (boundVariables, variableMap) name body : Enviourment= 
     boundVariables, Map.add name body variableMap
 
 
@@ -54,35 +54,19 @@ let (|NULL|_|) x =
 
 
 (*
- Not
-    | Head
-    | Tail
-    | Size
-    | Implode
-    | Explode
-    | Append
-    | StrEq
+    | Not       Bool -> Bool -> Ast
+    | Head      List -> AST
+    | Tail      List -> AST
+    | Size      List -> Int -> AST
+    | Implode   List -> String (tricky?) -> AST
+    | Explode   String -> AST 
 *)
-
-(*
-BuiltInFunc
-    / UnaryOp
-    | Not
-    | Head
-    | Tail
-    | Size
-*)
-
-let internal joinBuiltInData (list1, inputMatcher) (list2, inputMatcher2) =
-    if inputMatcher = inputMatcher2 
-    then (list1 @ list2, inputMatcher)
-    else ([], inputMatcher)
 
 
 let UnToMap (lst, inputMatcher, outputTransformer) =
     (List.map (fun (n,f) -> n, f >> outputTransformer) lst |> Map , inputMatcher)
 
-let unListToAst =
+let unList =
     ( [
         Head, (fun (l,r) -> l);   
         Tail, (fun (l,r) -> r);         
@@ -98,6 +82,12 @@ let (|UNBUILTIN|_|) (map,(|INTYPE|_|)) (f, x) =
     | _ -> None
 
 /// Binary Builtin
+
+(*
+    | Append   AST -> 
+    | StrEq    string -> string -> Bool 
+*)
+// uwaga nie mozna chyba overloadowac operatorow bo zwraca error
 
 let mapBin outputTransformer lst =
     List.map (fun (n,fn) -> n, (fun f g l r -> g (f l r)) fn outputTransformer) lst
@@ -121,11 +111,20 @@ let binInt =
             Div,  (/);
          ] 
 
-    binIntToBool @ binIntToInt |> Map, (|INTLIT|_|) 
+    binIntToBool @ binIntToInt 
+    |> Map, (|INTLIT|_|) 
+
+let binString =
+    let binStringToBool = 
+        mapBin (BoolLit>>Literal)
+         [
+            StrEq, (fun (a:string) b -> a = b)
+         ]
+    binStringToBool |> Map, (|STRINGLIT|_|)
 
 let binBool = 
     let binBoolToBool = 
-        mapBin (BoolLit>>Literal) 
+        mapBin (BoolLit>>Literal)
          [
             And, (&&); 
             Or,  (||);
@@ -179,7 +178,7 @@ let rec functionApplication env f x =
             -> evaluate (extendVarMap env name ast) body
         | BINBUILTIN binInt  res -> res
         | BINBUILTIN binBool res -> res
-
+        | BINBUILTIN binString res-> res
         // add FuncApp
         // add BuiltInFunc
 
@@ -248,3 +247,6 @@ let runAst ast =
     evaluate ([],Map.empty) ast
 
  // TODO: add error contructor
+ 
+ // can write more generic types like:
+type Builitn<'A> = int -> 'A

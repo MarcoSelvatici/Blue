@@ -78,7 +78,7 @@ let testOk : TestInfo=
     "Function Definition", "let c = Null in c -> Null",
     FuncDefExp {FuncName="c"; FuncBody=Null; Rest=Identifier "c"}, Null;
     "Nested Function Definition", "let c = Null in let d = c in d -> Null",
-    FuncDefExp {FuncName="c"; FuncBody=Null; Rest=(FuncDefExp {FuncName="d"; FuncBody=Identifier "c"; Rest=Identifier "d"})}, Null;
+    def "c" Null ( def "d" (Identifier "c") (Identifier "d")), Null;
     
     "Function application of lambda", "(\\a.a) null -> null",
     FuncApp ( Lambda { LambdaParam = "a"; LambdaBody = Identifier "a";}, Null), Null;
@@ -119,7 +119,12 @@ let testOk : TestInfo=
                         (Identifier "c")
                     ) ),
     intL 75;
-        
+
+    "String Equality true", "StrEq \"word\" \"word\" -> true",
+    binaryBuiltin StrEq (stringL "word") (stringL "word"), trueL;
+    "String Equality false", "StrEq \"EIE\" \"EEE\" -> false",
+    binaryBuiltin StrEq (stringL "EIE") (stringL "EEE"), falseL;
+
     "Simple recursion", "let f c = if c then Null else (f true) in f false -> Null",
     simpleRecAST <| falseL, Null;
     "Recursion - factorial (basecase)", "factorial 0 -> 1",
@@ -141,6 +146,7 @@ let testErr : TestInfo=
 
     "> wrong type", "3 > Null", binaryBuiltin Greater (intL 3) Null, "Greater is unsuported for Literal (IntLit 3), Null";
     "= wrong type" ,"true = 1", binaryBuiltin Equal trueL (intL 1), "Equal is unsuported for Literal (BoolLit true), Literal (IntLit 1)";
+    "String Equality wrong type" , "StrEq \"dog\" Null", binaryBuiltin StrEq (stringL "dog") Null, "StrEq is unsuported for Literal (StringLit \"dog\"), Null";
 
     "Lambda \\a.b", "\\a.b", Lambda { LambdaParam = "a"; LambdaBody = Identifier "b"},"Identifier \'b\' is not defined";
     ]
@@ -169,3 +175,4 @@ let main argv =
 
 // TODO add test thatt chack that names defined in lambdas dont mix with that in definitions
 // TODO add tests for head and tail
+// TODO add test for string equality

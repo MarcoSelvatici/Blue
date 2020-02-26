@@ -10,6 +10,11 @@ type BuiltInFunc =
     | Head
     | Tail
     | Size
+    | Implode
+    | Explode
+    // Binary
+    | Append
+    | StrEq
     // ComparisonOp
     | Greater
     | GreaterEq
