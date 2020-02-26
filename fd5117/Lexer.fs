@@ -119,7 +119,7 @@ let rec buildMultilineComment rowCount input =
         match tl with 
         | nextChar::tl' when nextChar.Equals(')') -> rowCount, tl'
         | _ -> buildMultilineComment rowCount tl
-    | _ -> failwithf "lexing error, multiline comment tags never closing"
+    | _ -> rowCount, input
 
 // Function called when open quotation marks are encountered '"'.
 let rec buildString rowCount str input =
@@ -131,10 +131,11 @@ let rec buildString rowCount str input =
         match tl with
         | esc::tl' when List.contains esc escSeq
             -> buildString rowCount (str + string ('\\' + esc)) tl'
-        | _ -> failwithf "lexing error, expected valid ESC sequence on line %i" rowCount 
+        | esc::_ -> failwithf "lexing error, expected valid ESC sequence on line %i: \\%c is not valid" rowCount esc 
+        | _ -> failwithf "lexing error, expected valid ESC sequence on line %i" rowCount  
     // If closing quotation mark is encountered, return valid result. Else throw an error.
     | currChar::tl when currChar.Equals('\"') -> str, tl
-    | _ -> failwithf "lexing error, expecting closing quotation mark: \" on line %i" rowCount
+    | _ -> failwithf "lexing error, expecting closing quotation mark: '\"' on line %i" rowCount
 
 // Function called when open apostrophe is met "'".
 let rec buildChar rowCount input =
@@ -144,19 +145,20 @@ let rec buildChar rowCount input =
         // If closing apostrophe is then met, char is valid. Else throw error.
         match tl with 
         |'\''::tl' -> currChar, tl'
-        | _ -> failwithf "lexing error, expecting \' on line %i" rowCount
+        | _ -> failwithf "lexing error, expecting closing apostrophe: '\'' on line %i" rowCount
     // If escape character is met, try to match valid escape sequence or throw an error.
     | currChar::tl when currChar.Equals('\\') ->      
         match tl with
         | esc::tl' when List.contains esc escSeq
             -> ('\\' + esc), tl'
+        | esc::_ -> failwithf "lexing error, expected valid ESC sequence on line %i: \\%c is not valid" rowCount esc 
         | _ -> failwithf "lexing error, expected valid ESC sequence on line %i" rowCount 
     | _ -> failwithf "lexing error, char definition cannot be empty on line %i" rowCount
 
 // Tokenise function: takes the program in string form and returns a list of Tokens or a lexing error.
-let tokeniseT3 (str: string) : Token list =
+let tokeniseT3 (str: string) =
     // Recursively trying to match a token. 
-    let rec tokenise rowCount (input: char list) : Token list =
+    let rec tokenise rowCount (input: char list) =
         match input with
         // Single/Coupled character -> Token matching, no helper functions needed.
         | '.'::tl -> [KDot] @ tokenise rowCount tl
@@ -252,5 +254,8 @@ let tokeniseT3 (str: string) : Token list =
         // Error throwing due to unrecognised character.
         | currChar::tl -> failwithf "lexing error, unrecognised character '%c' on line %i" currChar rowCount
         | _ -> failwithf "lexing error, unexpected behaviour... nothing was matched on line %i" rowCount
-    
-    tokenise 0 (Seq.toList str) 
+    try 
+        tokenise 0 (Seq.toList str)
+        |> Ok
+    with
+        Failure msg -> Error msg  

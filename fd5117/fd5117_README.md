@@ -120,13 +120,12 @@ type Token =
 ## Lexing examples
 ```
 1. let a = 2 + 3
-    -> [KLet; TIdentifier "a"; KEq; TLiteral (IntLit 2); TBuiltInFunc BPlus;        TLiteral (IntLit 3)]
+    -> [KLet; TIdentifier "a"; KEq; TLiteral (IntLit 2); TBuiltInFunc BPlus; TLiteral (IntLit 3)]
 
 2. let a =
    let b = \x. x * 2 in
      \c. b (b c)
    in
    a 5
-   -> [KLet; TIdentifier "a"; KEq; KLet; TIdentifier "b"; KEq; KLambda;
-       TIdentifier "x"; KDot; TIdentifier "x"; TBuiltInFunc BMult; TLiteral (IntLit 2); KIn; KLambda; TIdentifier "c"; KDot; TIdentifier "b"; KOpenRound; TIdentifier "b"; TIdentifier "c"; KCloseRound; KIn; TIdentifier "a"; TLiteral (IntLit 5)]
+   -> [KLet; TIdentifier "a"; KEq; KLet; TIdentifier "b"; KEq; KLambda; TIdentifier "x"; KDot; TIdentifier "x"; TBuiltInFunc BMult; TLiteral (IntLit 2); KIn; KLambda;       TIdentifier "c"; KDot; TIdentifier "b"; KOpenRound; TIdentifier "b"; TIdentifier "c"; KCloseRound; KIn; TIdentifier "a"; TLiteral (IntLit 5)]
 ```
