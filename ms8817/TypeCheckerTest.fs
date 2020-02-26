@@ -1,9 +1,12 @@
-open Expecto
+// Author: ms8817 (Marco Selvatici)
+
+module TypeCheckerTest
+
 open TokeniserStub
 open Parser
 open TypeChecker
 
-let testCases = [
+let testCasesTypeChecker = [
     "Simple Int", Literal (IntLit 1),
         Ok (Base Int);
     "Simple Identifer", Identifier "x",
@@ -113,20 +116,3 @@ let testCases = [
     "Applied Append `append true [1]`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), SeqExp (Literal (IntLit 4), Null)), 
         Ok (Pair (Base Bool, Pair (Base Int, Base NullType)));
 ]
-
-let testTypeChecker (description, ast, expected) =
-    testCase description <| fun () ->
-        let actual = typeCheck ast
-        Expect.equal actual expected ""
-
-[<Tests>]
-let tests = testList "Type checker test" <| List.map testTypeChecker testCases
-
-let testAll() =
-    // Tests cannot run in parallel since the code uses a mutable variable.
-    runTestsInAssembly defaultConfig [||] |> ignore
-
-[<EntryPoint>]
-let main argv =
-    testAll()
-    0

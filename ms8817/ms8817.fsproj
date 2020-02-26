@@ -6,11 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="TestLib.fs" />
     <Compile Include="TokeniserStub.fs" />
     <Compile Include="Parser.fs" />
-    <!-- Compile Include="ParserTest.fs" /-->
+    <Compile Include="ParserTest.fs" />
     <Compile Include="TypeChecker.fs" />
     <Compile Include="TypeCheckerTest.fs" />
+    <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>

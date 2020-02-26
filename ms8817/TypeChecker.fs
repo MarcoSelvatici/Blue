@@ -1,3 +1,5 @@
+// Author: ms8817 (Marco Selvatici)
+
 module TypeChecker
 
 open TokeniserStub

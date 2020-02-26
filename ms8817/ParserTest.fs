@@ -1,8 +1,9 @@
 ﻿// Author: ms8817 (Marco Selvatici)
 
-open Expecto
-open Parser
+module ParserTest
+
 open TokeniserStub
+open Parser
 
 /// Like buildError, but allows to manually set the trace.
 let buildErrorManually msg trace unmatchedTokens currentAsts = 
@@ -13,7 +14,7 @@ let buildErrorManually msg trace unmatchedTokens currentAsts =
         currentAsts = currentAsts;
     }
 
-let testCases = [
+let testCasesParser = [
     "Empty", [],
         buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [] [];
     "Simple identifier", [TIdentifier "a"],
@@ -109,19 +110,3 @@ let testCases = [
     "Lambda with let in", [KLambda; TIdentifier "x"; KDot; KLet; TIdentifier "y"; KEq; TLiteral (BoolLit true); KIn; TIdentifier "x"; TBuiltInFunc Mult; TLiteral (IntLit 2); KNi; TIdentifier "y"],
         Ok (buildLambda "x" (FuncApp ((FuncDefExp {FuncName="y"; FuncBody=Literal (BoolLit true); Rest=FuncApp (FuncApp (BuiltInFunc Mult, Identifier "x"), Literal (IntLit 2))}), Identifier "y")));
 ]
-
-let testParser (description, tkns, expected) =
-    testCase description <| fun () ->
-        let actual = parse tkns
-        Expect.equal actual expected ""
-
-[<Tests>]
-let tests = testList "Parser test" <| List.map testParser testCases
-
-let testAll() =
-    runTestsInAssembly defaultConfig [||] |> ignore
-
-[<EntryPoint>]
-let main argv =
-    testAll()
-    0

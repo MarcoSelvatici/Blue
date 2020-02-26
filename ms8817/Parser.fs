@@ -1,4 +1,3 @@
-// Module: parser
 // Author: ms8817 (Marco Selvatici)
 
 module Parser
