@@ -48,6 +48,39 @@ let toktest6 =
                       "testing lexing for head/tail: let hd = head lst
                                                      let tl = tail lst"
 
+[<Tests>]
+let toktest7 =
+    testCase "testing rpwCount functionality" <| fun () ->
+        Expect.equal (tokeniseT3 "let hd = head lst
+                                  //dfmdsfodpmfdpfmdpfmdsfmdpmfodsfmpdsfmdsomf;;;d20391-30239#'#zx.;
+                                  let tl_ = tail lst
+                                  let hd' = head lst
+                                  let _tl = tail lst
+                                  let tl_2 = tail lst
+                                  let hd_a = head lst
+                                  let tl2a = tail lst
+                                  let tl
+                                    = 
+                                    tail lst") [KLet; TIdentifier "hd"; KEq; TBuiltInFunc BHead; TIdentifier "lst"; KLet;
+                                                TIdentifier "tl_"; KEq; TBuiltInFunc BTail; TIdentifier "lst"; KLet;
+                                                TIdentifier "hd'"; KEq; TBuiltInFunc BHead; TIdentifier "lst"; KLet;
+                                                TIdentifier "_tl"; KEq; TBuiltInFunc BTail; TIdentifier "lst"; KLet;
+                                                TIdentifier "tl_2"; KEq; TBuiltInFunc BTail; TIdentifier "lst"; KLet;
+                                                TIdentifier "hd_a"; KEq; TBuiltInFunc BHead; TIdentifier "lst"; KLet;
+                                                TIdentifier "tl2a"; KEq; TBuiltInFunc BTail; TIdentifier "lst"; KLet;
+                                                TIdentifier "tl"; KEq; TBuiltInFunc BTail; TIdentifier "lst"]
+                      "testing lexing for head/tail: let hd = head lst
+                                                     //dfmdsfodpmfdpfmdpfmdsfmdpmfodsfmpdsfmdsomf;;;d20391-30239#'#zx.;
+                                                     let tl_ = tail lst
+                                                     let hd' = head lst
+                                                     let _tl = tail lst
+                                                     let tl_2 = tail lst
+                                                     let hd_a = head lst
+                                                     let tl2a = tail lst
+                                                     let tl
+                                                       = 
+                                                       tail lst"
+
 
 
 // Run this to run all current tests
@@ -60,5 +93,6 @@ let runAllTests =
             toktest4
             toktest5
             toktest6
+            toktest7
         ]
     runTests defaultConfig testLst |> ignore
