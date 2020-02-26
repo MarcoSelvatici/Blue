@@ -60,13 +60,12 @@ let applyToCtx subs ctx =
             match var with
             | _, Gen g when g = wildcard -> true
             | _ -> false
-        List.tryFindIndex (matchWildcard sub.wildcard) ctx
-        |> function
-            | None -> ctx
-            | Some idx ->
-                let l, r = List.splitAt idx ctx
-                let varName, _ = ctx.[idx]
-                l @ [varName, sub.newType] @ List.tail r
+        match List.tryFindIndex (matchWildcard sub.wildcard) ctx with
+        | None -> ctx
+        | Some idx ->
+            let l, r = List.splitAt idx ctx
+            let varName, _ = ctx.[idx]
+            l @ [varName, sub.newType] @ List.tail r
     (ctx, subs) ||> List.fold specialise
 
 /// Try to unify two types, and if successful returns a list of substitutions
