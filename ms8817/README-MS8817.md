@@ -13,6 +13,46 @@ Note: the folder also contains a basic test library, that can be resused to test
 different modules. This will hopefully be used to test their code by the other
 team memebers in the second part of the project.
 
+## General info
+
+<b>How will your code be used by team (if all goes well) including what order
+are modules in your team project compiled?</b>
+
+The code clearly performs the (essential) parsing and (nice-to-have)
+type-checking operations.
+The parser will depend on the tokeniser to be compiled first, and will be a
+dependency for the reduction engines.
+The type checker will depend on the tokeniser and parser, but will not be needed
+by the reduction engines.
+
+<b>Which parts if any are code written for other people?</b>
+
+All of the code I wrote is directly used in either parser, type-checker or
+tests (or combinations of those). Nonetheless, the types in the tokeniser stub I
+wrote have been used by Fabio to write the tokeniser, while the Ast type in the
+parser have been used by Oliver and Szymon as a base to implement their
+reduction engines.
+
+<b>Which parts if any of code you use is written by others?</b>
+
+None.
+
+<b>What help have you obtained/given others debugging or doing code review?</b>
+
+We have a very active groupchat where we often discuss issues. For example,
+after creating the Ast type, I had many conversations with Oliver and Szymon
+about what should or should not be included in it.
+I also discussed with Fabio the content of the tokeniser stub.
+
+<b>How did you work out (who decided what - how do you revise) the types that
+interface your code with others?</b>
+
+As I mentioned above, I come up with the Ast type, and then revised it
+multiple times with the suggestions from Oliver and Szymon.
+
+Our tokeniser types where sort of defined already in the initial project plan,
+but it did need several changes in order to be easier to use in the parser.
+
 ## Parser
 
 My implementation uses parser combinators. Just two of them are needed:
@@ -119,7 +159,7 @@ ni
 
 As a stretch goal, I implemented a fully working Hindley Milner type checker.
 
-My solution is based on some key concepts:
+My solution is based on some key ideas:
 
 - There exists a context with mappings from identifiers to their types (which
 may be generic). This context may change at various stages of the inference
@@ -129,7 +169,8 @@ process.
   applied in order to unify different types. For example, a substitution may be
   that the generic type `Gen 1` can specialised to `Base Int`.
   - if unsuccessful, the appropiate error.
-- You can apply substutions to both types and context, as needed.
+- You can apply the above mentioned substutions to both types and context, as
+needed.
 
 With this in place, the resulting code has a nice recursive structure.
 
@@ -148,4 +189,4 @@ otherwise it returns an error explaining why such process is not possible.
 ### Apply
 
 This function takes a list of substitutions, and apply them to a type. This is
-a recursive process, since a type may contains wildcards.
+a recursive process, since a type may contain substitutable wildcards.
