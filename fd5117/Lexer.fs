@@ -48,6 +48,7 @@ type Token =
     | KIn           
     | KNi           
     | KComma        
+    | KSemiColon       
     | KOpenRound    
     | KCloseRound   
     | KOpenSquare   
@@ -160,6 +161,7 @@ let tokeniseT3 (str: string) : Token list =
         // Single/Coupled character -> Token matching, no helper functions needed.
         | '.'::tl -> [KDot] @ tokenise rowCount tl
         | ','::tl -> [KComma] @ tokenise rowCount tl
+        | ';'::tl -> [KSemiColon] @ tokenise rowCount tl
         | '('::tl -> 
            // If the '(' char is followed by '*' -> start of a multiline comment. 
            match tl with 

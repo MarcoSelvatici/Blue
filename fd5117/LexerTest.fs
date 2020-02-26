@@ -89,7 +89,7 @@ let toktest7 =
 
 [<Tests>]
 let toktest8 =
-    testCase "testing functions" <| fun () ->
+    testCase "testing small program" <| fun () ->
         Expect.equal (tokeniseT3 "let a =
                                   let b = \x. x * 2 in
                                     \c. b (b c)
@@ -105,6 +105,57 @@ let toktest8 =
                                                          in
                                                          a 5"
 
+[<Tests>]
+let toktest9 =
+    testCase "testing list builtin functions" <| fun () ->
+        Expect.equal (tokeniseT3 "let a = ['a'; 'b']
+                                  let b = implode a
+                                  let c = \"ab\"
+                                  let d = strEq b c
+                                  let e = explode c
+                                  let f = size e
+                                  let rec yo lst = 
+                                    let hd = head lst
+                                    append hd global
+                                    let tl = tail lst
+                                    yo tl") 
+                                        [KLet; TIdentifier "a"; KEq; KOpenSquare; TLiteral (CharLit 'a'); KSemiColon;
+                                         TLiteral (CharLit 'b'); KCloseSquare; KLet; TIdentifier "b"; KEq;
+                                         TBuiltInFunc BImplode; TIdentifier "a"; KLet; TIdentifier "c"; KEq;
+                                         TLiteral (StringLit "ab"); KLet; TIdentifier "d"; KEq; TBuiltInFunc BStrEq;
+                                         TIdentifier "b"; TIdentifier "c"; KLet; TIdentifier "e"; KEq;
+                                         TBuiltInFunc BExplode; TIdentifier "c"; KLet; TIdentifier "f"; KEq;
+                                         TBuiltInFunc BSize; TIdentifier "e"; KLet; KRec; TIdentifier "yo";
+                                         TIdentifier "lst"; KEq; KLet; TIdentifier "hd"; KEq; TBuiltInFunc BHead;
+                                         TIdentifier "lst"; TBuiltInFunc BAppend; TIdentifier "hd"; TIdentifier "global";
+                                         KLet; TIdentifier "tl"; KEq; TBuiltInFunc BTail; TIdentifier "lst";
+                                         TIdentifier "yo"; TIdentifier "tl"]
+                        "testing lexing for list builtins: let a = ['a'; 'b']
+                                                           let b = implode a
+                                                           let c = \"ab\"
+                                                           let d = strEq b c
+                                                           let e = explode c
+                                                           let f = size e
+                                                           let recl yo lst = 
+                                                             let hd = head lst
+                                                             append hd global
+                                                             let tl = tail lst
+                                                             yo t"
+
+[<Tests>]
+let toktest10=
+    testCase "testing if then else and booleans" <| fun () ->
+        Expect.equal (tokeniseT3 "let a = true
+                                  if a 
+                                  then true 
+                                  else false
+                                  fi") [KLet; TIdentifier "a"; KEq; TLiteral (BoolLit true); KIf; TIdentifier "a";
+                                        KThen; TLiteral (BoolLit true); KElse; TLiteral (BoolLit false); KFi]
+                    "testing if then else and booleans: let a = true
+                                                        if a 
+                                                        then true 
+                                                        else false
+                                                        fi"
 
 // Run this to run all current tests
 let runAllTests =
@@ -118,5 +169,6 @@ let runAllTests =
             toktest6
             toktest7
             toktest8
+            toktest10
         ]
     runTests defaultConfig testLst |> ignore

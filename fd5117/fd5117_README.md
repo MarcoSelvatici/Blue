@@ -1,6 +1,11 @@
 # Lexer
 Author: __Fabio Deo fd5117__
 
+## Instructions
+1. Clone the repository
+2. Navigate to .../fd5117
+3. Run: ```dotnet run --project lexer.fsproj ``` to run the testbench
+   
 ## Token List
 ```
 type BuiltInFunc =
@@ -50,7 +55,8 @@ type Token =
     | KRec          
     | KIn           
     | KNi           
-    | KComma        
+    | KComma
+    | KSemiColon               
     | KOpenRound    
     | KCloseRound   
     | KOpenSquare   
@@ -107,7 +113,10 @@ type Token =
   - e.g ( a; A; abcAbc; _a; A\_; az19' ; a'\_'a )
   -  __NOT ALLOWED__ ( " _ "; "a-b"; "'a")
   
-
+- Comments:
+  - inline: // --> \n
+  - multiline: (* --> *)
+  
 ## Lexing examples
 ```
 1. let a = 2 + 3
