@@ -93,7 +93,7 @@ let rec buildWord rowCount word input =
     | currChar::tl when List.contains currChar (['a'..'z']@['A'..'Z']@['0'..'9']@['_';'\'']) 
         -> buildWord rowCount (word + string currChar) tl
     // If is a valid character to break the sequence, return valid result.
-    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'&';'|';' ';'\n';'\t']) 
+    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'&';'|';' ';'.';'\n';'\t';'(';'[';')';']']) 
         -> word, input
     // Analoguely, if string is over, return valid result.
     | [] -> word, input

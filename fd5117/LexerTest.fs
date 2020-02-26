@@ -87,6 +87,23 @@ let toktest7 =
                                                        = 
                                                        tail lst"
 
+[<Tests>]
+let toktest8 =
+    testCase "testing functions" <| fun () ->
+        Expect.equal (tokeniseT3 "let a =
+                                  let b = \x. x * 2 in
+                                    \c. b (b c)
+                                  in
+                                  a 5") [KLet; TIdentifier "a"; KEq; KLet; TIdentifier "b"; KEq; KLambda;
+                                         TIdentifier "x"; KDot; TIdentifier "x"; TBuiltInFunc BMult; TLiteral (IntLit 2);
+                                         KIn; KLambda; TIdentifier "c"; KDot; TIdentifier "b"; KOpenRound;
+                                         TIdentifier "b"; TIdentifier "c"; KCloseRound; KIn; TIdentifier "a";
+                                         TLiteral (IntLit 5)]
+                      "testing lexing for small program: let a =
+                                                         let b = \x. x * 2 in
+                                                            \c. b (b c)
+                                                         in
+                                                         a 5"
 
 
 // Run this to run all current tests
@@ -100,5 +117,6 @@ let runAllTests =
             toktest5
             toktest6
             toktest7
+            toktest8
         ]
     runTests defaultConfig testLst |> ignore
