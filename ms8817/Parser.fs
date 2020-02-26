@@ -154,7 +154,7 @@ let rec matchAnyOp opGroups itemsList =
         | (_, None) -> matchAnyOp opGroups' itemsList // Try next group.
 
 /// Transforms a list of Items into a tree of left associative function
-/// applications, respecting operators ordeing.
+/// applications, respecting operator precedences.
 /// If such transformation is not possible (e.g. due to incomplete arithmetic
 /// expression like `1+`), return a string with the error message.
 let rec buildFuncAppTree (itemsList : Ast list): Result<Ast, string> =
@@ -174,8 +174,7 @@ let rec buildFuncAppTree (itemsList : Ast list): Result<Ast, string> =
             // Split at the operator and recur on both sides.
             let lhs, rhs = List.splitAt idx itemsList
             match buildFuncAppTree lhs, buildFuncAppTree (List.tail rhs) with
-            | Error msg, _
-            | _, Error msg -> Error msg
+            | Error msg, _ | _, Error msg -> Error msg
             | Ok lTree, Ok rTree -> Ok <| FuncApp (FuncApp (op, lTree), rTree)
         | None ->
             // No arithmetic operator was found, use normal funcApp associativity.
