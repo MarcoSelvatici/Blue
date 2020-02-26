@@ -10,9 +10,9 @@
     <Compile Include="parser.fs" />
     <Compile Include="ski_combinator.fs" />
     <Compile Include="Testbench.fs" />
+    <Compile Include="program.fs" />
     <None Include="LamdaToSKI.fs" />
     <None Include="README-OSS1017.md" />
-    <None Include="TODO.md" />
   </ItemGroup>
 
   <ItemGroup>

@@ -47,3 +47,9 @@ It follows the rules defined below. [Source](https://en.wikipedia.org/wiki/Combi
          = (y x)
 
 ```
+
+### Indiv code statements [TODO]
+
+- What works, what does not work?
+- How might code be used in team work?
+- How will it interface with other team members individual work?

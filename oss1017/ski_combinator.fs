@@ -1,7 +1,7 @@
 ﻿// Module: SKI combinator Runtime
 // Author: oss1017 (Oliver Stiff)
 
-module rec ski_combinator
+module rec Ski_combinator
 
 open TokeniserStub
 open Parser
@@ -16,7 +16,7 @@ let pipePrint x =
     print x; x
  
 
-/// Bracket abstraction and substituting functions when they are called by making use of function name to body fn bindings. 
+/// Bracket abstraction and substituting functions when they are called (by making use of function name to body fn bindings) 
 let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string> =
     match input with
     | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null -> input |> Ok
@@ -25,28 +25,26 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string
     // Check in bindings to see if that identfier has been defined
     | Identifier x ->
         if bindings.ContainsKey x
-        //then bindings.[x] |> Ok
         then
             match bracketAbstract bindings.[x] bindings with
             | Ok x -> Ok x
             | Error x -> Error x
-
-        // An error could be returned if identifier is not in bindings: possible err msg is below
-        //else Error <| sprintf "Undefined identifier: \'%s\'" x
         else Identifier x |> Ok
+        // An error could be returned if identifier is not in bindings: possible error mesage is below
+        //else Error <| sprintf "Undefined identifier: \'%s\'" x
 
 
-    //// The following two matches fix an issue with if then else eval order when it contains variables
-    //// this in turn allows for recursion to work
+    // The following two matches fix an issue with ifThenElse evaluation 
+    // order when it contains variables when in a lambda.
+    // This in turn allows for recursion to work without knowing if
+    // the function is recursive in advance (current parser does not indicate if a fn is recursive).
     | FuncApp (Identifier exp1, exp2) ->
-        if pipePrint <| bindings.ContainsKey exp1
+        if bindings.ContainsKey exp1
         then bracketAbstract (FuncApp (bindings.[exp1], exp2)) bindings
-        else Error "nope"
+        else Error <| sprintf "Undefined identifier: \'%s\'" exp1 
 
     | FuncDefExp { FuncName = name; FuncBody = Lambda lam; Rest = exp } ->
         bracketAbstract exp (bindings.Add(name, Lambda lam))
-
-    ////////
 
     //substitute expressions into lambdas
     | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
@@ -101,10 +99,11 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string
             bracketAbstract exp (bindings.Add(name, x))
         | Error x -> Error x
 
+    // Only bracket abstract one branch after having evaluated the condition
     | IfExp (condition,expT,expF) ->
             match bracketAbstract condition bindings with
             | Ok x -> 
-                match eval (x) with
+                match evalBuiltin (x) with
                 | Ok (Literal (BoolLit true))  -> 
                     bracketAbstract expT bindings
                 | Ok (Literal (BoolLit false)) -> 
@@ -121,23 +120,18 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string
 let isFree (var:string) (exp: Ast): bool =
     let rec free (exp: Ast): string List =
         match exp with
-        | Identifier x 
-            -> [x]
-        | FuncApp (exp1, exp2)
-            -> free exp1 @ free exp2
-        | Lambda { LambdaParam = name; LambdaBody = exp1 }
-            -> List.filter (fun x -> x <> name) (free exp1)
-
-        // also need to check if var is in seq and other Ast type....
-
-        | _ 
-            -> []
+        | Identifier x -> [x]
+        | FuncApp (exp1, exp2) ->
+            free exp1 @ free exp2
+        | Lambda { LambdaParam = name; LambdaBody = exp1 } ->
+            List.filter (fun x -> x <> name) (free exp1)
+        | _ -> []
 
     List.contains var (free exp)
 
 
 /// Evaluate Ast built-in functions
-let eval (input:Ast) : Result<Ast,string> =
+let evalBuiltin (input:Ast) : Result<Ast,string> =
     match input with
     
     // implode string list
@@ -153,7 +147,7 @@ let eval (input:Ast) : Result<Ast,string> =
             | _ ->
                 None
         
-        match eval exp with
+        match evalBuiltin exp with
         | Ok x -> 
             match imp x with
             | None -> Error "Cannot implode argument of type which is not string list"
@@ -164,31 +158,31 @@ let eval (input:Ast) : Result<Ast,string> =
             
     // explode string
     | FuncApp( BuiltInFunc Explode, x) -> 
-        match eval x with
+        match evalBuiltin x with
         | Ok (Literal (StringLit x)) ->
             Seq.toList x |> List.map (string) |> buildList |> Ok
         | _ ->
             Error "cannot explode argument of type which is not string"
 
-    //head
+    // head
     | FuncApp( BuiltInFunc Head, x) -> 
-        match eval x with
+        match evalBuiltin x with
         | Ok (SeqExp (head, tail)) ->
             head |> Ok
         | Ok Null -> Ok Null // empty list case
         | _ ->
             Error "Error getting head of list/sequence"
 
-    //tail
+    // tail
     | FuncApp( BuiltInFunc Tail, x) -> 
-        match eval x with
+        match evalBuiltin x with
         | Ok (SeqExp (head, tail)) ->
             tail |> Ok
         | Ok Null -> Ok Null // empty list case
         | _ ->
             Error "Error getting tail of list/sequence"
 
-    //size of list
+    // size of list
     | FuncApp( BuiltInFunc Size, exp) -> 
         let rec sizeOf x =
             match x with
@@ -200,7 +194,7 @@ let eval (input:Ast) : Result<Ast,string> =
             | _ ->
                -1
 
-        match eval exp with
+        match evalBuiltin exp with
         | Ok x ->
             let len = sizeOf x
             if len <> -1
@@ -210,7 +204,7 @@ let eval (input:Ast) : Result<Ast,string> =
 
     //unary built-in functions
     | FuncApp( BuiltInFunc op, x) -> 
-        let x' = eval x
+        let x' = evalBuiltin x
         match op, x' with
         
         //boolean op
@@ -221,8 +215,8 @@ let eval (input:Ast) : Result<Ast,string> =
 
     // Built-in functon w/ 2 args
     | FuncApp( FuncApp( BuiltInFunc op, x), y) -> 
-        let x' = eval x
-        let y' = eval y
+        let x' = evalBuiltin x
+        let y' = evalBuiltin y
         match op, x', y' with
         
         //arithmetic ops
@@ -255,17 +249,13 @@ let eval (input:Ast) : Result<Ast,string> =
         | Equal, Ok (Literal (IntLit n)), Ok (Literal (IntLit m))     ->
             Literal (BoolLit (n = m)) |> Ok
 
-        //Error  
         // Passthrough for partially applied functions
         // if we only wanted fully evaluated and reduced expressions this should return an error
         | _ -> input |> Ok
 
     | Combinator _ | SeqExp _ | Identifier _ | FuncApp _ | BuiltInFunc _ | Null | Literal _ -> input |> Ok
 
-    | IfExp _ -> input |> Ok    // this should be dealt with in bracket abstraction
-                                // but if for some reason it can't evaluate it,
-                                // it should be passed to output
-
+    | IfExp _           -> Error "IfExp should not exist after bracket abstraction"
     | Lambda _          -> Error "Lambda should not exist after bracket abstraction"
     | FuncDefExp _      -> Error "FuncDefExp should not exist after bracket abstraction"
     | RoundExp _        -> Error "RoundExp should not be returned by parser"
@@ -273,35 +263,34 @@ let eval (input:Ast) : Result<Ast,string> =
     | IdentifierList _  -> Error "IdentifierList should not be returned by parser"
 
 
-/// Builds a list in our language out of an f# list
+/// Builds a list in our language out of an F# list
 let rec buildList lst =
     match lst with
-    | [] ->  SeqExp (Null, Null)
+    | [] ->  Null
     | [x] -> SeqExp (Literal (StringLit x), Null)
     | head::tail -> SeqExp ( Literal (StringLit head), buildList tail )
 
 
-//evaluate/simplify SKI exp
 /// SKI combinator reduction
-let rec interpret (exp:Ast) :Ast =
+let rec combinatorReduc (exp:Ast) : Ast =
     match exp with
     | Combinator x ->
         exp
     | FuncApp( Combinator I, x) ->
-        interpret x
+        combinatorReduc x
     | FuncApp(FuncApp (Combinator K, x), y) ->
-        interpret x
+        combinatorReduc x
     | FuncApp (FuncApp (FuncApp (Combinator S, x), y), z) ->
-        interpret (FuncApp (FuncApp (x, z), FuncApp (y, z)))
+        combinatorReduc (FuncApp (FuncApp (x, z), FuncApp (y, z)))
     // if exp is fully simplified we need to stop calling interpret
     // check if it has changed from what it was at prev "iteration"
     | FuncApp (exp1, exp2) ->             
-        let exp1' = interpret exp1
-        let exp2' = interpret exp2
+        let exp1' = combinatorReduc exp1
+        let exp2' = combinatorReduc exp2
         if exp1 = exp1' && exp2 = exp2'
         then FuncApp (exp1, exp2)
-        else interpret (FuncApp (exp1', exp2'))
-    | _ -> exp
+        else combinatorReduc (FuncApp (exp1', exp2'))
+    | _ -> exp  // let built-in functions pass through to then be evaluated in evalBuiltin
 
 
 /// Evaluate the output of the parser using bracket abstraction, S K I Y combinators and the evaluation of built-in functions
@@ -311,7 +300,7 @@ let combinatorRuntime (input: Result<Ast,string>): Result<Ast,string> =
         let bindings = Map []
         match bracketAbstract x bindings with
         | Ok x ->
-            match eval (interpret x) with
+            match evalBuiltin (combinatorReduc x) with
             | Ok x -> Ok x
             | Error x -> Error <| "SKI runtime error: Built-in function evaluation Error: \n" + x
         | Error x -> Error <| "SKI runtime error: Bracket Abstraction Error: \n" + x

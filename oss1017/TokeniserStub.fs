@@ -1,7 +1,5 @@
-﻿// Note: this is in no way supposed to be an official version.
-// I just need something to get my types to work in the parser.
-// Many changes are probably required.
-// Author: ms8817 (Marco Selvatici)
+﻿// Author: ms8817 (Marco Selvatici)
+// This may not be the most recent version and was edited to include Implode / Explode
 
 module TokeniserStub
 

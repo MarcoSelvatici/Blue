@@ -1,6 +1,5 @@
-﻿// Module: Pure Lambda to SKI
-// Author: oss1017 (Oliver Stiff)
-
+﻿// Author: oss1017 (Oliver Stiff)
+// Module: Pure Lambda to SKI (not used in the final program)
 
 open System
 open Expecto
@@ -239,11 +238,6 @@ module rec Interpreter =
 
     [<EntryPoint>]
     let main argv =
-
-        //Application (Abstraction ("x", Variable "x"), Abstraction ("y", Variable "y"))
-        //|> LambdaToSimplifiedSKI
-        //|> prettyFormat
-        //|> print
         
         runTestsInAssembly defaultConfig [||] |> ignore
 

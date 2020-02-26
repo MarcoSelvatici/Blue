@@ -1,18 +1,23 @@
-﻿open System
-open Expecto
+﻿// Author: oss1017 (Oliver Stiff)
+// Testbench for the combinator runtime
 
-open ski_combinator
+module Testbench
+
+open Expecto
+open Ski_combinator
 open Parser
 open TokeniserStub
 
-// TESTBENCH
 
+///Takes an F# list as input and returns a list made of nested pairs in our language (SeqExp)
 let rec buildList lstType lst =
     match lst with
     | [] -> Null
     | [x] -> SeqExp (Literal (lstType x), Null)
     | head::tail -> SeqExp ( Literal (lstType head), buildList lstType tail )
 
+
+/// Tests for built-in functions related to strings
 let stringTests = [
 
     "explode",
@@ -37,6 +42,8 @@ let stringTests = [
     
 ]
 
+
+/// Tests for built-in functions related to lists 
 let listTests = [
 
     "ListSize short", 
@@ -81,6 +88,8 @@ let listTests = [
 
 ]
 
+
+/// Tests for built-in functions related to arithmetic operations
 let arithmeticTests = [
 
     "Add",
@@ -105,6 +114,8 @@ let arithmeticTests = [
 
 ]
 
+
+/// Tests for built-in functions related to logical operators
 let booleanTests = [
     
     "greater (true)",
@@ -161,6 +172,8 @@ let booleanTests = [
 
 ]
 
+
+/// Tests for lambdas
 let lambdaTests = [
 
     "lambda testing",
@@ -191,6 +204,8 @@ let lambdaTests = [
 
 ]
 
+
+/// Tests for function definitions / simple programs
 let funcDefTests = [
 
     "func def w/ lambdas",
@@ -290,6 +305,8 @@ let funcDefTests = [
 
 ]
 
+
+/// Tests for conditional statements
 let ifThenElseTests = [
     "simple ifThenElse true",
     Ok (IfExp ( Literal (BoolLit true),Literal (StringLit "condition evaluated to true") ,Literal (StringLit "condition evaluated to false"))),
@@ -320,6 +337,8 @@ let ifThenElseTests = [
     Error "SKI runtime error: Bracket Abstraction Error: \nUnexpected value in ifThenElse condition";
 ]
 
+
+/// Tests demonstrating combinator reduction functionality
 let combinatorTests = [
 
     "identity",
@@ -381,13 +400,18 @@ let combinatorTests = [
 
 ]
 
-///Used in recursive funciton tests
+
+// Recursive function testing
+
+/// F# definition of factorial
 let rec fact n =
     if n <= 1
     then 1
     else n * fact (n-1)
 
-let impFact n =
+
+/// Output of Ast for factorial function
+let runtimeFact n =
     Ok (FuncDefExp {
         FuncName = "fact"; 
         FuncBody = Lambda { 
@@ -400,35 +424,88 @@ let impFact n =
         Rest = FuncApp (Identifier "fact", Literal (IntLit n))
     })
 
+
+/// F# definition of fib
+let rec fib x =
+    if x = 0 || x = 1
+    then x
+    else fib(x-1) + fib(x-2)
+
+
+/// Output of Ast for fib function
+let runtimeFib x =
+    Ok (FuncDefExp {
+        FuncName = "fib"; 
+        FuncBody = Lambda { 
+            LambdaParam = "x";
+            LambdaBody = IfExp (
+                FuncApp ( FuncApp (BuiltInFunc Equal, Identifier "x"), Literal (IntLit 1) ),
+                Literal (IntLit 1),
+                IfExp (
+                    FuncApp ( FuncApp (BuiltInFunc Equal, Identifier "x"), Literal (IntLit 0) ),
+                    Literal (IntLit 0),
+                    FuncApp ( 
+                        FuncApp (
+                            BuiltInFunc Plus, 
+                            FuncApp ( Identifier "fib" , FuncApp ( FuncApp (BuiltInFunc Minus, Identifier "x"), Literal (IntLit 1) ))
+                        ),
+                        FuncApp ( Identifier "fib" , FuncApp ( FuncApp (BuiltInFunc Minus, Identifier "x"), Literal (IntLit 2) )) 
+                    ) 
+                ) 
+                )
+            };
+        Rest = FuncApp (Identifier "fib", Literal (IntLit x))
+    })
+
+
+/// Tests to demonstrate recursion functionality (no mutual recursion)
 let recursionTests = [
 
     "factorial 0",
-    impFact 0,
+    runtimeFact 0,
     0 |> fact |> IntLit |> Literal |> Ok;
 
     "factorial 1",
-    impFact 1,
+    runtimeFact 1,
     1 |> fact |> IntLit |> Literal |> Ok;
 
     "factorial 5",
-    impFact 5,
+    runtimeFact 5,
     5 |> fact |> IntLit |> Literal |> Ok;
 
     "factorial 10",
-    impFact 10,
+    runtimeFact 10,
     10 |> fact |> IntLit |> Literal |> Ok;
 
     "factorial 12",
-    impFact 12,
+    runtimeFact 12,
     12 |> fact |> IntLit |> Literal |> Ok;
 
     // This overflows but the result is still expected to match the F# one
     "factorial 120, overflow check",
-    impFact 120,
+    runtimeFact 120,
     120 |> fact |> IntLit |> Literal |> Ok;
+
+    "fib 0",
+    runtimeFib 0,
+    0 |> fib |> IntLit |> Literal |> Ok;
+
+    "fib 1",
+    runtimeFib 1,
+    1 |> fib |> IntLit |> Literal |> Ok;
+
+    "fib 5",
+    runtimeFib 5,
+    5 |> fib |> IntLit |> Literal |> Ok;
+
+    "fib 20",
+    runtimeFib 20,
+    20 |> fib |> IntLit |> Literal |> Ok;
 
 ]
 
+
+/// See if simple expressions pass through runtime un-altered
 let basicPassThroughTests = [
  
     "int",
@@ -453,6 +530,8 @@ let basicPassThroughTests = [
 
 ]
 
+
+///  Testing of several features working simultaneously  
 let generalTests = [
 
     "combination of several tests",
@@ -463,12 +542,14 @@ let generalTests = [
     Ok (FuncApp (FuncApp (BuiltInFunc Less, FuncApp (FuncApp (BuiltInFunc Plus,Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Minus, FuncApp (FuncApp (BuiltInFunc Mult,Literal (IntLit 3)), Literal (IntLit 4))),Literal (IntLit 5)))), Literal (IntLit 6))),
     Ok (Literal (BoolLit false));
 
-    "func app w/ missing arg",
+    "func def/ app",
     Ok (FuncDefExp {FuncName = "f"; FuncBody =  Lambda { LambdaParam = "x" ; LambdaBody = FuncApp( FuncApp( BuiltInFunc Plus, Identifier "x"), Literal (IntLit 2)) }; Rest = FuncApp( Identifier "f", Literal (IntLit 5));}),
     Ok (Literal (IntLit 7));
     
 ]
 
+
+/// Test error reporting functionality
 let generalErrorTests = [
 
     "Invalid input to runtime",
@@ -489,6 +570,8 @@ let generalErrorTests = [
 
 ]
 
+
+/// List of all test categories to be run
 let testCases = [
     listTests;
     arithmeticTests;
@@ -503,6 +586,7 @@ let testCases = [
     stringTests;
     generalErrorTests;
 ]
+
 
 /// Run an Expecto test given a 3-tuple containing the test name, the input to the runtime and the expected output
 let testEval (testName, input, expectedOutput) =
@@ -524,116 +608,3 @@ let testAll() =
 /// Run a single input using the combinator runtime
 let singleEval = 
     combinatorRuntime >> print
-
-
-[<EntryPoint>]
-let main argv =
-
-    let TC1 = 
-        FuncDefExp {
-            FuncName = "f";
-            FuncBody =  Lambda { 
-                LambdaParam = "x" ;
-                LambdaBody = FuncApp( FuncApp( BuiltInFunc Plus, Identifier "x"), Literal (IntLit 2)) 
-            }; 
-            Rest = FuncApp( Identifier "f", Literal (IntLit 5));
-        }
-
-    let TC2 =
-        FuncApp (
-            Lambda { 
-                LambdaParam = "x";
-                LambdaBody = 
-                    FuncDefExp {
-                        FuncName = "y";
-                        FuncBody = Literal (IntLit 1);
-                        Rest = 
-                            FuncApp (
-                                FuncApp (
-                                    BuiltInFunc Mult,
-                                    Identifier "x"
-                                ),
-                                Identifier "y"
-                            );
-                    }
-            },
-            Identifier "z"
-        )
-
-    let TC3 =
-        FuncDefExp {
-            FuncName = "x";
-            FuncBody = buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "y")); 
-            Rest = FuncDefExp {
-                FuncName = "z";
-                FuncBody = buildLambda "a" ( buildLambda "b" (FuncApp (FuncApp (BuiltInFunc And, FuncApp (FuncApp (BuiltInFunc Less, Identifier "a"), Identifier "b")), Identifier "z")) );
-                Rest = FuncApp(Identifier "x", FuncApp(FuncApp (Identifier "z", Literal (IntLit 1)), Literal (IntLit 2)))
-            }
-        }
-
-
-    let TC4 = 
-        FuncDefExp {
-            FuncName = "f";
-            FuncBody = 
-                FuncDefExp {
-                    FuncName = "f";
-                    FuncBody = Literal (IntLit 10); 
-                    Rest = Identifier "f";
-                }
-            Rest = FuncApp( FuncApp( BuiltInFunc Minus, Identifier "f"), Literal (IntLit 2));
-        }
-
-    let TC5 =
-        Ok (FuncDefExp {
-            FuncName = "fact"; 
-            FuncBody = Lambda { 
-                LambdaParam = "n";
-                LambdaBody = IfExp (
-                    FuncApp ( FuncApp (BuiltInFunc LessEq, Identifier "n"), Literal (IntLit 1) ),
-                    Literal (IntLit 1),
-                    FuncApp ( FuncApp (BuiltInFunc Mult, Identifier "n"),  FuncApp ( Identifier "fact" , FuncApp ( FuncApp (BuiltInFunc Minus, Identifier "n"), Literal (IntLit 1) ) ) ) )
-                };
-            Rest = FuncApp (Identifier "fact", Literal (IntLit 5))
-        })
-
-    let TC6 = 
-        Ok(
-            FuncApp (
-                Lambda { 
-                    LambdaParam = "n";
-                    LambdaBody = IfExp (
-                                    FuncApp ( FuncApp (BuiltInFunc LessEq, Identifier "n"), Literal (IntLit 1) ),
-                                    Literal (IntLit 1),
-                                    Literal (IntLit 10) 
-                                 )
-                },    
-                Literal (IntLit 1)
-            )     
-        )
-
-    let TC7 =
-        Ok (FuncDefExp {
-            FuncName = "fact"; 
-            FuncBody = Lambda { 
-                LambdaParam = "n";
-                LambdaBody = IfExp (
-                    FuncApp ( FuncApp (BuiltInFunc LessEq, Identifier "n"), Literal (IntLit 1) ),
-                    Literal (IntLit 1),
-                    Literal (IntLit 10))
-                };
-            Rest = FuncApp (Identifier "fact", Literal (IntLit 5))
-        })
-
-    //"Lambda input error",
-    //Ok (Lambda { LambdaParam = "x";LambdaBody = SeqExp (Identifier "x",Null)}),
-    //Error <| sprintf "SKI runtime error: Bracket Abstraction Error: \nUnable to bracket abstract lambda: %A" {LambdaParam = "x";LambdaBody = Identifier "z"};
-
-
-    //// RUN ALL EXPECTO TESTS ////
-    testAll()
-
-    //// USE THE COMBINATOR RUNTIME TO EVALUATE A PROGRAM ////
-    //singleEval ( impFact 12)
-
-    0

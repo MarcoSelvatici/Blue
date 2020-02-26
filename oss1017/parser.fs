@@ -1,5 +1,6 @@
 ﻿// Module: parser
 // Author: ms8817 (Marco Selvatici)
+// This may not be the most recent version and was edited to include Combinators
 
 module Parser
 
@@ -17,7 +18,7 @@ type Ast =
     | BuiltInFunc of BuiltinFunc // E.g. builtinTimes, builtinPlus
     | RoundExp of Ast // possibly needed see techical note
     | IfExp of Ast * Ast * Ast
-    | SeqExp of Ast * Ast // A pair of two elements [a, b]. TODO: (syntactic sugar) Extend this to (untyped) lists [a, b, c, d] -> Seq(a, Seq(b, ...))
+    | SeqExp of Ast * Ast // A pair of two elements
     | Combinator of CombinatorType
 
 // curried version
@@ -38,7 +39,6 @@ and CombinatorType =
     | S
     | K
     | I
-    | Y
 
 let buildLambda lambdaParam lambdaBody =
     Lambda {
