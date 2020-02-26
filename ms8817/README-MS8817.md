@@ -9,6 +9,10 @@ completed one week in advance the deadline, so I moved onto implementing a
 Hindley Milner type checker, which is listed among the stretch goals in our
 initial project plan.
 
+Note: the folder also contains a basic test library, that can be resused to test
+different modules. This will hopefully be used to test their code by the other
+team memebers in the second part of the project.
+
 ## Parser
 
 My implementation uses parser combinators. Just two of them are needed:
