@@ -9,7 +9,7 @@ open TokeniserStub
 
 let rec buildList lstType lst =
     match lst with
-    | [] ->  SeqExp (Null, Null)
+    | [] -> Null
     | [x] -> SeqExp (Literal (lstType x), Null)
     | head::tail -> SeqExp ( Literal (lstType head), buildList lstType tail )
 
@@ -381,9 +381,13 @@ let combinatorTests = [
 
 ]
 
-let recursionTests = [
+///Used in recursive funciton tests
+let rec fact n =
+    if n <= 1
+    then 1
+    else n * fact (n-1)
 
-    "factorial 5",
+let impFact n =
     Ok (FuncDefExp {
         FuncName = "fact"; 
         FuncBody = Lambda { 
@@ -393,10 +397,35 @@ let recursionTests = [
                 Literal (IntLit 1),
                 FuncApp ( FuncApp (BuiltInFunc Mult, Identifier "n"),  FuncApp ( Identifier "fact" , FuncApp ( FuncApp (BuiltInFunc Minus, Identifier "n"), Literal (IntLit 1) ) ) ) )
             };
-        Rest = FuncApp (Identifier "fact", Literal (IntLit 5))
-    }),
-    Ok (Literal (IntLit 120));
+        Rest = FuncApp (Identifier "fact", Literal (IntLit n))
+    })
 
+let recursionTests = [
+
+    "factorial 0",
+    impFact 0,
+    0 |> fact |> IntLit |> Literal |> Ok;
+
+    "factorial 1",
+    impFact 1,
+    1 |> fact |> IntLit |> Literal |> Ok;
+
+    "factorial 5",
+    impFact 5,
+    5 |> fact |> IntLit |> Literal |> Ok;
+
+    "factorial 10",
+    impFact 10,
+    10 |> fact |> IntLit |> Literal |> Ok;
+
+    "factorial 12",
+    impFact 12,
+    12 |> fact |> IntLit |> Literal |> Ok;
+
+    // This overflows but the result is still expected to match the F# one
+    "factorial 120, overflow check",
+    impFact 120,
+    120 |> fact |> IntLit |> Literal |> Ok;
 
 ]
 
@@ -457,10 +486,6 @@ let generalErrorTests = [
     "invalid exp in input: IdentifierList",
     Ok (IdentifierList [""]),
     Error "SKI runtime error: Bracket Abstraction Error: \nIdentifierList should not be returned by parser";
-
-    "Lambda input error",
-    Ok (Lambda { LambdaParam = "x";LambdaBody = SeqExp (Identifier "x",Null)}),
-    Error <| sprintf "SKI runtime error: Bracket Abstraction Error: \nUnable to bracket abstract lambda: %A" {LambdaParam = "x";LambdaBody = Identifier "z"};
 
 ]
 
@@ -559,10 +584,56 @@ let main argv =
             Rest = FuncApp( FuncApp( BuiltInFunc Minus, Identifier "f"), Literal (IntLit 2));
         }
 
+    let TC5 =
+        Ok (FuncDefExp {
+            FuncName = "fact"; 
+            FuncBody = Lambda { 
+                LambdaParam = "n";
+                LambdaBody = IfExp (
+                    FuncApp ( FuncApp (BuiltInFunc LessEq, Identifier "n"), Literal (IntLit 1) ),
+                    Literal (IntLit 1),
+                    FuncApp ( FuncApp (BuiltInFunc Mult, Identifier "n"),  FuncApp ( Identifier "fact" , FuncApp ( FuncApp (BuiltInFunc Minus, Identifier "n"), Literal (IntLit 1) ) ) ) )
+                };
+            Rest = FuncApp (Identifier "fact", Literal (IntLit 5))
+        })
+
+    let TC6 = 
+        Ok(
+            FuncApp (
+                Lambda { 
+                    LambdaParam = "n";
+                    LambdaBody = IfExp (
+                                    FuncApp ( FuncApp (BuiltInFunc LessEq, Identifier "n"), Literal (IntLit 1) ),
+                                    Literal (IntLit 1),
+                                    Literal (IntLit 10) 
+                                 )
+                },    
+                Literal (IntLit 1)
+            )     
+        )
+
+    let TC7 =
+        Ok (FuncDefExp {
+            FuncName = "fact"; 
+            FuncBody = Lambda { 
+                LambdaParam = "n";
+                LambdaBody = IfExp (
+                    FuncApp ( FuncApp (BuiltInFunc LessEq, Identifier "n"), Literal (IntLit 1) ),
+                    Literal (IntLit 1),
+                    Literal (IntLit 10))
+                };
+            Rest = FuncApp (Identifier "fact", Literal (IntLit 5))
+        })
+
+    //"Lambda input error",
+    //Ok (Lambda { LambdaParam = "x";LambdaBody = SeqExp (Identifier "x",Null)}),
+    //Error <| sprintf "SKI runtime error: Bracket Abstraction Error: \nUnable to bracket abstract lambda: %A" {LambdaParam = "x";LambdaBody = Identifier "z"};
+
+
     //// RUN ALL EXPECTO TESTS ////
     testAll()
 
     //// USE THE COMBINATOR RUNTIME TO EVALUATE A PROGRAM ////
-    //singleEval (Ok TC4)
+    //singleEval ( impFact 12)
 
     0

@@ -1,5 +1,5 @@
 ﻿// Module: SKI combinator Runtime
-// Author: oss1017 (Oliver Stiff)-
+// Author: oss1017 (Oliver Stiff)
 
 module rec ski_combinator
 
@@ -16,7 +16,7 @@ let pipePrint x =
     print x; x
  
 
-/// Bracket abstraction and substituting functions when they are called by making use of function name to body bindings. 
+/// Bracket abstraction and substituting functions when they are called by making use of function name to body fn bindings. 
 let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string> =
     match input with
     | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null -> input |> Ok
@@ -25,10 +25,28 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string
     // Check in bindings to see if that identfier has been defined
     | Identifier x ->
         if bindings.ContainsKey x
-        then bindings.[x] |> Ok
+        //then bindings.[x] |> Ok
+        then
+            match bracketAbstract bindings.[x] bindings with
+            | Ok x -> Ok x
+            | Error x -> Error x
+
         // An error could be returned if identifier is not in bindings: possible err msg is below
         //else Error <| sprintf "Undefined identifier: \'%s\'" x
         else Identifier x |> Ok
+
+
+    //// The following two matches fix an issue with if then else eval order when it contains variables
+    //// this in turn allows for recursion to work
+    | FuncApp (Identifier exp1, exp2) ->
+        if pipePrint <| bindings.ContainsKey exp1
+        then bracketAbstract (FuncApp (bindings.[exp1], exp2)) bindings
+        else Error "nope"
+
+    | FuncDefExp { FuncName = name; FuncBody = Lambda lam; Rest = exp } ->
+        bracketAbstract exp (bindings.Add(name, Lambda lam))
+
+    ////////
 
     //substitute expressions into lambdas
     | FuncApp ( Lambda { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
@@ -75,7 +93,7 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,string
             
         | _ ->
             Error <| sprintf "Unable to bracket abstract lambda %A" x
-    
+
     //function definitiions and bindings
     | FuncDefExp { FuncName = name; FuncBody = body; Rest = exp } ->
         match bracketAbstract body bindings with
@@ -157,6 +175,7 @@ let eval (input:Ast) : Result<Ast,string> =
         match eval x with
         | Ok (SeqExp (head, tail)) ->
             head |> Ok
+        | Ok Null -> Ok Null // empty list case
         | _ ->
             Error "Error getting head of list/sequence"
 
@@ -165,6 +184,7 @@ let eval (input:Ast) : Result<Ast,string> =
         match eval x with
         | Ok (SeqExp (head, tail)) ->
             tail |> Ok
+        | Ok Null -> Ok Null // empty list case
         | _ ->
             Error "Error getting tail of list/sequence"
 
@@ -172,8 +192,7 @@ let eval (input:Ast) : Result<Ast,string> =
     | FuncApp( BuiltInFunc Size, exp) -> 
         let rec sizeOf x =
             match x with
-            | SeqExp (Null, Null) ->
-                0
+            | Null -> 0 // empty list case
             | SeqExp (head, Null) ->
                 1 
             | SeqExp (head, tail) ->
@@ -274,6 +293,8 @@ let rec interpret (exp:Ast) :Ast =
         interpret x
     | FuncApp (FuncApp (FuncApp (Combinator S, x), y), z) ->
         interpret (FuncApp (FuncApp (x, z), FuncApp (y, z)))
+    // if exp is fully simplified we need to stop calling interpret
+    // check if it has changed from what it was at prev "iteration"
     | FuncApp (exp1, exp2) ->             
         let exp1' = interpret exp1
         let exp2' = interpret exp2
