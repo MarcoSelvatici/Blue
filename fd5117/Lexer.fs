@@ -102,11 +102,23 @@ let rec buildWord rowCount word input =
     | _ -> failwithf "lexing error, unexpected behaviour on line %i." rowCount 
 
 // Function called when inline comment "//" is encountered. 
-let rec buildComment input =
+let rec buildInlineComment input =
     match input with 
     // Discard everything up to newline.
-    | currChar::tl when not <| currChar.Equals('\n') -> buildComment tl
+    | currChar::tl when not <| currChar.Equals('\n') -> buildInlineComment tl
     | _ -> input
+
+// Function called when multiline comment "(*" is encountered. 
+let rec buildMultilineComment rowCount input =
+    match input with 
+    // Discard everything up to newline.
+    | currChar::tl when currChar.Equals ('\n') -> buildMultilineComment (rowCount + 1) tl
+    | currChar::tl when not <| currChar.Equals ('*') -> buildMultilineComment rowCount tl
+    | currChar::tl when currChar.Equals ('*') -> 
+        match tl with 
+        | nextChar::tl' when nextChar.Equals(')') -> rowCount, tl'
+        | _ -> buildMultilineComment rowCount tl
+    | _ -> failwithf "lexing error, multiline comment tags never closing"
 
 // Function called when open quotation marks are encountered '"'.
 let rec buildString rowCount str input =
@@ -148,7 +160,13 @@ let tokeniseT3 (str: string) : Token list =
         // Single/Coupled character -> Token matching, no helper functions needed.
         | '.'::tl -> [KDot] @ tokenise rowCount tl
         | ','::tl -> [KComma] @ tokenise rowCount tl
-        | '('::tl -> [KOpenRound] @ tokenise rowCount tl // add multiline comments!
+        | '('::tl -> 
+           // If the '(' char is followed by '*' -> start of a multiline comment. 
+           match tl with 
+           | '*'::tl' -> 
+                let rowCount', rest = buildMultilineComment rowCount tl'
+                tokenise rowCount' rest
+           | _ -> [KOpenRound] @ tokenise rowCount tl
         | ')'::tl -> [KCloseRound] @ tokenise rowCount tl
         | '['::tl -> [KOpenSquare] @ tokenise rowCount tl
         | ']'::tl -> [KCloseSquare] @ tokenise rowCount tl
@@ -158,10 +176,10 @@ let tokeniseT3 (str: string) : Token list =
         | '-'::tl -> [BMinus |> TBuiltInFunc] @ tokenise rowCount tl
         | '*'::tl -> [BMult |> TBuiltInFunc] @ tokenise rowCount tl
         | '/'::tl -> 
-           // If the '/' char is followed by another '/' -> start of a comment. 
+           // If the '/' char is followed by another '/' -> start of an inline comment. 
            match tl with 
            | '/'::tl' -> 
-                let rest = buildComment tl'
+                let rest = buildInlineComment tl'
                 tokenise rowCount rest
            | _ -> [BDiv |> TBuiltInFunc] @ tokenise rowCount tl 
         // Logic and comparisons

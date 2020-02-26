@@ -50,9 +50,15 @@ let toktest6 =
 
 [<Tests>]
 let toktest7 =
-    testCase "testing rpwCount functionality" <| fun () ->
+    testCase "testing rowCount and comments functionalities" <| fun () ->
         Expect.equal (tokeniseT3 "let hd = head lst
                                   //dfmdsfodpmfdpfmdpfmdsfmdpmfodsfmpdsfmdsomf;;;d20391-30239#'#zx.;
+                                  (* 23-94\\\\\\qwlpewwewewpelq[eweeeeee
+                                  
+                                  fjdkfj #### sdsd### MULTILINE COMMENT ### 
+                                  let i = wow.
+                                  *)
+
                                   let tl_ = tail lst
                                   let hd' = head lst
                                   let _tl = tail lst
