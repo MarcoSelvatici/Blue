@@ -5,7 +5,6 @@ open Expecto
 
 type TestInfo = (string * string * Ast * Result<Ast,string>) list
 
-
 // helper functions to shorten and decluter test definitions
 let trueL = Literal (BoolLit true)
 let falseL = Literal (BoolLit false)
@@ -114,7 +113,7 @@ let testOk : TestInfo=
     "-", "5-3 ->  2", binaryBuiltin Minus (intL 5) (intL 3), (intL  2);
     "*", "3*7 -> 21", binaryBuiltin Mult  (intL 3) (intL 7), (intL 21);
     "/", "9/3 ->  3", binaryBuiltin Div   (intL 9) (intL 3), (intL  3);
-    
+
     "chain builtin operations", "2 * 3 - 4 * 5 < 6 -> true",
     binaryBuiltin Less
         ( binaryBuiltin Minus
@@ -208,3 +207,4 @@ let main argv =
 // size tests
 // IF IDENTIFIER 
 // test of exlpode
+// nested function application with lambdas
