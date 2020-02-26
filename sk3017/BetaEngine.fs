@@ -27,10 +27,8 @@ let extendVarMap (boundVariables, variableMap) name body : Enviourment=
     boundVariables, Map.add name body variableMap
 
 
-//  PAP for AST, building block for builtIn functions
+//  PAP matching on Ast - building block for builtIn functions
 //  used for type-checking and unpacking the values
-//  boilerplate code 
-// TODO: how to pass DU as PAPs ?
 
 // D.U. defined types
 let (|INTLIT|_|)    = function Literal (IntLit    v) -> Some v | _ -> None
@@ -49,6 +47,11 @@ let rec (|LIST|_|) x =
     | SeqExp (hd, LIST tlLst) -> Some (hd::tlLst)
     | _ -> None
 
+let rec buildList list =
+    match list with
+    | [] -> Null
+    | ele::rest -> SeqExp(ele, buildList rest)
+
 // TODO: add description
 /// PAP buildier for unary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned
@@ -58,7 +61,8 @@ let rec (|LIST|_|) x =
 /// parameters:
 /// - map - Map from Builtin token to F# function
 /// - (|INTYPE|_|) - PAP for matching (and unpacking) the input type
-/// - f,x - left- and righthandside of function application
+/// - argLst - list of arguments
+/// - originalAst - original Ast which needs to be returned if evaluation is delayed
 let buildUnaryBuiltIn b f (|InType|_|) (argLst, originalAst) =
     match argLst with
     | (InType x)::[] -> Ok (f x)
@@ -76,7 +80,8 @@ let mapInputOutputUnary inputTransformer outputTransformer lstBind =
     lstBind |> mapOutputUnary |> mapInputUnary 
 
 (*
-   | Explode   String -> AST 
+   | Explode   
+   | Implode 
 *)
 
 let UnaryBuiltIn =
@@ -91,7 +96,15 @@ let UnaryBuiltIn =
          [  // Seq -> Ast 
             Head, (fun (hd,tl) -> hd);
             Tail, (fun (hd,tl) -> tl);         
-         ]; 
+         ];
+
+         mapInputOutputUnary (|STRINGLIT|_|) id
+         [ // String -> AST 
+            Explode, ( fun s -> s 
+                                |> Seq.toList 
+                                |> List.map (string >> StringLit >> Literal) 
+                                |> buildList ) 
+         ];
 
     ] |> List.concat |> Map
 
@@ -157,7 +170,7 @@ let BinaryBuiltIn =
          ]; 
         
         mapInputOutputBin Some (|LISTLAZY|_|) id
-         [  Append, (fun l r -> SeqExp (l,r)); ]; //  Ast -> SeqExp -> Ast
+         [  Append, (fun l r -> SeqExp (l,r)); ]; // Ast -> SeqExp -> Ast
 
     ] |> List.concat |> Map
    
