@@ -15,7 +15,7 @@ type Base =
     | String
     | NullType // To terminate lists.
 
-and Type =
+type Type =
     | Base of Base
     | Gen of int // Generic type with unique identifier.
     | Fun of Type * Type

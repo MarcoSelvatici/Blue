@@ -109,10 +109,18 @@ let testCasesTypeChecker = [
         Ok (Fun (Pair (Gen 0, Gen 1), Base Int));
     "Applied Size `size [1]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (IntLit 4), Null)), 
         Ok (Base Int);
-    "Applied Size `tail ['hello', 1, true]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
+    "Applied Size `size ['hello', 1, true]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
         Ok (Base Int);
     "Simple Append", BuiltInFunc Append,
         Ok (Fun (Gen 2, Fun (Pair (Gen 0, Gen 1), Pair (Gen 2, Pair (Gen 0, Gen 1)))));
     "Applied Append `append true [1]`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), SeqExp (Literal (IntLit 4), Null)), 
         Ok (Pair (Base Bool, Pair (Base Int, Base NullType)));
+    "Head not list `head 1`", FuncApp (BuiltInFunc Head, Literal (IntLit 1)),
+        Error (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Base Int));
+    "Tail not list `tail \x.x`", FuncApp (BuiltInFunc Tail, buildLambda "x" (Identifier "x")),
+        Error (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Fun (Gen 3, Gen 3)));
+    "Size not list `size 4`", FuncApp (BuiltInFunc Head, Literal (IntLit 2)),
+        Error (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Base Int));
+    "Append not list `append true 1`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), Literal (IntLit 4)),
+        Error (sprintf "Types %A and %A are not compatable" (Pair (Gen 2, Gen 3)) (Base Int));
 ]
