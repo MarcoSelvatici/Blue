@@ -196,4 +196,5 @@ let main argv =
     0 
 
 // TODO add test thatt chack that names defined in lambdas dont mix with that in definitions
-// TODO add tests for list append
+// TODO add tests for list append , 
+// size tests

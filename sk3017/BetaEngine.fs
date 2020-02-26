@@ -51,12 +51,15 @@ let (|NULL|_|) x =
     match x with
     | Null -> Some (Null)
     | _ -> None
-let (|LIST|_|) x = 
+let (|LISTLAZY|_|) x =
     match x with
-    | SeqExp _  | Null -> Some x
+    | Null | SeqExp _ -> Some x
     | _ -> None
-
-
+let rec (|LIST|_|) x = 
+    match x with
+    | Null -> Some []
+    | SeqExp (hd, LIST tlLst) -> Some (hd::tlLst)
+    | _ -> None
 
 (*
     | Size      List -> Int -> AST
@@ -64,24 +67,33 @@ let (|LIST|_|) x =
     | Explode   String -> AST 
 *)
 
-
 let mapUn outputTransformer lst  =
     List.map (fun (n,f) -> n, f >> outputTransformer) lst
 
 let bBool =
+    // bool -> Ast
     mapUn (BoolLit>>Literal)
-     [
+     [ // bool -> bool
         Not, not
      ]
     |> Map, (|BOOLLIT|_|)
 
 let bSeq =
-    [
+    [   // Seq -> Ast 
         Head, (fun (l,r) -> l); // addnotation needed to make the function non-generic
         Tail, (fun (l,r) -> r);         
     ] 
     |> Map, (|SEQEXP|_|)
 
+let bList =
+     // List -> Ast
+    mapUn (IntLit>>Literal)
+     [ // List -> int
+        Size, (fun (l:Ast list) -> List.length l)
+     ] 
+    |> Map, (|LIST|_|)
+
+// TODO: add description
 let (|UNBUILTIN|_|) (map,(|INTYPE|_|)) (f, x) = 
     match (f, x) with
     | BuiltInFunc b, INTYPE value when Map.containsKey b map 
@@ -91,9 +103,6 @@ let (|UNBUILTIN|_|) (map,(|INTYPE|_|)) (f, x) =
     | _ -> None
 
 /// Binary Builtin
-
-// uwaga nie mozna chyba overloadowac operatorow bo zwraca error
-
 let mapBin outputTransformer lst =
     List.map (fun (n,fn) -> n, (fun f g l r -> g (f l r)) fn outputTransformer) lst
 
@@ -134,11 +143,10 @@ let bBoolBool =
      ] 
     |> Map, (|BOOLLIT|_|), (|BOOLLIT|_|)
 
-let bListAST = 
-    [
-        Append, (fun l r -> SeqExp (l,r))
-    ]
-    |> Map, (|LIST|_|), (fun (x:Ast) -> Some x)
+let bASTList =
+    //  Ast -> List -> Ast
+    [ Append, (fun l r -> SeqExp (l,r)) ]
+    |> Map, (fun (x:Ast) -> Some x), (|LISTLAZY|_|)
 
 /// PAP buildier for binary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned
@@ -160,6 +168,16 @@ let (|BINBUILTIN|_|) (map,(|InTypeL|_|),(|InTypeR|_|)) (f, x)  =
         -> Error <| sprintf "%A is unsuported for %A, %A" b lArg rArg |> Some
     | BuiltInFunc b, _ when Map.containsKey b map
         -> FuncApp (f,x) |> Ok |> Some
+    | _ -> None
+
+let (|BUILTIN|_|) (f,x)= 
+    match (f,x) with 
+    | UNBUILTIN  bBool         res 
+    | UNBUILTIN  bSeq          res
+    | BINBUILTIN bIntInt       res 
+    | BINBUILTIN bBoolBool     res 
+    | BINBUILTIN bStringString res
+    | BINBUILTIN bASTList res -> Some (res)
     | _ -> None
 
 // TODO : possibly delay evaluation of f or x
@@ -184,12 +202,7 @@ let rec functionApplication env f x =
         // reduce - lambda (CHANGE HERE FOR NORMAL REDUCTION)
         | Lambda  { LambdaParam = name; LambdaBody = body;}, ast
             -> evaluate (extendVarMap env name ast) body
-        | UNBUILTIN bBool res -> res
-        | UNBUILTIN bSeq res -> res
-        | BINBUILTIN bIntInt  res -> res
-        | BINBUILTIN bBoolBool res -> res
-        | BINBUILTIN bStringString res-> res
-        | BINBUILTIN bListAST res -> res
+        | BUILTIN res -> res
         // add FuncApp
         // add BuiltInFunc
 

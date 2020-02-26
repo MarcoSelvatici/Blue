@@ -1,3 +1,19 @@
+# Instructions 
+```
+How will your code be used by team (if all goes well) including what order are modules in your team project compiled?
+
+Which parts if any are code written for other people?
+
+Which parts if any of code you use is written by others?
+
+What help have you obtained/given others debugging or doing code review?
+
+How did you work out the types that interface your code with others?
+
+ 
+I do not want a report-style statement, just the above info as concisely as possible.
+```
+
 Beta reduction engine for the ASTs
 
 For now the runtime system is using the strict reduction order. 
@@ -27,21 +43,17 @@ Function application
 Grammar changes:
 FuncApp Ast * Ast -> | FuncApp of (Ast * Ast)
 
-add this if not successful
- (*
-    | FuncApp (l,r) -> (    // workaround "FuncApp FLATBUILTIN" doesn't work
-        match (l,r) with    // as FuncApp requires 2 values
-        | FLATBUILTIN (b, argLst) -> (b, x::argLst) |> Some
-        | _ -> None
-        )
-    *)  
-
 Assumptions:
-1. No built in functions operate on identifiers
+1. No built in functions operate directly on identifiers
 
 Ideas:
 1. Environment consists of variable name list and variable mapping - this is used for evaluation of lambda expressions where names may be bound but not yet mapped.
 
 Questions:
-1. Should Booleans in the tree be reduced to literals ?
-2. Can the runtime have lazy beta reduction for lambdas but eager for let-expressions ?
+1. Can the runtime have lazy beta reduction for lambdas but eager for let-expressions ?
+
+## Built-In functions 
+
+Builtin functions are organised into hierarchy:
+1. Input type and arity
+2. Output type
