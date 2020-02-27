@@ -1,0 +1,6 @@
+f = BIF Plus,
+x = App 
+        (App 
+            (BIF Div, Idn "c", 0L), 
+            Lit (IntLit 2),
+         0L)

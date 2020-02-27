@@ -34,8 +34,9 @@ and FuncDefArt = {
 and LambdaR = {
     Var: string;
     Body: Art;
-    Val: Art option;
 }
+
+let newIDstub = int64 0
 
 let AstToArt ast =
     let rec (|MapAstArt|_|) ast =
@@ -43,9 +44,9 @@ let AstToArt ast =
         | FuncDefExp {FuncName = name; FuncBody = MapAstArt body ; Rest = MapAstArt rest} 
             -> Def ({Name = name; Body = body; Rest = rest}) |> Some
         | Lambda  { LambdaParam = name; LambdaBody = MapAstArt body}
-            -> Lam {Var = name; Body = body; Val = None} |> Some
+            -> Lam {Var = name; Body = body;} |> Some
         | FuncApp (MapAstArt l, MapAstArt r)
-            -> App (l, r, int64 0) |> Some// TODO: ID)
+            -> App (l, r, newIDstub) |> Some// TODO: ID)
         | Null -> Nul |> Some
         | Literal lit -> Lit lit |> Some
         | Identifier i -> Idn i |> Some
@@ -53,7 +54,7 @@ let AstToArt ast =
         | IfExp (MapAstArt b, MapAstArt t, MapAstArt e)
             -> IfE (b,t,e) |> Some
         | SeqExp (MapAstArt l, MapAstArt r)
-            -> Seq (l,r, int64 0) |> Some
+            -> Seq (l,r, newIDstub) |> Some
         | RoundExp (MapAstArt art)  -> art |> Some
         | FuncAppList _
         | IdentifierList _ -> None
@@ -62,11 +63,10 @@ let AstToArt ast =
 
 let ArtToAst art = 
     let rec (|MapArtAst|_|) art = 
-        let s = Some
         match art with
         | Def ({Name = name; Body = MapArtAst body; Rest = MapArtAst rest}) 
             -> FuncDefExp {FuncName = name; FuncBody = body ; Rest = rest} |> Some
-        | Lam  {Var = name; Body = MapArtAst body; Val = _ }               
+        | Lam  {Var = name; Body = MapArtAst body; }               
             -> Lambda { LambdaParam = name; LambdaBody =  body} |> Some
         | App (MapArtAst l ,MapArtAst r,_)
             -> FuncApp (l, r) |> Some
@@ -107,7 +107,7 @@ let rec (|LIST|_|) x =
 let rec buildList list =
     match list with
     | [] -> Nul
-    | ele::rest -> Seq (ele, buildList rest, int64 -1)
+    | ele::rest -> Seq (ele, buildList rest, newIDstub)
 
 /// PAP buildier for unary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned (Pass)
@@ -154,8 +154,9 @@ let mapInputOutputUnary inputTransformer outputTransformer lstBind =
 let buildBinaryBuiltIn b f (|InType1|_|) (|InType2|_|) (argLst, originalAst) =
     match argLst with
     | (InType2 val2)::(InType1 val1)::[] -> Ok (f val1 val2)
-    // | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_    // TODO: CAN DELETE THIS ROW ?
-    | _::(Idn _)::_ | _::(App _)::_ | _::(IfE _)::_ | _::[] | _::_::_::_
+    //| (Idn _)::_ | (App _)::_ | (IfE _)::_    // TODO: CAN DELETE THIS ROW ?
+    //| _::(Idn _)::_ | _::(App _)::_ | _::(IfE _)::_
+    | _::[] | _::_::_::_
         -> Ok originalAst
     | arg2::arg1::[] 
         -> Error <| sprintf "%A is unsuported for %A, %A" b arg1 arg2
@@ -200,7 +201,7 @@ let BuiltIn =
          //fun x -> Some x
         
         mapInputOutputBin (fun x -> Some x) (|LISTLAZY|_|)  id
-         [  Append, (fun l r -> Seq (l,r,int64 -1)); ]; // Ast -> SeqExp -> Ast //TOOD: understand the numbers
+         [  Append, (fun l r -> Seq (l,r,newIDstub)); ]; // Ast -> SeqExp -> Ast //TOOD: understand the numbers
          
         // UNARY
         mapInputOutputUnary (|BOOLLIT|_|) (BoolLit>>Lit)
@@ -242,14 +243,15 @@ let FlatAndMatch n map (f, x) =
         let (|FlatArgNless1|_|) = (|FlatArg|_|) (n-1)
         match f, x with 
         | _ when n = 0 -> None
+        | _, App _ -> None // TOOD : refactor
         | BIF b, _ ->  (b, [x]) |> Some // add n = 1 if delayed evaluation
         | App (FlatArgNless1 (b, argLst )), _ -> (b, x::argLst ) |> Some
         | _ -> None
     
     let (|FlatArgN|_|) = (|FlatArg|_|) n
-    match (f,x,int64 -1) with
+    match (f,x,newIDstub) with
     | FlatArgN (b, argLst) when Map.containsKey b map
-        -> (Map.find b map) (argLst, App (f,x,int64 -1)) |> Some
+        -> (Map.find b map) (argLst, App (f,x,newIDstub)) |> Some
     | _ -> None
 
 let (|BuiltinMatch|_|) = FlatAndMatch 2 BuiltIn
@@ -283,9 +285,31 @@ let extendVarMap (boundVariables, variableMap) name body : Enviourment=
 let extendEnv map name body =
      Map.add name body map
 
-// TODO : possibly delay evaluation of f or x
-let rec functionApplication env f x =
+let rec lambdaBetaReduction variable value art =
+    let rCall = lambdaBetaReduction variable value
+    match art with
+    | Def ({Name = name; Body = body; Rest = rest}) when name <> variable
+        -> Def ({Name = name; Body = rCall body; Rest = rCall rest})
+    | Lam  {Var = name; Body = body; } when name <> variable           
+        -> Lam { Var = name; Body = rCall body}
+    | App (l ,r, _)
+        -> App (rCall l, rCall r, newIDstub)
+    | IfE (b,t,e) -> IfE (rCall b, rCall t, rCall e)
+    | Seq (l,r,_) -> Seq (rCall l, rCall r, newIDstub)
     
+    | Idn i when i = variable -> value
+    
+    | Idn _
+    | Def _
+    | Lam _
+    | Nul
+    | Lit _ 
+    | BIF _ -> art
+
+
+// TODO : possibly delay evaluation of f or x
+let rec functionApplication env (f:Art) x =
+    (*
     printfn "functionApplication: " 
     printf "f: "
     print f |> ignore
@@ -294,23 +318,28 @@ let rec functionApplication env f x =
     printf "env: "
     print env |> ignore
     printf "\n"
-   
-
+    *)
+    
     // FuncDefExp , FuncApp should happen aoutomatically
-    // 
-    match evaluate env f, evaluate env x with
-    | Error e, _ | _, Error e -> Error e
-    | Ok fnc, Ok inp -> Ok (fnc , inp)
+    
+    //match evaluate env f, evaluate env x with
+    match f, evaluate env x with
+    | _,Error e -> Error e
+    | _,Ok inp -> Ok (f , inp)
     |> Result.map (function
-        // pass on - if funtion / argument is an identifier / non-reducable ifExp
-        | Idn _, _ | _, Idn _ | IfE _, _ | _, IfE _ as nonReducable
-            ->  Ok (App ((fun (l,r) -> (l,r, int64 0)) nonReducable))
-        // reduce - lambda (CHANGE HERE FOR NORMAL REDUCTION)
-        | Lam  { Var = name; Body = body; Val = None }, art
-            -> Lam  { Var = name; Body = body; Val = Some (art) } |> evaluate env
-        | Lam  { Var = name; Body = body; Val = Some (value) }, art
-            -> functionApplication (extendEnv env name value) body art
         | BuiltinMatch res -> res
+        // pass on - if funtion / argument is an identifier / non-reducable ifExp        
+        | (Idn _ as uf), _ 
+        | (IfE _ as uf), _  
+        | (App _ as uf), _ -> // REFACTOR
+            match evaluate env uf with
+            | Error e -> Error e
+            | Ok evalf -> functionApplication env evalf x
+            //evaluate env ( App ( evalf,x,newIDstub) )
+        //    ->  App ((fun (l,r) -> (l,r, newIDstub)) nonReducable) |> Ok
+        | Lam  { Var = name; Body = body }, art
+            -> lambdaBetaReduction name art body |> evaluate env
+            //-> evaluate (extendEnv map name art) body        
         // fail on
         | (Nul as art), _  | (Lit _ as art), _ | (Seq _ as art), _ 
             -> sprintf "%A non-reducable" art |> Error
@@ -321,43 +350,38 @@ let rec functionApplication env f x =
         | Ok ( Error e) -> Error e
         | Error e -> Error e
 
-and evaluate env (art:Art) : Result<Art,string>=
-    
+and evaluate env art =
+    (*
     printf "evaluate: " 
     print art |> ignore
     printf "env: "
     print env |> ignore
     printf "\n"
-    
+    *)
 
     match art with
     | Def {Name = name; Body = body; Rest = rest} -> 
         evaluate (extendEnv env name body) rest
-    (*
-    | Lam  { Var = name; Body = body; Val = optVal } as l->
-        Ok l // (CHANGE HERE FOR NORMAL REDUCTION)
-        //match evaluate (extendBoundVar env name) body with
-        //| Ok b -> Ok (Lambda  { LambdaParam = name; LambdaBody = b } )
-        //| Error e -> Error e
-    *)
-    | Lam  { Var = name; Body = body; Val = None } as l
+    | Lam  { Var = name; Body = body } as l
         -> Ok l
-    | Lam  { Var = name; Body = body; Val = Some (value) }
-        -> evaluate (extendEnv env name value) body
-    | App (f,x,id)     -> functionApplication env f x 
+    | App (f,x,id) -> functionApplication env f x 
     | IfE (bool,bTrue,bFalse) ->                                  // TODO: change to result map ?
         match evaluate env bool with
         | Ok (Lit (BoolLit true))  -> evaluate env bTrue
         | Ok (Lit (BoolLit false)) -> evaluate env bFalse
         | Ok ( exp ) -> Ok (IfE (exp,bTrue,bFalse))
         | Error e -> Error e
-    | Idn i -> 
-        match Map.tryFind i env with
-        | Some ast -> evaluate env ast
-        //| None when List.contains i (fst env) -> Ok (Idn i)
-        | None -> Error <| sprintf "Identifier \'%s\' is not defined" i;
+    | Idn i -> decodeIdentifier env i
     | Nul | Lit _ | BIF _ | Seq _ 
         -> Ok art
+
+   // TODO: refactor
+and decodeIdentifier env name = 
+    match Map.tryFind name env with
+        | Some (Idn i) -> decodeIdentifier env i
+        | Some art -> Ok art // evaluate env ast
+        //| None when List.contains i (fst env) -> Ok (Idn i)
+        | None -> Error <| sprintf "Identifier \'%s\' is not defined" name;
 
 
 // top level function

@@ -55,10 +55,18 @@ let factorialAST r =
 let ackermanAST m n =
     let isZero k = binaryBuiltin Equal k (intL 0)
     let decrement k = binaryBuiltin Minus k (intL 1)
+    let increment k = binaryBuiltin Plus k (intL 1)
     let mI = Identifier "m"
     let nI = Identifier "n"
     let call a b = FuncApp (FuncApp (Identifier "ackerman",a),b)
-    let f = def "ackerman" (lam "m" (lam "n" (IfExp ( isZero mI , nI , IfExp ( isZero nI, call (decrement mI) nI,  call (decrement mI) (call mI (decrement nI)))))))
+    let f = def "ackerman" 
+             (lam "m" 
+             (lam "n" 
+             (IfExp 
+             ( isZero mI , increment nI , 
+                IfExp ( isZero nI, call (decrement mI) nI,  
+                    call (decrement mI) (call mI (decrement nI))
+             )))))
     f <| call (intL m) (intL n)
     
 
@@ -138,7 +146,8 @@ let testOk : TestInfo=
                 (binaryBuiltin Mult (intL 4) (intL 5)) )
         (intL 6),
     trueL;
-
+    "Functionn Defintion multiple use", "let c = 10 in c + c",
+    def "c" (intL 10) (binaryBuiltin Plus ( Identifier "c") ( Identifier "c")), intL 20;
     "Function Definition and arithmetic", "let c = 10 in c * 6 + c / 2 + c -> 75",
     def "c" (intL 10)( binaryBuiltin Plus
                     ( binaryBuiltin Mult (Identifier "c") (intL 6) )
@@ -147,7 +156,7 @@ let testOk : TestInfo=
                         (Identifier "c")
                     ) ),
     intL 75;
-
+    
     // string
     "String Equality true", "StrEq \"word\" \"word\" -> true",
     binaryBuiltin StrEq (stringL "word") (stringL "word"), trueL;
@@ -158,8 +167,8 @@ let testOk : TestInfo=
 
     // lists
     "Head", "Head [1 2 3] -> 1", unaryBuiltin Head (buildList [intL 1;intL 2;intL 3]), intL(1);
-    //"Head with identifiers", "\\c. Head [c, c] -> \\c.c", // LAZY LAMBDA
-    //lam "c" (unaryBuiltin Head (buildList [Identifier "c"; Identifier "c"])), lam "c" (Identifier "c");
+    "Head with identifiers", "Head [c c] -> c", // Shoudl it work?
+    (unaryBuiltin Head (buildList [Identifier "c"; Identifier "c"])), (Identifier "c");
     "Tail", "Tail [1 2 3] -> [2 3]", unaryBuiltin Tail (buildList [intL 1;intL 2;intL 3]), buildList [intL 2; intL 3];
     "Size 0", "Size Null -> 0", unaryBuiltin Size (buildList []), intL 0;
     "Size 1", "Size [ Null ] -> 1", unaryBuiltin Size (buildList [Null]), intL 1;
@@ -181,8 +190,12 @@ let testOk : TestInfo=
     factorialAST <| FuncApp (Identifier "factorial", intL 5), intL 120;
     "Recursion - factorial 10", "factorial 10 -> 39916800", 
     factorialAST <| FuncApp (Identifier "factorial", intL 11), intL 39916800;
-    //"Recursion - ackerman 0 0","ack(0,0) -> 1", ackermanAST 0 0, intL 1;
-    //"Recursion - ackerman 3 2","ack(3,2) -> 9", ackermanAST 3 2, intL 9;
+    "Recursion - ackerman 0 0","ack(0,0) -> 1",  ackermanAST 0 0, intL 1;
+    //"Recursion - ackerman 0 1","ack(0,1) -> 2",  ackermanAST 0 1, intL 2;
+    //"Recursion - ackerman 1 0","ack(1,0) -> 2",  ackermanAST 1 0, intL 2;
+    
+    //"Recursion - ackerman 3 2","ack(3,2) -> 9",  ackermanAST 3 2, intL 9;
+    //"Recursion - ackerman 3 3","ack(3,3) -> 61", ackermanAST 3 3, intL 61;
     ] 
     |> List.map (fun (n,d,i,o) -> (n,d,i,Ok o))
 

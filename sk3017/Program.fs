@@ -5,14 +5,9 @@ open TestBetaEngine
 
 [<EntryPoint>]
 let main argv =
-    //allTests()
+    allTests()
 
-    //ackermanAST 0 0
-    
-    // IDEA 
-
-    //doesnt work add as test
-    FuncApp (FuncApp ( lam "m" (lam "n" (Identifier "m") ), intL 10), intL 20)
+    def "c" (intL 10) (binaryBuiltin Plus ( Identifier "c") ( Identifier "c"))
     |> runAst
     |> print
     |> ignore
