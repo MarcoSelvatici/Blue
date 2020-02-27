@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="TokeniserParserStub.fs" />
     <Compile Include="BetaEngine.fs" />
+    <Compile Include="TestBetaEngine.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
