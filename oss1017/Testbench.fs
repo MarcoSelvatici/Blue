@@ -572,7 +572,7 @@ let generalErrorTests = [
 
 
 /// List of all test categories to be run
-let testCases = [
+let runtimeTests = [
     listTests;
     arithmeticTests;
     booleanTests;
@@ -587,17 +587,80 @@ let testCases = [
     generalErrorTests;
 ]
 
+let builtinTests = [
+
+    "Add",
+    FuncApp( FuncApp( BuiltInFunc Plus, Literal (IntLit 4)), Literal (IntLit 2)),
+    Ok (Literal (IntLit 6));
+    
+    "Sub",
+    FuncApp( FuncApp( BuiltInFunc Minus, Literal (IntLit 4)), Literal (IntLit 2)),
+    Ok (Literal (IntLit 2));
+
+    "Mult",
+    FuncApp( FuncApp( BuiltInFunc Mult, Literal (IntLit 4)), Literal (IntLit 2)),
+    Ok (Literal (IntLit 8));
+
+    "Div",
+    FuncApp( FuncApp( BuiltInFunc Div, Literal (IntLit 4)), Literal (IntLit 2)),
+    Ok (Literal (IntLit 2));
+
+    "less equal (true)",
+    FuncApp( FuncApp( BuiltInFunc LessEq, Literal (IntLit 4)), Literal (IntLit 4)),
+    Ok (Literal (BoolLit true));
+
+    "equal (false)",
+    FuncApp( FuncApp( BuiltInFunc Equal, Literal (IntLit 4)), Literal (IntLit 2)),
+    Ok (Literal (BoolLit false));
+
+
+]
+
+let combinatorReducTests = [
+
+    "I comb test",
+    FuncApp( Combinator I, Literal (IntLit 5)),
+    Literal (IntLit 5);
+
+    "K comb test",
+    FuncApp(FuncApp (Combinator K, Literal (IntLit 5)), Literal (IntLit 50)),
+    Literal (IntLit 5);
+
+    "S comb test",
+    FuncApp (FuncApp (FuncApp (Combinator S, Literal (StringLit "f")), Literal (StringLit "g")), Literal (StringLit "h")),
+    FuncApp (FuncApp (Literal (StringLit "f"), Literal (StringLit "h")), FuncApp (Literal (StringLit "g"), Literal (StringLit "h")));
+
+]
+
 
 /// Run an Expecto test given a 3-tuple containing the test name, the input to the runtime and the expected output
-let testEval (testName, input, expectedOutput) =
+let testRuntime (testName, input, expectedOutput) =
     testCase testName <| fun () ->
         Expect.equal (input |> combinatorRuntime) (expectedOutput) ""
+
+let testbuiltin (testName, input, expectedOutput) =
+    testCase testName <| fun () ->
+        Expect.equal (input |> evalBuiltin) (expectedOutput) ""
+
+let testcombi (testName, input, expectedOutput) =
+    testCase testName <| fun () ->
+        Expect.equal (input |> combinatorReduc) (expectedOutput) ""
  
 
 [<Tests>]
 /// Evaluates all test cases in the list of lists: testCases
-let tests = 
-    testList "Evaluator test" <| List.map testEval (List.fold (fun x y -> x @ y) [] testCases)
+let tests_runtime_complete = 
+    testList "Runtime test" <| List.map testRuntime (List.fold (fun x y -> x @ y) [] runtimeTests)
+
+
+[<Tests>]
+let tests_eval_builtin = 
+    testList "Built-in test" <| List.map testbuiltin builtinTests
+
+
+[<Tests>]
+let tests_combinator_reduc = 
+    testList "Combinator test" <| List.map testcombi combinatorReducTests
 
 
 /// Start Expecto testing
