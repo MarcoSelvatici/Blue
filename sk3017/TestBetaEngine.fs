@@ -184,7 +184,7 @@ let testOk : TestInfo=
     factorialAST <| FuncApp (Identifier "factorial", intL 5), intL 120;
     "Recursion - factorial 10", "factorial 10 -> 39916800", 
     factorialAST <| FuncApp (Identifier "factorial", intL 11), intL 39916800;
-    //"Add recurively", "add 100 100 -> 200", addRec 100 100, intL 200;
+    "Add recurively", "add 100 100 -> 200", addRec 100 100, intL 200;
 
     ] 
     |> List.map (fun (n,d,i,o) -> (n,d,i,Ok o))

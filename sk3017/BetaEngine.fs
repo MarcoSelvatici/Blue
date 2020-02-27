@@ -138,7 +138,6 @@ let mapInputOutputUnary inputTransformer outputTransformer lstBind =
 /// * if one of the arguments can't be evaluated - the original Ast is returned   (Delay)
 /// * if 'full match' is detected but the types are incorrect - Error is returned (Fail)
 /// * otherwise - What? error is returned (should not happen)
-/// * NB: list is reversed
 /// 
 /// parameters:
 /// - b - the function token (key in the map) - used for error reporting
@@ -242,6 +241,17 @@ let rec lambdaBetaReduction variable value art =
     | Idn i when i = variable -> value
     | Idn _ | Def _ | Lam _ | Nul | Lit _ | BIF _ -> art
 
+let rec decodeIdentifier env name = 
+    match Map.tryFind name env with
+        | Some (Idn i) -> decodeIdentifier env i
+        | Some art -> Ok art
+        | None -> Error <| sprintf "Identifier \'%s\' is not defined" name;
+(*
+let IdentifierToArt env name = 
+    match decodeIdentifier env name with
+    | Ok art -> Some art
+    | _ -> None 
+*)
 /// Builds PAP for matching build-in expressions in the map 
 /// * if the (list of arguments) and (function token) is succesfuly extracted from the tree
 /// * and (function token) is a key in the map
@@ -254,12 +264,16 @@ let rec lambdaBetaReduction variable value art =
 /// - env - envoiurment needed if x is identifier
 /// - f,x - left- and righthandside of function application
 let rec FlatAndMatch n map env (f, x) = 
+    //let (|IdDecoder|_|) = IdentifierToArt env
     /// flattens nested FuncApp to list of arguments and the builin function token
     /// retruns (function token), (list of arguments)
     let rec (|FlatArg|_|) n (f, x, _) =
         let (|FlatArgNless1|_|) = (|FlatArg|_|) (n-1)
         match f, evaluate env x with 
+        //match f, x with 
         | _ when n = 0 -> None
+        //| _, Idn (IdDecoder art)
+        //    ->  (|FlatArgNless1|_|) (f, art, int64 0)
         | BIF b, Ok ex ->  (b, [ex]) |> Some
         | App (FlatArgNless1 (b, argLst )), Ok ex -> (b, ex::argLst ) |> Some
         | _ -> None
@@ -334,26 +348,18 @@ and evaluate env art =
     | Nul | Lit _ | BIF _ | Seq _ 
         -> Ok art
 
-   // TODO: refactor
-and decodeIdentifier env name = 
-    match Map.tryFind name env with
-        | Some (Idn i) -> decodeIdentifier env i
-        | Some art -> Ok art // evaluate env ast
-        //| None when List.contains i (fst env) -> Ok (Idn i)
-        | None -> Error <| sprintf "Identifier \'%s\' is not defined" name;
-
-
-// top level function
-// TODO: clean up
 let runAst ast =
-    match AstToArt ast with
-    | Some art ->  evaluate (Map.empty) art
+    AstToArt ast
+    
+    |> function
+    | Some art -> evaluate (Map.empty) art
     | None -> Error "What? couldn't transform Ast to Art (AST Run Time)"
     |> Result.map ArtToAst
+    
     |> function
     | Ok (Some ast) -> Ok ast
     | Ok (None) -> Error "What? couldn't transform Art back to Ast"
     | Error e -> Error e
-    
+
  // TODO: add error contructor that transforms ART -> ASt
 
