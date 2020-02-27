@@ -3,8 +3,6 @@
 
 open System
 open Expecto
-open typeDefinitions
-
 
 module rec Interpreter =
     //print function
