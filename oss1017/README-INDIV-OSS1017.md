@@ -52,8 +52,24 @@ What works:
 - Error reporting which indicates at which stage of the runtime an error occured
 - Recursion (not using the Y combinator as it would require knowing if a function is recursive)   
 
+### Data flow
 
-### Converting from Lambda to SKI
+The input to the `combinatorRuntime` function is either an AST or an Error. 
+If it's an error, it will be returned. If it's an AST it will be applied to `bracketAbstract`.
+This function converts lambdas into S,K and I combinators. 
+It also substitutes out identifiers for their corresponding expressions. 
+For example if there is a function application where a literal is applied to an identifier. 
+The identifier will be replaced by the function body it corresponds to, if it is in our bindings/context.    
+
+The output of `bracketAbstract` is then applied to `combinatorReduc` which reduces expressions containing combinators as much as possible.  
+ 
+The result is then applied to `evalBuiltin` which evaluates all built-in functions and returns either a literal (int, bool, string) or 
+a partially applied function or a built-in type such as a sequence/list or a combinator.   
+
+If at any stage an error occurs, it will be passed out with strings prepended to it indicating where the error took place.   
+
+
+##### Converting from Lambda to SKI
 
 `LambdaToSKI.fs` takes in a pure lambda expression and returns a reduced SKI expression 
 (I wrote it before we decided on the final AST but it was still useful and part of the code was used in the combinator runtime `ski_combinator.fs`).
@@ -79,4 +95,9 @@ The module `Testbench` contains a series of lists of testcases classified based 
 Each test case is a tuple containing a test name, the input to the runtime as well as the expected output,
 whether it be a literal, a partially applied function, or an error. 
 The Testbench is run by calling `testAll()`.  
+The majority of tests run when using `testAll()` are for the complete runtime.
+There are however a few tests which check the functionality of specific functions
+ such as `combinatorReduc` and `evalBuiltin` which are tested in the 
+`tests_combinator_reduc` and `tests_eval_builtin` test cases. 
+
 A single program/AST can be evaluated by applying an input tree to the function `singleEval`.
