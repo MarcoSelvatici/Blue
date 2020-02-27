@@ -1,5 +1,31 @@
 # Lexer
-Author: __Fabio Deo fd5117__
+Author: __Fabio Deo fd5117__.
+
+This is my individual readme, where I quickly explain the structure of the lexer and how to run the testbench.
+
+## General Info
+__How will your code be used by team (if all goes well) including what order are modules in your team project compiled?__
+
+My individual part was lexing. Therefore my module will be compiled first, taking as input the raw program string and outputting a Result<Token list, Error> type that will feed as input of the Parser module, developed by Marco. 
+
+__Which parts if any are code written for other people?__
+
+None.
+
+__Which parts if any of code you use is written by others?__
+
+Because Marco started the parser before I started the lexer, I have tried to use as much as possible his tokeniser stub in order to minimise the inconsistencies once the two pieces of code will be joined. 
+However I did make some changes, adding some tokens and modifying his suggested structure.
+
+__What help have you obtained/given others debugging or doing code review?__
+
+We discuss daily on the groupchat in order to reduce as much as possible the future adjustents we will need to make each individual code consistent with its complimentary part.
+The biggest interractions I had were with Marco, as the output of my module feeds directly into his, so we longly discussed and proofread each others tokeniser structures.
+
+__How did you work out (who decided what - how do you revise) the types that interface your code with others?__
+
+Most of the grammar we needed to be able to lex had been discussed by everyone during the project plan. However, as I mentioned, I added some new features. Lastly I changed the output type from Token list to Result<Token list, Error> in order to test for faulty inputs as well as correct ones.
+
 
 ## Instructions
 1. Clone the repository

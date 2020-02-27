@@ -1,7 +1,9 @@
+module LexerTest
+
 open Lexer
 open Expecto
 
-// tokenise test
+// tokenise tests
 [<Tests>]
 let toktest0 =
     testCase "testing keywords" <| fun () ->
