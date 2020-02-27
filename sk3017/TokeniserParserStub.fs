@@ -6,14 +6,14 @@ module TokeniserParserStub
 
 type BuiltInFunc =
     // Builtin with no special treatment
-    | Not
-    | Head // 'a list -> 'a
-    | Tail // 'a list -> 'a list
-    | Size // 'a list -> int
-    | Implode // Reduce a list of chars into a string. string list -> string
-    | Explode // Expand a string into a list of chars. string -> string list
-    | Append // Append to list. 'a -> 'a List -> 'a List
-    | StrEq // Comparison between two strings. string -> string -> bool
+    | Not       // +
+    | Head      // +
+    | Tail      // +
+    | Size      // +
+    | Implode   // +
+    | Explode   // +
+    | Append    // +
+    | StrEq     // +
     // ComparisonOp
     | Greater
     | GreaterEq

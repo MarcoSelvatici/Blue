@@ -89,14 +89,23 @@ let (|STRINGLIT|_|) = function Lit (StringLit v) -> Some v | _ -> None
 let (|SEQEXP|_|)    = function Seq (l,r,_) ->   Some (l,r) | _ -> None
 
 // additionaly defined types
+
+// match Null or Seq 
 let (|LISTLAZY|_|) x =
     match x with
     | Nul | Seq _ -> Some x
     | _ -> None
+// match whole list    
 let rec (|LIST|_|) x =
     match x with
     | Nul -> Some []
     | Seq (hd, LIST tlLst, _) -> Some (hd::tlLst)
+    | _ -> None
+// match string list
+let rec (|STRLIST|_|) x =
+    match x with
+    | Nul -> Some []
+    | Seq (STRINGLIT s, STRLIST tlLst, _) -> Some (s::tlLst)
     | _ -> None
 
 // helper function 
@@ -196,7 +205,7 @@ let BuiltIn =
          //fun x -> Some x
         
         mapInputOutputBin (fun x -> Some x) (|LISTLAZY|_|)  id
-         [  Append, (fun l r -> Seq (l,r,newIDstub)); ]; // Ast -> SeqExp -> Ast //TOOD: understand the numbers
+         [  Append, (fun l r -> Seq (l,r,newIDstub)); ];
          
         // UNARY
         mapInputOutputUnary (|BOOLLIT|_|) (BoolLit>>Lit)
@@ -206,18 +215,23 @@ let BuiltIn =
          [ Size, List.length ] // List -> int
 
         mapInputOutputUnary (|SEQEXP|_|) id
-         [  // Seq -> Ast 
+         [  // Seq -> Art 
             Head, (fun (hd,tl) -> hd);
             Tail, (fun (hd,tl) -> tl);         
          ];
 
          mapInputOutputUnary (|STRINGLIT|_|) id
-         [ // String -> AST 
+         [ // String -> Art 
             Explode, ( fun s -> s 
                                 |> Seq.toList 
                                 |> List.map (string >> StringLit >> Lit) 
                                 |> buildList ) 
          ];
+
+         mapInputOutputUnary (|STRLIST|_|) (StringLit>>Lit)
+          [ //  [String] -> 
+            Implode, Seq.fold (+) ""
+          ];
 
     ] |> List.concat |> Map
    
@@ -362,4 +376,4 @@ let runAst ast =
     | Error e -> Error e
 
  // TODO: add error contructor that transforms ART -> ASt
-
+// TOODO : add implode ?

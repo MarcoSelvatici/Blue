@@ -7,7 +7,7 @@ open TestBetaEngine
 let main argv =
     allTests()
 
-    FuncApp (lam "k" (def "k" (trueL) (Identifier "k")), intL 11)
+    def "id" (lam "x" (Identifier "x")) (F (Identifier "id") (Identifier "id"))
     |> runAst
     //|> print
     |> ignore
