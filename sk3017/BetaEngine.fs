@@ -1,7 +1,5 @@
+module  BetaEngine
 
-module BetaEngine
-
-open System
 open TokeniserParserStub
 
 let print a = 
@@ -10,9 +8,7 @@ let print a =
 
 /// Tree mapping
 /// from Ast to Art (Ast Run Time)
- 
-// TODO: if time maping from art to ast
-// let cache = Dictionary<int, Art option >
+/// Curently useless - as it is planned to support memoisation
 
 type Art =
     | Def of FuncDefArt
@@ -226,65 +222,12 @@ let BuiltIn =
 
     ] |> List.concat |> Map
    
-/// Builds PAP for matching build-in expressions in the map 
-/// * if the (list of arguments) and (function token) is succesfuly extracted from the tree
-/// * and (function token) is a key in the map
-/// * then the function in the map is run with the (list of arguments)
-/// * otherwise the PAP doesn't match
-/// 
-/// parameters:
-/// - n - maximal number of args in (list of arguments) [at least arity of the functions in the map]
-/// - map - Map from Builtin token to F# function
-/// - f,x - left- and righthandside of function application
-let FlatAndMatch n map (f, x) = 
-    /// flattens nested FuncApp to list of arguments and the builin function token
-    /// retruns (function token), (list of arguments)
-    let rec (|FlatArg|_|) n (f, x, _) =
-        let (|FlatArgNless1|_|) = (|FlatArg|_|) (n-1)
-        match f, x with 
-        | _ when n = 0 -> None
-        | _, App _ -> None // TOOD : refactor
-        | BIF b, _ ->  (b, [x]) |> Some // add n = 1 if delayed evaluation
-        | App (FlatArgNless1 (b, argLst )), _ -> (b, x::argLst ) |> Some
-        | _ -> None
-    
-    let (|FlatArgN|_|) = (|FlatArg|_|) n
-    match (f,x,newIDstub) with
-    | FlatArgN (b, argLst) when Map.containsKey b map
-        -> (Map.find b map) (argLst, App (f,x,newIDstub)) |> Some
-    | _ -> None
-
-let (|BuiltinMatch|_|) = FlatAndMatch 2 BuiltIn
-
-///////////////////
-// END OF BUILIN //
-///////////////////
-
 type Enviourment = string list * Map<string, Art>
-
-//  3 function for maipulating the Envoiurment - boundVariables and varaibleMap
-
-(*
-/// adds name to boundVariables and (name,body) pair to the variableMap
-let extendEnv (boundVariables, variableMap) name body : Enviourment =
-    name::boundVariables, Map.add name body variableMap
-
-/// adds name to boundVariables, removes name from map
-/// * used to keep track of bound Variables in lambdas
-/// * since the new name is not yet tied to an AST it should be removed from the map
-let extendBoundVar (boundVariables, variableMap) name : Enviourment = 
-    name::boundVariables, Map.remove name variableMap
-
-/// adds name,body pair to the variableMap
-/// * used to assign value to bound Variables in lambdas
-/// * should be used after extendBoundVar
-let extendVarMap (boundVariables, variableMap) name body : Enviourment= 
-    boundVariables, Map.add name body variableMap
-*)
 
 let extendEnv map name body =
      Map.add name body map
 
+// subsititute value for the variable
 let rec lambdaBetaReduction variable value art =
     let rCall = lambdaBetaReduction variable value
     match art with
@@ -296,19 +239,40 @@ let rec lambdaBetaReduction variable value art =
         -> App (rCall l, rCall r, newIDstub)
     | IfE (b,t,e) -> IfE (rCall b, rCall t, rCall e)
     | Seq (l,r,_) -> Seq (rCall l, rCall r, newIDstub)
-    
     | Idn i when i = variable -> value
-    
-    | Idn _
-    | Def _
-    | Lam _
-    | Nul
-    | Lit _ 
-    | BIF _ -> art
+    | Idn _ | Def _ | Lam _ | Nul | Lit _ | BIF _ -> art
 
+/// Builds PAP for matching build-in expressions in the map 
+/// * if the (list of arguments) and (function token) is succesfuly extracted from the tree
+/// * and (function token) is a key in the map
+/// * then the function in the map is run with the (list of arguments)
+/// * otherwise the PAP doesn't match
+/// 
+/// parameters:
+/// - n - maximal number of args in (list of arguments) [at least arity of the functions in the map]
+/// - map - Map from Builtin token to F# function
+/// - env - envoiurment needed if x is identifier
+/// - f,x - left- and righthandside of function application
+let rec FlatAndMatch n map env (f, x) = 
+    /// flattens nested FuncApp to list of arguments and the builin function token
+    /// retruns (function token), (list of arguments)
+    let rec (|FlatArg|_|) n (f, x, _) =
+        let (|FlatArgNless1|_|) = (|FlatArg|_|) (n-1)
+        match f, evaluate env x with 
+        | _ when n = 0 -> None
+        | BIF b, Ok ex ->  (b, [ex]) |> Some
+        | App (FlatArgNless1 (b, argLst )), Ok ex -> (b, ex::argLst ) |> Some
+        | _ -> None
+    
+    let (|FlatArgN|_|) = (|FlatArg|_|) n
+    match (f,x,newIDstub) with
+    | FlatArgN (b, argLst) when Map.containsKey b map
+        -> (Map.find b map) (argLst, App (f,x,newIDstub)) |> Some
+    | _ -> None
 
 // TODO : possibly delay evaluation of f or x
-let rec functionApplication env (f:Art) x =
+and functionApplication env (f:Art) x =
+    let (|BultinMatchWEnv|_|) = FlatAndMatch 2 BuiltIn env
     (*
     printfn "functionApplication: " 
     printf "f: "
@@ -327,20 +291,15 @@ let rec functionApplication env (f:Art) x =
     | _,Error e -> Error e
     | _,Ok inp -> Ok (f , inp)
     |> Result.map (function
-        | BuiltinMatch res -> res
-        // pass on - if funtion / argument is an identifier / non-reducable ifExp        
+        | BultinMatchWEnv res -> res   
         | (Idn _ as uf), _ 
         | (IfE _ as uf), _  
-        | (App _ as uf), _ -> // REFACTOR
+        | (App _ as uf), _ -> 
             match evaluate env uf with
             | Error e -> Error e
             | Ok evalf -> functionApplication env evalf x
-            //evaluate env ( App ( evalf,x,newIDstub) )
-        //    ->  App ((fun (l,r) -> (l,r, newIDstub)) nonReducable) |> Ok
         | Lam  { Var = name; Body = body }, art
-            -> lambdaBetaReduction name art body |> evaluate env
-            //-> evaluate (extendEnv map name art) body        
-        // fail on
+            -> lambdaBetaReduction name art body |> evaluate env      
         | (Nul as art), _  | (Lit _ as art), _ | (Seq _ as art), _ 
             -> sprintf "%A non-reducable" art |> Error
         | a -> sprintf "What? %A in functionApplication" a |> Error  
@@ -395,9 +354,6 @@ let runAst ast =
     | Ok (Some ast) -> Ok ast
     | Ok (None) -> Error "What? couldn't transform Art back to Ast"
     | Error e -> Error e
-
-// 
+    
  // TODO: add error contructor that transforms ART -> ASt
-  
- // can write more generic types like:
- //type Builitn<'A> = int -> 'A
+

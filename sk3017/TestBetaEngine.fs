@@ -43,7 +43,6 @@ let factorialAST r =
         FuncBody= lam "n" 
             (IfExp ( 
                 binaryBuiltin Equal (Identifier "n") (intL 0),
-                //FuncApp (FuncApp (BuiltInFunc Equal, Identifier "n"), intL 0),        
                 intL 1,
                 ( binaryBuiltin Mult 
                  (Identifier "n")
@@ -52,21 +51,14 @@ let factorialAST r =
             ) )
         Rest = r
     }
-let ackermanAST m n =
+let addRec m n = 
     let isZero k = binaryBuiltin Equal k (intL 0)
     let decrement k = binaryBuiltin Minus k (intL 1)
     let increment k = binaryBuiltin Plus k (intL 1)
     let mI = Identifier "m"
     let nI = Identifier "n"
-    let call a b = FuncApp (FuncApp (Identifier "ackerman",a),b)
-    let f = def "ackerman" 
-             (lam "m" 
-             (lam "n" 
-             (IfExp 
-             ( isZero mI , increment nI , 
-                IfExp ( isZero nI, call (decrement mI) nI,  
-                    call (decrement mI) (call mI (decrement nI))
-             )))))
+    let call a b = FuncApp (FuncApp (Identifier "multRec",a),b)
+    let f = def "multRec" (lam "m"  (lam "n" (IfExp  ( isZero mI , nI , call (decrement mI) (increment  nI) ) ) ) )
     f <| call (intL m) (intL n)
     
 
@@ -106,18 +98,20 @@ let testOk : TestInfo=
     FuncDefExp {FuncName="c"; FuncBody=Null; Rest=Identifier "c"}, Null;
     "Nested Function Definition", "let c = Null in let d = c in d -> Null",
     def "c" Null ( def "d" (Identifier "c") (Identifier "d")), Null;
-    
     "if (identifier)", "(\\x.if x then -14 else 3) -14",
     FuncApp ( lam "x" ( IfExp (Identifier "x", intL -14, intL 3)) ,trueL) , intL -14;
     
     "Function application of lambda", "(\\a.a) null -> null",
     FuncApp ( Lambda { LambdaParam = "a"; LambdaBody = Identifier "a";}, Null), Null;
-    //"Nested lambda internal reduction", "(\\a.(\\b.b)Null) -> (\\a.Null)",  // LAZY LAMBDA
-    //Lambda { LambdaParam = "a"; LambdaBody = FuncApp (Lambda { LambdaParam = "b"; LambdaBody = Identifier "b";}, Null );},
-    //Lambda { LambdaParam = "a"; LambdaBody = Null;};
     "Nested lambda application", "(\\m n.m) 10 20",
     FuncApp (FuncApp ( lam "m" (lam "n" (Identifier "m") ), intL 10), intL 20), intL 10;
-
+    "Lambda variable name closure", "(\\n.(\\n.n)) false",
+    FuncApp( lam "n" (lam "n" (Identifier "n")), falseL ), lam "n" (Identifier "n");
+    "Let Lambda name closure", "let k = Null in (\\k.k)",
+    def "k" Null (lam "k" (Identifier "k")),lam "k" (Identifier "k" );
+    "Lambda Let name closure", "(\\k.let k = true in k) 11",
+    FuncApp (lam "k" (def "k" (trueL) (Identifier "k")), intL 11), trueL;
+    
     // arithmetic
     ">", "5 > 1  -> true" , binaryBuiltin Greater   (intL 5) (intL 1), trueL;
     "<", "3 < 0 -> false" , binaryBuiltin Less      (intL 3) (intL 0), falseL;
@@ -167,7 +161,7 @@ let testOk : TestInfo=
 
     // lists
     "Head", "Head [1 2 3] -> 1", unaryBuiltin Head (buildList [intL 1;intL 2;intL 3]), intL(1);
-    "Head with identifiers", "Head [c c] -> c", // Shoudl it work?
+    "Head with identifiers", "Head [c c] -> c",
     (unaryBuiltin Head (buildList [Identifier "c"; Identifier "c"])), (Identifier "c");
     "Tail", "Tail [1 2 3] -> [2 3]", unaryBuiltin Tail (buildList [intL 1;intL 2;intL 3]), buildList [intL 2; intL 3];
     "Size 0", "Size Null -> 0", unaryBuiltin Size (buildList []), intL 0;
@@ -190,12 +184,8 @@ let testOk : TestInfo=
     factorialAST <| FuncApp (Identifier "factorial", intL 5), intL 120;
     "Recursion - factorial 10", "factorial 10 -> 39916800", 
     factorialAST <| FuncApp (Identifier "factorial", intL 11), intL 39916800;
-    "Recursion - ackerman 0 0","ack(0,0) -> 1",  ackermanAST 0 0, intL 1;
-    //"Recursion - ackerman 0 1","ack(0,1) -> 2",  ackermanAST 0 1, intL 2;
-    //"Recursion - ackerman 1 0","ack(1,0) -> 2",  ackermanAST 1 0, intL 2;
-    
-    //"Recursion - ackerman 3 2","ack(3,2) -> 9",  ackermanAST 3 2, intL 9;
-    //"Recursion - ackerman 3 3","ack(3,3) -> 61", ackermanAST 3 3, intL 61;
+    //"Add recurively", "add 100 100 -> 200", addRec 100 100, intL 200;
+
     ] 
     |> List.map (fun (n,d,i,o) -> (n,d,i,Ok o))
 
@@ -233,5 +223,4 @@ let allTests() =
 
 // TODO add test thatt chack that names defined in lambdas dont mix with that in definitions
 // nested function application with lambdas
-
 // TODO : ENABLE ERROR TEST

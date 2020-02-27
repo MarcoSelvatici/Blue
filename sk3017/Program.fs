@@ -7,9 +7,9 @@ open TestBetaEngine
 let main argv =
     allTests()
 
-    def "c" (intL 10) (binaryBuiltin Plus ( Identifier "c") ( Identifier "c"))
+    FuncApp (lam "k" (def "k" (trueL) (Identifier "k")), intL 11)
     |> runAst
-    |> print
+    //|> print
     |> ignore
    
     Console.ReadKey() |> ignore
