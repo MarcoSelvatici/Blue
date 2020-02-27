@@ -24,6 +24,7 @@ let F a1 a2 = FuncApp (a1,a2)
 let F2 a1 a2 a3 = F (F a1 a2) a3
 let FbuiltIn a1 = F (BuiltInFunc a1)
 let F2builtIn a1 = F2 (BuiltInFunc a1)
+let idn = Identifier
 
 // some programs as AST's for testing with diffrent parameters
 let simpleRecAST b =
@@ -31,22 +32,22 @@ let simpleRecAST b =
         FuncName="f"
         FuncBody= lam "b"
             (IfExp (
-                Identifier "b",
+                idn "b",
                 Null,
-                FuncApp (Identifier "f", trueL)
+                FuncApp (idn "f", trueL)
              ))
-        Rest = FuncApp (Identifier "f",b)
+        Rest = FuncApp (idn "f",b)
     } 
 let factorialAST r = 
     FuncDefExp { 
         FuncName="factorial";
         FuncBody= lam "n" 
             (IfExp ( 
-                F2builtIn Equal (Identifier "n") (intL 0),
+                F2builtIn Equal (idn "n") (intL 0),
                 intL 1,
                 ( F2builtIn Mult 
-                 (Identifier "n")
-                 ( FuncApp (Identifier "factorial", F2builtIn Minus (Identifier "n") (intL 1) ) )   
+                 (idn "n")
+                 ( FuncApp (idn "factorial", F2builtIn Minus (idn "n") (intL 1) ) )   
                 )
             ) )
         Rest = r
@@ -55,9 +56,9 @@ let addRec m n =
     let isZero k = F2builtIn Equal k (intL 0)
     let decrement k = F2builtIn Minus k (intL 1)
     let increment k = F2builtIn Plus k (intL 1)
-    let mI = Identifier "m"
-    let nI = Identifier "n"
-    let call = F2 (Identifier "multRec")
+    let mI = idn "m"
+    let nI = idn "n"
+    let call = F2 (idn "multRec")
     let f = def "multRec" (lam "m"  (lam "n" (IfExp  ( isZero mI , nI , call (decrement mI) (increment  nI) ) ) ) )
     f <| call (intL m) (intL n)
     
@@ -75,9 +76,9 @@ let testId : TestInfo=
     "BuiltInFunc <=","<=", BuiltInFunc LessEq;
     "BuiltInFunc =","=", BuiltInFunc Greater;
     "Sequence (Null,Null)","(Null,Null)",SeqExp (Null,Null);
-    "Lambda \\a.a", "\\a.a", Lambda { LambdaParam = "a"; LambdaBody = Identifier "a";}
+    "Lambda \\a.a", "\\a.a", Lambda { LambdaParam = "a"; LambdaBody = idn "a";}
     "Nested lambda", "(\\a.(\\b.b)a)", 
-    Lambda { LambdaParam = "a"; LambdaBody = F (Lambda { LambdaParam = "b"; LambdaBody = Identifier "b";}) (Identifier "a" );}
+    Lambda { LambdaParam = "a"; LambdaBody = F (Lambda { LambdaParam = "b"; LambdaBody = idn "b";}) (idn "a" );}
     ] 
     |> List.map (fun (n,d,i) -> (n,sprintf "%s -> %s" d d,i,Ok i))
 
@@ -95,28 +96,28 @@ let testOk : TestInfo=
     "if false", "if false then \"abc\" else Null", 
     IfExp (falseL, stringL "abc", Null), Null;
     "Function Definition", "let c = Null in c -> Null",
-    FuncDefExp {FuncName="c"; FuncBody=Null; Rest=Identifier "c"}, Null;
+    FuncDefExp {FuncName="c"; FuncBody=Null; Rest=idn "c"}, Null;
     "Nested Function Definition", "let c = Null in let d = c in d -> Null",
-    def "c" Null ( def "d" (Identifier "c") (Identifier "d")), Null;
-    "if (identifier)", "(\\x.if x then -14 else 3) -14",
-    F ( lam "x" ( IfExp (Identifier "x", intL -14, intL 3))) trueL , intL -14;
+    def "c" Null ( def "d" (idn "c") (idn "d")), Null;
+    "if (idn)", "(\\x.if x then -14 else 3) -14",
+    F ( lam "x" ( IfExp (idn "x", intL -14, intL 3))) trueL , intL -14;
     
     "Function application of lambda", "(\\a.a) null -> null",
-    F ( Lambda { LambdaParam = "a"; LambdaBody = Identifier "a";}) Null, Null;
+    F ( Lambda { LambdaParam = "a"; LambdaBody = idn "a";}) Null, Null;
     "Nested lambda application", "(\\m n.m) 10 20",
-    F2 (lam "m" (lam "n" (Identifier "m"))) (intL 10) (intL 20), intL 10;
+    F2 (lam "m" (lam "n" (idn "m"))) (intL 10) (intL 20), intL 10;
     "Partial application", "(\\a b.a) falseL -> \\b. falseL",
-    F (lam "a" (lam "b" (Identifier "a"))) (falseL), (lam "b" falseL);
+    F (lam "a" (lam "b" (idn "a"))) (falseL), (lam "b" falseL);
     "Can F# do this?","let id=\\x.x in id id",
-    def "id" (lam "x" (Identifier "x")) (F (Identifier "id") (Identifier "id")),
-    lam "x" (Identifier "x");
+    def "id" (lam "x" (idn "x")) (F (idn "id") (idn "id")),
+    lam "x" (idn "x");
 
     "Lambda variable name closure", "(\\n.(\\n.n)) false",
-    F ( lam "n" (lam "n" (Identifier "n"))) falseL , lam "n" (Identifier "n");
+    F ( lam "n" (lam "n" (idn "n"))) falseL , lam "n" (idn "n");
     "Let Lambda name closure", "let k = Null in (\\k.k)",
-    def "k" Null (lam "k" (Identifier "k")),lam "k" (Identifier "k" );
+    def "k" Null (lam "k" (idn "k")),lam "k" (idn "k" );
     "Lambda Let name closure", "(\\k.let k = true in k) 11",
-    F (lam "k" (def "k" (trueL) (Identifier "k"))) (intL 11), trueL;
+    F (lam "k" (def "k" (trueL) (idn "k"))) (intL 11), trueL;
     
     // arithmetic
     ">", "5 > 1  -> true" , F2builtIn Greater   (intL 5) (intL 1), trueL;
@@ -138,6 +139,14 @@ let testOk : TestInfo=
     "-", "5-3 ->  2", F2builtIn Minus (intL 5) (intL 3), (intL  2);
     "*", "3*7 -> 21", F2builtIn Mult  (intL 3) (intL 7), (intL 21);
     "/", "9/3 ->  3", F2builtIn Div   (intL 9) (intL 3), (intL  3);
+    "/2","5/2 ->  2", F2builtIn Div   (intL 5) (intL 2), (intL  2);
+
+    "%", "let mod a b = a - (a/b)*b in mod 14 3 -> 2",
+    def "mod" (lam "a" (lam "b" (F2builtIn Minus (idn "a") (F2builtIn Mult (F2builtIn Div (idn "a") (idn "b")) (idn "b"))))) 
+     (F2 (idn "mod") (intL 14) (intL 3)), (intL 2);
+    "%2", "let mod a b = a - (a/b)*b in mod 997 11 -> ",
+    def "mod" (lam "a" (lam "b" (F2builtIn Minus (idn "a") (F2builtIn Mult (F2builtIn Div (idn "a") (idn "b")) (idn "b"))))) 
+     (F2 (idn "mod") (intL 997) (intL 11)), (intL 7);
 
     "chain builtin operations", "2 * 3 - 4 * 5 < 6 -> true",
     F2builtIn Less
@@ -147,13 +156,13 @@ let testOk : TestInfo=
         (intL 6),
     trueL;
     "Functionn Defintion multiple use", "let c = 10 in c + c",
-    def "c" (intL 10) (F2builtIn Plus ( Identifier "c") ( Identifier "c")), intL 20;
+    def "c" (intL 10) (F2builtIn Plus ( idn "c") ( idn "c")), intL 20;
     "Function Definition and arithmetic", "let c = 10 in c * 6 + c / 2 + c -> 75",
     def "c" (intL 10)( F2builtIn Plus
-                    ( F2builtIn Mult (Identifier "c") (intL 6) )
+                    ( F2builtIn Mult (idn "c") (intL 6) )
                     ( F2builtIn Plus 
-                        (F2builtIn Div (Identifier "c") (intL 2))
-                        (Identifier "c")
+                        (F2builtIn Div (idn "c") (intL 2))
+                        (idn "c")
                     ) ),
     intL 75;
     
@@ -169,8 +178,8 @@ let testOk : TestInfo=
 
     // lists
     "Head", "Head [1 2 3] -> 1", FbuiltIn Head (buildList [intL 1;intL 2;intL 3]), intL(1);
-    "Head with identifiers", "Head [c c] -> c",
-    (FbuiltIn Head (buildList [Identifier "c"; Identifier "c"])), (Identifier "c");
+    "Head with idns", "Head [c c] -> c",
+    (FbuiltIn Head (buildList [idn "c"; idn "c"])), (idn "c");
     "Tail", "Tail [1 2 3] -> [2 3]", FbuiltIn Tail (buildList [intL 1;intL 2;intL 3]), buildList [intL 2; intL 3];
     "Size 0", "Size Null -> 0", FbuiltIn Size (buildList []), intL 0;
     "Size 1", "Size [ Null ] -> 1", FbuiltIn Size (buildList [Null]), intL 1;
@@ -181,17 +190,17 @@ let testOk : TestInfo=
     F2builtIn Append trueL (buildList [stringL "997"; intL 997; Null; buildList [intL 1] ]), 
     buildList [trueL; stringL "997"; intL 997; Null; buildList [intL 1] ];
     "Append lazy", "Append [] [x] -> [[] x]",
-    F2builtIn Append Null (buildList [Identifier "x"]),buildList [Null;Identifier "x"] ;
+    F2builtIn Append Null (buildList [idn "x"]),buildList [Null;idn "x"] ;
 
     // recursion
     "Simple recursion", "let f c = if c then Null else (f true) in f false -> Null",
     simpleRecAST <| falseL, Null;
     "Recursion - factorial (basecase)", "factorial 0 -> 1",
-    factorialAST <| F (Identifier "factorial") (intL 0), intL 1;
+    factorialAST <| F (idn "factorial") (intL 0), intL 1;
     "Recursion - factorial 5", "factorial 5 -> 120",
-    factorialAST <| F (Identifier "factorial") (intL 5), intL 120;
+    factorialAST <| F (idn "factorial") (intL 5), intL 120;
     "Recursion - factorial 10", "factorial 10 -> 39916800", 
-    factorialAST <| F (Identifier "factorial") (intL 11), intL 39916800;
+    factorialAST <| F (idn "factorial") (intL 11), intL 39916800;
     "Add recurively", "add 100 100 -> 200", addRec 100 100, intL 200;
     ] 
     |> List.map (fun (n,d,i,o) -> (n,d,i,Ok o))
@@ -200,7 +209,7 @@ let testOk : TestInfo=
 /// test that should return (Error string)
 let testErr : TestInfo= 
     [
-    "Identifier", "foo", Identifier "foo", "Identifier \'foo\' is not defined";
+    "idn", "foo", idn "foo", "idn \'foo\' is not defined";
     "Function Application List", "[]", FuncAppList [], "What? parser returned FuncAppList";
     "Identifier List", "[]", IdentifierList [],"What? parser returned IdentifierList";
 
@@ -209,7 +218,6 @@ let testErr : TestInfo=
     "String Equality wrong type" , "StrEq \"dog\" Null", F2builtIn StrEq (stringL "dog") Null, "StrEq is unsuported for Literal (StringLit \"dog\"), Null";
 
     "Head wrong type", "Head Null", FbuiltIn Head Null, "Head is unsuported for Null";
-    //"Lambda \\a.b", "\\a.b", Lambda { LambdaParam = "a"; LambdaBody = Identifier "b"},"Identifier \'b\' is not defined"; // Lazy
     ]
     |> List.map (fun (n,d,i,o) -> (n,d,i,Error o))
 
@@ -231,4 +239,3 @@ let allTests() =
 // TODO add test thatt chack that names defined in lambdas dont mix with that in definitions
 // nested function application with lambdas
 // TODO : ENABLE ERROR TEST
-// add can F# do that ? 

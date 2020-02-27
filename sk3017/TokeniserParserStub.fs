@@ -6,14 +6,14 @@ module TokeniserParserStub
 
 type BuiltInFunc =
     // Builtin with no special treatment
-    | Not       // +
-    | Head      // +
-    | Tail      // +
-    | Size      // +
-    | Implode   // +
-    | Explode   // +
-    | Append    // +
-    | StrEq     // +
+    | Not 
+    | Head
+    | Tail
+    | Size
+    | Implode
+    | Explode
+    | Append
+    | StrEq
     // ComparisonOp
     | Greater
     | GreaterEq
@@ -40,18 +40,18 @@ type Literal =
 //==========//
 
 type Ast =
-    | FuncDefExp of FuncDefExpType // function definition(s) followed by expression
-    | Lambda of LambdaType // anonymous function
+    | FuncDefExp of FuncDefExpType
+    | Lambda of LambdaType 
     | FuncApp of (Ast * Ast)
-    | FuncAppList of Ast list
-    | Null // used with pair to make lists
+    | Null
     | Literal of Literal
     | Identifier of string
-    | IdentifierList of string list
-    | BuiltInFunc of BuiltInFunc // E.g. builtinTimes, builtinPlus
-    | RoundExp of Ast // possibly needed see techical note
+    | BuiltInFunc of BuiltInFunc
     | IfExp of Ast * Ast * Ast
-    | SeqExp of Ast * Ast // A pair of two elements [a, b].
+    | SeqExp of Ast * Ast
+    | FuncAppList of Ast list       // should not
+    | IdentifierList of string list // be passed
+    | RoundExp of Ast               // from parser
 
 and FuncDefExpType = {
     FuncName: string;

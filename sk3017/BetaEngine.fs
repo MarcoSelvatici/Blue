@@ -6,20 +6,43 @@ let print a =
     printf "%A\n" a 
     a
 
+// introspection tools
+let printFA env f x = 
+    printfn "functionApplication: " 
+    printf "f: "
+    print f |> ignore
+    printf "x: "
+    print x |> ignore
+    printf "env: "
+    print env |> ignore
+    printf "\n"
+
+let printEval env art =
+    printf "evaluate: " 
+    print art |> ignore
+    printf "env: "
+    print env |> ignore
+    printf "\n"
+
 /// Tree mapping
 /// from Ast to Art (Ast Run Time)
 /// Curently useless - as it is planned to support memoisation
 
+type Counter() = //class
+  static let mutable x = int64 0
+  static member getID = x <- x + (int64 1); Some x
+//end
+
 type Art =
     | Def of FuncDefArt
     | Lam of LambdaR
-    | App of (Art * Art * int64)
+    | App of (Art * Art * int64 option)
     | Nul
     | Lit of Literal
     | Idn of string
     | BIF of BuiltInFunc
     | IfE of Art * Art * Art
-    | Seq of (Art * Art * int64)
+    | Seq of (Art * Art * int64 option)
 
 and FuncDefArt = {
     Name: string;
@@ -34,6 +57,8 @@ and LambdaR = {
 
 let newIDstub = int64 0
 
+
+// TODO: add better error reporting - for now function just return None
 let AstToArt ast =
     let rec (|MapAstArt|_|) ast =
         match ast with
@@ -42,7 +67,7 @@ let AstToArt ast =
         | Lambda  { LambdaParam = name; LambdaBody = MapAstArt body}
             -> Lam {Var = name; Body = body;} |> Some
         | FuncApp (MapAstArt l, MapAstArt r)
-            -> App (l, r, newIDstub) |> Some// TODO: ID)
+            -> App (l, r, Counter.getID) |> Some
         | Null -> Nul |> Some
         | Literal lit -> Lit lit |> Some
         | Identifier i -> Idn i |> Some
@@ -50,11 +75,11 @@ let AstToArt ast =
         | IfExp (MapAstArt b, MapAstArt t, MapAstArt e)
             -> IfE (b,t,e) |> Some
         | SeqExp (MapAstArt l, MapAstArt r)
-            -> Seq (l,r, newIDstub) |> Some
+            -> Seq (l,r, Counter.getID) |> Some
         | RoundExp (MapAstArt art)  -> art |> Some
         | FuncAppList _
         | IdentifierList _ -> None
-        | _ -> None // TODO :  refactors
+        | _ -> None
     (|MapAstArt|_|) ast
 
 let ArtToAst art = 
@@ -112,7 +137,7 @@ let rec (|STRLIST|_|) x =
 let rec buildList list =
     match list with
     | [] -> Nul
-    | ele::rest -> Seq (ele, buildList rest, newIDstub)
+    | ele::rest -> Seq (ele, buildList rest, Counter.getID)
 
 /// PAP buildier for unary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned (Pass)
@@ -129,7 +154,7 @@ let rec buildList list =
 let buildUnaryBuiltIn b f (|InType|_|) (argLst, originalAst) =
     match argLst with
     | (InType x)::[] -> Ok (f x)
-    // | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_ -> Ok originalAst // TODO: CAN DELETE THIS ROW ?
+    | (Idn _)::_ | (App _)::_ | (IfE _)::_ -> Ok originalAst // TODO: CAN DELETE THIS ROW ?
     | arg::[] 
         -> Error <| sprintf "%A is unsuported for %A" b arg
     | _ -> Error <| sprintf "What? buildUnaryBuiltIn %A %A" b argLst 
@@ -205,7 +230,7 @@ let BuiltIn =
          //fun x -> Some x
         
         mapInputOutputBin (fun x -> Some x) (|LISTLAZY|_|)  id
-         [  Append, (fun l r -> Seq (l,r,newIDstub)); ];
+         [  Append, (fun l r -> Seq (l,r,Counter.getID)); ];
          
         // UNARY
         mapInputOutputUnary (|BOOLLIT|_|) (BoolLit>>Lit)
@@ -249,9 +274,9 @@ let rec lambdaBetaReduction variable value art =
     | Lam  {Var = name; Body = body; } when name <> variable           
         -> Lam { Var = name; Body = rCall body}
     | App (l ,r, _)
-        -> App (rCall l, rCall r, newIDstub)
+        -> App (rCall l, rCall r, Counter.getID)
     | IfE (b,t,e) -> IfE (rCall b, rCall t, rCall e)
-    | Seq (l,r,_) -> Seq (rCall l, rCall r, newIDstub)
+    | Seq (l,r,_) -> Seq (rCall l, rCall r, Counter.getID)
     | Idn i when i = variable -> value
     | Idn _ | Def _ | Lam _ | Nul | Lit _ | BIF _ -> art
 
@@ -266,6 +291,7 @@ let IdentifierToArt env name =
     | Ok art -> Some art
     | _ -> None 
 *)
+
 /// Builds PAP for matching build-in expressions in the map 
 /// * if the (list of arguments) and (function token) is succesfuly extracted from the tree
 /// * and (function token) is a key in the map
@@ -278,43 +304,26 @@ let IdentifierToArt env name =
 /// - env - envoiurment needed if x is identifier
 /// - f,x - left- and righthandside of function application
 let rec FlatAndMatch n map env (f, x) = 
-    //let (|IdDecoder|_|) = IdentifierToArt env
     /// flattens nested FuncApp to list of arguments and the builin function token
     /// retruns (function token), (list of arguments)
     let rec (|FlatArg|_|) n (f, x, _) =
         let (|FlatArgNless1|_|) = (|FlatArg|_|) (n-1)
-        match f, evaluate env x with 
-        //match f, x with 
+        match f, evaluate env x with  // ugly dependence on evaluate - TODO: get rid of this
         | _ when n = 0 -> None
-        //| _, Idn (IdDecoder art)
-        //    ->  (|FlatArgNless1|_|) (f, art, int64 0)
         | BIF b, Ok ex ->  (b, [ex]) |> Some
         | App (FlatArgNless1 (b, argLst )), Ok ex -> (b, ex::argLst ) |> Some
         | _ -> None
     
     let (|FlatArgN|_|) = (|FlatArg|_|) n
-    match (f,x,newIDstub) with
+    match (f,x,None) with
     | FlatArgN (b, argLst) when Map.containsKey b map
-        -> (Map.find b map) (argLst, App (f,x,newIDstub)) |> Some
+        -> (Map.find b map) (argLst, App (f,x,None)) |> Some
     | _ -> None
 
-// TODO : possibly delay evaluation of f or x
-and functionApplication env (f:Art) x =
+and functionApplication env f x =
     let (|BultinMatchWEnv|_|) = FlatAndMatch 2 BuiltIn env
-    (*
-    printfn "functionApplication: " 
-    printf "f: "
-    print f |> ignore
-    printf "x: "
-    print x |> ignore
-    printf "env: "
-    print env |> ignore
-    printf "\n"
-    *)
-    
-    // FuncDefExp , FuncApp should happen aoutomatically
-    
-    //match evaluate env f, evaluate env x with
+    //printFA env f x
+    // match evaluate env f, evaluate env x with
     match f, evaluate env x with
     | _,Error e -> Error e
     | _,Ok inp -> Ok (f , inp)
@@ -338,21 +347,14 @@ and functionApplication env (f:Art) x =
         | Error e -> Error e
 
 and evaluate env art =
-    (*
-    printf "evaluate: " 
-    print art |> ignore
-    printf "env: "
-    print env |> ignore
-    printf "\n"
-    *)
-
+    //printEval env art
     match art with
     | Def {Name = name; Body = body; Rest = rest} -> 
         evaluate (extendEnv env name body) rest
     | Lam  { Var = name; Body = body } as l
         -> Ok l
     | App (f,x,id) -> functionApplication env f x 
-    | IfE (bool,bTrue,bFalse) ->                                  // TODO: change to result map ?
+    | IfE (bool,bTrue,bFalse) ->
         match evaluate env bool with
         | Ok (Lit (BoolLit true))  -> evaluate env bTrue
         | Ok (Lit (BoolLit false)) -> evaluate env bFalse
@@ -375,5 +377,5 @@ let runAst ast =
     | Ok (None) -> Error "What? couldn't transform Art back to Ast"
     | Error e -> Error e
 
- // TODO: add error contructor that transforms ART -> ASt
-// TOODO : add implode ?
+// TODO: add error contructor that transforms ART -> ASt
+
