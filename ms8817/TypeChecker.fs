@@ -191,8 +191,7 @@ and inferLambdaExp uid ctx lam =
 
 and inferFuncDefExp uid ctx def =
     // We infer the type of the body without keeping the function name in
-    // our context. This makes recursion impossible.
-    // TODO: remove this limitation?
+    // our context. This makes recursion impossible for now.
     match infer uid ctx def.FuncBody with
     | uid, Error e -> uid, Error e
     | uid, Ok (s1, t1) ->
@@ -223,9 +222,3 @@ let typeCheck ast =
     |> function // Just return the type.
        | _, Ok (_, t) -> Ok t
        | _, Error e -> Error e
-
-// TODO:
-// - add other builtin funcs
-// - tests, many of them
-// - cleanup
-// - support recursion
