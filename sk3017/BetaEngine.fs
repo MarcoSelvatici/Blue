@@ -24,9 +24,12 @@ let printEval env art =
     print env |> ignore
     printf "\n"
 
-/// Tree mapping
+////////////////////
+/// TREE MAPPING ///
+////////////////////
+
 /// from Ast to Art (Ast Run Time)
-/// Curently useless - as it is planned to support memoisation
+/// Curently useless - planned to support memoisation
 
 type Counter() = //class
   static let mutable x = int64 0
@@ -56,7 +59,6 @@ and LambdaR = {
 }
 
 let newIDstub = int64 0
-
 
 // TODO: add better error reporting - for now function just return None
 let AstToArt ast =
@@ -99,6 +101,16 @@ let ArtToAst art =
         | Seq (MapArtAst l, MapArtAst r,_) -> SeqExp (l,r) |> Some
         | _ -> None
     (|MapArtAst|_|) art
+
+//////////////
+/// ERRORS ///
+//////////////
+
+let buildError (message:string) (art:Art) =
+     Error (message, art)
+
+let buildErrorS string art = 
+    buildError string art |> Some
 
 //////////////////////
 // BUILIN FUNCTIONS //
@@ -156,8 +168,8 @@ let buildUnaryBuiltIn b f (|InType|_|) (argLst, originalAst) =
     | (InType x)::[] -> Ok (f x)
     | (Idn _)::_ | (App _)::_ | (IfE _)::_ -> Ok originalAst // TODO: CAN DELETE THIS ROW ?
     | arg::[] 
-        -> Error <| sprintf "%A is unsuported for %A" b arg
-    | _ -> Error <| sprintf "What? buildUnaryBuiltIn %A %A" b argLst 
+        -> buildError (sprintf "%A is unsuported for %A" b arg) originalAst
+    | _ -> buildError (sprintf "What? buildUnaryBuiltIn %A %A" b argLst) originalAst
 
 let mapInputOutputUnary inputTransformer outputTransformer lstBind =
     let mapOutputUnary lst =
@@ -188,8 +200,8 @@ let buildBinaryBuiltIn b f (|InType1|_|) (|InType2|_|) (argLst, originalAst) =
     | _::[] | _::_::_::_
         -> Ok originalAst
     | arg2::arg1::[] 
-        -> Error <| sprintf "%A is unsuported for %A, %A" b arg1 arg2
-    | _ -> Error <| sprintf "What? buildBinaryBuiltIn %A %A" b argLst 
+        -> buildError (sprintf "%A is unsuported for %A, %A" b arg1 arg2) originalAst
+    | _ -> buildError (sprintf "What? buildBinaryBuiltIn %A %A" b argLst) originalAst
 
 let mapInputOutputBin inputTransformer1 inputTransformer2 outputTransformer lstBind =
     let mapOutputBin lst =
@@ -284,13 +296,7 @@ let rec decodeIdentifier env name =
     match Map.tryFind name env with
         | Some (Idn i) -> decodeIdentifier env i
         | Some art -> Ok art
-        | None -> Error <| sprintf "Identifier \'%s\' is not defined" name;
-(*
-let IdentifierToArt env name = 
-    match decodeIdentifier env name with
-    | Ok art -> Some art
-    | _ -> None 
-*)
+        | None -> buildError (sprintf "Idn \'%s\' is not defined" name) (Idn name);
 
 /// Builds PAP for matching build-in expressions in the map 
 /// * if the (list of arguments) and (function token) is succesfuly extracted from the tree
@@ -324,26 +330,27 @@ and functionApplication env f x =
     let (|BultinMatchWEnv|_|) = FlatAndMatch 2 BuiltIn env
     //printFA env f x
     // match evaluate env f, evaluate env x with
-    match f, evaluate env x with
-    | _,Error e -> Error e
-    | _,Ok inp -> Ok (f , inp)
+    match evaluate env x with
+    | Error e -> Error e
+    | Ok inp -> Ok (f , inp)
     |> Result.map (function
         | BultinMatchWEnv res -> res   
         | (Idn _ as uf), _ 
         | (IfE _ as uf), _  
-        | (App _ as uf), _ -> 
+        | (App _ as uf), _ 
+        | (Def _ as uf), _-> 
             match evaluate env uf with
             | Error e -> Error e
             | Ok evalf -> functionApplication env evalf x
         | Lam  { Var = name; Body = body }, art
             -> lambdaBetaReduction name art body |> evaluate env      
         | (Nul as art), _  | (Lit _ as art), _ | (Seq _ as art), _ 
-            -> sprintf "%A non-reducable" art |> Error
-        | a -> sprintf "What? %A in functionApplication" a |> Error  
+            -> buildError (sprintf "%A non-reducable" art ) art
+        | (f, x) -> buildError (sprintf "What? %A in functionApplication" (f,x)) (App (f,x,None))
         )
         |> function
         | Ok ( Ok ast ) -> Ok ast
-        | Ok ( Error e) -> Error e
+        | Ok ( Error e)
         | Error e -> Error e
 
 and evaluate env art =
@@ -353,7 +360,7 @@ and evaluate env art =
         evaluate (extendEnv env name body) rest
     | Lam  { Var = name; Body = body } as l
         -> Ok l
-    | App (f,x,id) -> functionApplication env f x 
+    | App (f,x,id) -> functionApplication env f x
     | IfE (bool,bTrue,bFalse) ->
         match evaluate env bool with
         | Ok (Lit (BoolLit true))  -> evaluate env bTrue
@@ -366,16 +373,14 @@ and evaluate env art =
 
 let runAst ast =
     AstToArt ast
-    
     |> function
+    | None -> buildError "What? couldn't transform Ast to Art (AST Run Time)" Nul
     | Some art -> evaluate (Map.empty) art
-    | None -> Error "What? couldn't transform Ast to Art (AST Run Time)"
-    |> Result.map ArtToAst
-    
+    |> (fun art -> (Result.map ArtToAst art, art))
     |> function
-    | Ok (Some ast) -> Ok ast
-    | Ok (None) -> Error "What? couldn't transform Art back to Ast"
-    | Error e -> Error e
-
-// TODO: add error contructor that transforms ART -> ASt
+    | Ok (Some ast), _ -> Ok ast
+    | Ok (None), Ok (art) -> buildError "What? couldn't transform Art back to Ast" art
+    | Error e, _ -> Error e
+    | _ -> buildError "What? runAst" Nul
+    
 

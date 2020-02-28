@@ -4,7 +4,7 @@ open TokeniserParserStub
 open BetaEngine
 open Expecto
 
-type TestInfo = (string * string * Ast * Result<Ast,string>) list
+type TestInfo = (string * string * Ast * Result<Ast,string*Art>) list
 
 // helper functions to shorten and decluter test definitions
 let trueL = Literal (BoolLit true)
@@ -101,7 +101,9 @@ let testOk : TestInfo=
     def "c" Null ( def "d" (idn "c") (idn "d")), Null;
     "if (idn)", "(\\x.if x then -14 else 3) -14",
     F ( lam "x" ( IfExp (idn "x", intL -14, intL 3))) trueL , intL -14;
-    
+    "Applied Function Definition", "(let double x = 2*x in double) 18",
+    F (def "double" (lam "a" (F2builtIn Mult (intL 2) (idn "a"))) (idn "double"))  (intL 18), (intL 36);
+        
     "Function application of lambda", "(\\a.a) null -> null",
     F ( Lambda { LambdaParam = "a"; LambdaBody = idn "a";}) Null, Null;
     "Nested lambda application", "(\\m n.m) 10 20",
@@ -165,6 +167,14 @@ let testOk : TestInfo=
                         (idn "c")
                     ) ),
     intL 75;
+    "Determinant", "a*d-b*c -> 3 * 6 - 5 * 4 = -2 ",
+    F2 
+      (F2 (lam "a" (lam "b" (lam "c" (lam "d" 
+                               (F2builtIn Minus 
+                                 (F2builtIn Mult (Identifier "a") (Identifier "d") ) 
+                                 (F2builtIn Mult (Identifier "b") (Identifier "c"))
+      ))))) 
+        (intL 3) (intL 4 )) (intL 5) (intL 6), intL -2;
     
     // string
     "String Equality true", "StrEq \"word\" \"word\" -> true",
@@ -174,7 +184,9 @@ let testOk : TestInfo=
     "Explode", "Explode \"atlas\" -> [\"a\",\"t\",\"l\",\"a\",\"s\"]",
     FbuiltIn Explode (stringL "atlas"),  buildList ( "atlas" |> Seq.toList |> List.map (string >> stringL) );
     "Implode", "Implode [\"a\",\"t\",\"l\",\"a\",\"s\"] -> \"atlas\"",
-    FbuiltIn Implode (buildList ( "atlas" |> Seq.toList |> List.map (string >> stringL) )), (stringL "atlas");
+    FbuiltIn Implode (buildList ( "atlas" |> Seq.toList |> List.map (string >> stringL) )), stringL "atlas";
+    "Explode -> Append -> Implode", "Explode \"ongoozle\" |> Append \"g\" |> Implode",
+    FbuiltIn Explode (stringL "ongoozle") |> F2builtIn Append (stringL "g") |> FbuiltIn Implode , stringL "gongoozle";
 
     // lists
     "Head", "Head [1 2 3] -> 1", FbuiltIn Head (buildList [intL 1;intL 2;intL 3]), intL(1);
@@ -209,26 +221,35 @@ let testOk : TestInfo=
 /// test that should return (Error string)
 let testErr : TestInfo= 
     [
-    "idn", "foo", idn "foo", "idn \'foo\' is not defined";
-    "Function Application List", "[]", FuncAppList [], "What? parser returned FuncAppList";
-    "Identifier List", "[]", IdentifierList [],"What? parser returned IdentifierList";
+    "idn", "foo", idn "foo", "Idn \'foo\' is not defined", Idn "foo";
+    "Function Application List", "[]", FuncAppList [], "What? couldn't transform Ast to Art (AST Run Time)", Nul;
+    "Identifier List", "[]", IdentifierList [],"What? couldn't transform Ast to Art (AST Run Time)", Nul;
 
-    "> wrong type", "3 > Null", F2builtIn Greater (intL 3) Null, "Greater is unsuported for Literal (IntLit 3), Null";
-    "= wrong type" ,"true = 1", F2builtIn Equal trueL (intL 1), "Equal is unsuported for Literal (BoolLit true), Literal (IntLit 1)";
-    "String Equality wrong type" , "StrEq \"dog\" Null", F2builtIn StrEq (stringL "dog") Null, "StrEq is unsuported for Literal (StringLit \"dog\"), Null";
+    "> wrong type", "3 > Null", F2builtIn Greater (intL 3) Null, 
+    "Greater is unsuported for Lit (IntLit 3), Nul", 
+    (App (App (BIF Greater, Lit (IntLit 3), Some 1L), Nul, None));
 
-    "Head wrong type", "Head Null", FbuiltIn Head Null, "Head is unsuported for Null";
+    "= wrong type" ,"true = 1", F2builtIn Equal trueL (intL 1), 
+    "Equal is unsuported for Lit (BoolLit true), Lit (IntLit 1)", 
+    App (App (BIF Equal, Lit (BoolLit true), Some 3L), Lit (IntLit 1), None);
+
+    "String Equality wrong type" , "StrEq \"dog\" Null", F2builtIn StrEq (stringL "dog") Null, 
+    "StrEq is unsuported for Lit (StringLit \"dog\"), Nul", 
+    (App (App (BIF StrEq, Lit (StringLit "dog"), Some 5L), Nul, None));
+
+    "Head wrong type", "Head Null", FbuiltIn Head Null, "Head is unsuported for Nul", App (BIF Head, Nul, None);
     ]
-    |> List.map (fun (n,d,i,o) -> (n,d,i,Error o))
+    |> List.map (fun (n,d,i,m,o) -> (n,d,i,Error (m,o)))
 
 let makeTest f (name, description, input, output) =
     test name { Expect.equal (f input) output description}
+
 
 [<Tests>]
 let tests =
     testId 
     |> List.append testOk
-    //|> List.append testErr 
+    |> List.append testErr 
     |> List.map (makeTest runAst) 
     |> testList "Beta Engine Tests" 
  
@@ -236,6 +257,5 @@ let tests =
 let allTests() =
     runTestsInAssembly defaultConfig [||] |> ignore
 
-// TODO add test thatt chack that names defined in lambdas dont mix with that in definitions
-// nested function application with lambdas
 // TODO : ENABLE ERROR TEST
+   

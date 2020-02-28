@@ -7,13 +7,7 @@ open TestBetaEngine
 let main argv =
     allTests()
 
-    F2 
-      (F2 (lam "a" (lam "b" (lam "c" (lam "d" 
-           (F2builtIn Plus 
-             (F2builtIn Mult (Identifier "a") (Identifier "c") ) 
-             (F2builtIn Div (Identifier "d") (Identifier "b"))
-           ))))) 
-        (intL 3) (intL 4 )) (intL 5) (intL 6)
+    F (def "double" (lam "a" (F2builtIn Mult (intL 2) (idn "a"))) (idn "double"))  (intL 18)
     |> runAst
     //|> print
     |> ignore
@@ -21,3 +15,4 @@ let main argv =
     Console.ReadKey() |> ignore
     0 
 
+// TODO: 3. update README
