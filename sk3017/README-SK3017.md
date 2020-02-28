@@ -1,59 +1,38 @@
 # Instructions 
-```
-How will your code be used by team (if all goes well) including what order are modules in your team project compiled?
-
-Which parts if any are code written for other people?
-
-Which parts if any of code you use is written by others?
-
-What help have you obtained/given others debugging or doing code review?
-
-How did you work out the types that interface your code with others?
-
- 
-I do not want a report-style statement, just the above info as concisely as possible.
-```
-
-Beta reduction engine for the ASTs
-
-For now the runtime system is using the strict reduction order. 
 
 ```
-(\a. function of a) B ->
-(\a. function of a) C ->
-function of C
+1. How will your code be used by team (if all goes well) including what order are modules in your team project compiled?
 
-where b is beta-reducible and c is not
+2. Which parts if any are code written for other people?
+
+3. Which parts if any of code you use is written by others?
+
+4. What help have you obtained/given others debugging or doing code review?
+
+5. How did you work out the types that interface your code with others?
 ```
 
-Lambda expressions bodies are evaluated innermost first. 
-(TODO: understand implications)
+# Answers
 
-Lists are defined as :
 ```
-[ ] - Null
-[ e1 ] - SeqExp (e1, Null)
-[ e1; e2 ] - SeqExp (e1,  SeqExp (e2, Null))
+1. Beta reduction engine for the ASTs. It uses applicative order and has general built-in capabilities. My part of is the last in the chain of 
+
+TOKENISER -> PARSER -> TYPE CHECKER* -> BETA RUNTIME
+                                     -> SKI COMBINATOR RUNTIME
+
+Thus the 
+```
+```
+2. None - I haven't wrote any code for anyone.
+```
+```
+3. None - No one wrote any code for me.
+```
+```
+4. We mainly communicated in terms of compatibility and how our decisions will influence other parts. 
 ```
 
-Function application 
-* -> run f if its function application.
-* -> reduce if f is a lambda expression
+```
+5. We have had several sessions in which we defined grammar together which was later revised and we share that - although it underwent some changes it was mostly the same and they 'trickled down' mainly from parser and tokeniser.
+```
 
-Grammar changes:
-FuncApp Ast * Ast -> | FuncApp of (Ast * Ast)
-
-Assumptions:
-1. No built in functions operate directly on identifiers
-
-Ideas:
-1. Environment consists of variable name list and variable mapping - this is used for evaluation of lambda expressions where names may be bound but not yet mapped.
-
-Questions:
-1. Can the runtime have lazy beta reduction for lambdas but eager for let-expressions ?
-
-## Built-In functions 
-
-Builtin functions are organised into hierarchy:
-1. Input type and arity
-2. Output type
