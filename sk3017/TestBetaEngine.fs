@@ -22,8 +22,8 @@ let rec buildList list =
 
 let F a1 a2 = FuncApp (a1,a2)
 let F2 a1 a2 a3 = F (F a1 a2) a3
-let FbuiltIn a1 = F (BuiltInFunc a1)
-let F2builtIn a1 = F2 (BuiltInFunc a1)
+let FbuiltIn b = F (BuiltInFunc b)
+let F2builtIn b = F2 (BuiltInFunc b)
 let idn = Identifier
 
 // some programs as AST's for testing with diffrent parameters
@@ -220,6 +220,7 @@ let testOk : TestInfo=
 
 /// test that should return (Error string)
 let testErr : TestInfo= 
+    let id = int64 -1 |> Some
     [
     "idn", "foo", idn "foo", "Idn \'foo\' is not defined", Idn "foo";
     "Function Application List", "[]", FuncAppList [], "What? couldn't transform Ast to Art (AST Run Time)", Nul;
@@ -227,15 +228,15 @@ let testErr : TestInfo=
 
     "> wrong type", "3 > Null", F2builtIn Greater (intL 3) Null, 
     "Greater is unsuported for Lit (IntLit 3), Nul", 
-    (App (App (BIF Greater, Lit (IntLit 3), Some 1L), Nul, None));
+    (App (App (BIF Greater, Lit (IntLit 3), id), Nul, None));
 
     "= wrong type" ,"true = 1", F2builtIn Equal trueL (intL 1), 
     "Equal is unsuported for Lit (BoolLit true), Lit (IntLit 1)", 
-    App (App (BIF Equal, Lit (BoolLit true), Some 3L), Lit (IntLit 1), None);
+    App (App (BIF Equal, Lit (BoolLit true), id), Lit (IntLit 1), None);
 
     "String Equality wrong type" , "StrEq \"dog\" Null", F2builtIn StrEq (stringL "dog") Null, 
     "StrEq is unsuported for Lit (StringLit \"dog\"), Nul", 
-    (App (App (BIF StrEq, Lit (StringLit "dog"), Some 5L), Nul, None));
+    (App (App (BIF StrEq, Lit (StringLit "dog"), id), Nul, None));
 
     "Head wrong type", "Head Null", FbuiltIn Head Null, "Head is unsuported for Nul", App (BIF Head, Nul, None);
     ]
