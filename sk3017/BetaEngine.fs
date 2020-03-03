@@ -31,10 +31,13 @@ let printEval env art =
 /// from Ast to Art (Ast Run Time)
 /// Curently useless - planned to support memoisation
 
-type Counter() = //class
+type Counter() =
   static let mutable x = int64 0
-  static member getID = x <- x + (int64 1); Some x
-//end
+  static member getID = 
+    x <- x + (int64 1); 
+    Some x
+  static member getIDstub =
+    Some (int64 -1)
 
 type Art =
     | Def of FuncDefArt
@@ -69,7 +72,7 @@ let AstToArt ast =
         | Lambda  { LambdaParam = name; LambdaBody = MapAstArt body}
             -> Lam {Var = name; Body = body;} |> Some
         | FuncApp (MapAstArt l, MapAstArt r)
-            -> App (l, r, Counter.getID) |> Some
+            -> App (l, r, Counter.getIDstub) |> Some
         | Null -> Nul |> Some
         | Literal lit -> Lit lit |> Some
         | Identifier i -> Idn i |> Some
@@ -77,7 +80,7 @@ let AstToArt ast =
         | IfExp (MapAstArt b, MapAstArt t, MapAstArt e)
             -> IfE (b,t,e) |> Some
         | SeqExp (MapAstArt l, MapAstArt r)
-            -> Seq (l,r, Counter.getID) |> Some
+            -> Seq (l,r, Counter.getIDstub) |> Some
         | RoundExp (MapAstArt art)  -> art |> Some
         | FuncAppList _
         | IdentifierList _ -> None
@@ -149,7 +152,7 @@ let rec (|STRLIST|_|) x =
 let rec buildList list =
     match list with
     | [] -> Nul
-    | ele::rest -> Seq (ele, buildList rest, Counter.getID)
+    | ele::rest -> Seq (ele, buildList rest, Counter.getIDstub)
 
 /// PAP buildier for unary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned (Pass)
@@ -242,7 +245,7 @@ let BuiltIn =
          //fun x -> Some x
         
         mapInputOutputBin (fun x -> Some x) (|LISTLAZY|_|)  id
-         [  Append, (fun l r -> Seq (l,r,Counter.getID)); ];
+         [  Append, (fun l r -> Seq (l,r,Counter.getIDstub)); ];
          
         // UNARY
         mapInputOutputUnary (|BOOLLIT|_|) (BoolLit>>Lit)
@@ -259,10 +262,9 @@ let BuiltIn =
 
          mapInputOutputUnary (|STRINGLIT|_|) id
          [ // String -> Art 
-            Explode, ( fun s -> s 
-                                |> Seq.toList 
-                                |> List.map (string >> StringLit >> Lit) 
-                                |> buildList ) 
+            Explode, Seq.toList 
+                     >> List.map (string >> StringLit >> Lit) 
+                     >> buildList ;
          ];
 
          mapInputOutputUnary (|STRLIST|_|) (StringLit>>Lit)
@@ -286,9 +288,9 @@ let rec lambdaBetaReduction variable value art =
     | Lam  {Var = name; Body = body; } when name <> variable           
         -> Lam { Var = name; Body = rCall body}
     | App (l ,r, _)
-        -> App (rCall l, rCall r, Counter.getID)
+        -> App (rCall l, rCall r, Counter.getIDstub)
     | IfE (b,t,e) -> IfE (rCall b, rCall t, rCall e)
-    | Seq (l,r,_) -> Seq (rCall l, rCall r, Counter.getID)
+    | Seq (l,r,_) -> Seq (rCall l, rCall r, Counter.getIDstub)
     | Idn i when i = variable -> value
     | Idn _ | Def _ | Lam _ | Nul | Lit _ | BIF _ -> art
 
@@ -348,10 +350,10 @@ and functionApplication env f x =
             -> buildError (sprintf "%A non-reducable" art ) art
         | (f, x) -> buildError (sprintf "What? %A in functionApplication" (f,x)) (App (f,x,None))
         )
-        |> function
-        | Ok ( Ok ast ) -> Ok ast
-        | Ok ( Error e)
-        | Error e -> Error e
+    |> function
+    | Ok ( Ok ast ) -> Ok ast
+    | Ok ( Error e)
+    | Error e -> Error e
 
 and evaluate env art =
     //printEval env art
@@ -371,6 +373,7 @@ and evaluate env art =
     | Nul | Lit _ | BIF _ | Seq _ 
         -> Ok art
 
+/// top level function for reducing the AST
 let runAst ast =
     AstToArt ast
     |> function
