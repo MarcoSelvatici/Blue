@@ -12,9 +12,9 @@ open TestBetaEngine
 [<Tests>]
 let parserTest = createTestList "Parser Tests" parse testCasesParser
 [<Tests>]
-let TypeCheckerTest = createTestList "Type Checker Tests" typeCheck testCasesTypeChecker
+let typeCheckerTest = createTestList "Type Checker Tests" typeCheck testCasesTypeChecker
 [<Tests>]
-let BetaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngine
+let betaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngine
 // TODO (oliver, fabio): Add your own unit tests.
 
 [<EntryPoint>]

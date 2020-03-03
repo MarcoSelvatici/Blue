@@ -1,5 +1,3 @@
-// Author: ms8817 (Marco Selvatici)
-
 module TestLib
 
 open Expecto
