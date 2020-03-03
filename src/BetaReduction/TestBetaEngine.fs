@@ -242,9 +242,12 @@ let testErr : TestInfo=
     ]
     |> List.map (fun (n,d,i,m,o) -> (concatDescription n d,i,Error (m,o)))
 
+let upcastError =
+    function
+    | Error e -> Error <| BetaEngineError e
+    | Ok x -> Ok x
+
 let testCasesBetaEngine =
     [testId; testOk; testErr]
     |> List.reduce List.append
-
-
-   
+    |> List.map (fun (d,i,o) -> (d,i,upcastError o))

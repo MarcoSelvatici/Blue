@@ -85,6 +85,27 @@ and LambdaType = {
     LambdaBody: Ast;
 }
 
+type Art =
+    | Def of FuncDefArt
+    | Lam of LambdaR
+    | App of (Art * Art * int64 option)
+    | Nul
+    | Lit of Literal
+    | Idn of string
+    | BIF of BuiltInFunc
+    | IfE of Art * Art * Art
+    | Seq of (Art * Art * int64 option)
+
+and FuncDefArt = {
+    Name: string;
+    Body: Art;
+    Rest: Art;
+}
+
+and LambdaR = {
+    Var: string;
+    Body: Art;
+}
 
 //========//
 // Errors //
@@ -101,3 +122,4 @@ type ParserError = {
 type ErrorT =
     | ParserError of ParserError
     | TypeCheckerError of string
+    | BetaEngineError of string*Art

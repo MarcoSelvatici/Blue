@@ -39,28 +39,6 @@ type Counter() =
   static member getIDstub =
     Some (int64 -1)
 
-type Art =
-    | Def of FuncDefArt
-    | Lam of LambdaR
-    | App of (Art * Art * int64 option)
-    | Nul
-    | Lit of Literal
-    | Idn of string
-    | BIF of BuiltInFunc
-    | IfE of Art * Art * Art
-    | Seq of (Art * Art * int64 option)
-
-and FuncDefArt = {
-    Name: string;
-    Body: Art;
-    Rest: Art;
-}
-
-and LambdaR = {
-    Var: string;
-    Body: Art;
-}
-
 let newIDstub = int64 0
 
 // TODO: add better error reporting - for now function just return None
@@ -372,6 +350,11 @@ and evaluate env art =
     | Nul | Lit _ | BIF _ | Seq _ 
         -> Ok art
 
+let upcastError =
+    function
+    | Error e -> Error <| BetaEngineError e
+    | Ok x -> Ok x
+
 /// top level function for reducing the AST
 let runAst ast =
     AstToArt ast
@@ -384,5 +367,4 @@ let runAst ast =
     | Ok (None), Ok (art) -> buildError "What? couldn't transform Art back to Ast" art
     | Error e, _ -> Error e
     | _ -> buildError "What? runAst" Nul
-    
-
+    |> upcastError
