@@ -71,6 +71,7 @@ type Ast =
     | Literal of Literal
     | BuiltInFunc of BuiltInFunc
     | Null
+    | Combinator of CombinatorType
 
 // Curried.
 and FuncDefExpType = {
@@ -84,6 +85,11 @@ and LambdaType = {
     LambdaParam: string;
     LambdaBody: Ast;
 }
+
+and CombinatorType =
+    | S 
+    | K
+    | I    
 
 type Art =
     | Def of FuncDefArt
@@ -123,3 +129,4 @@ type ErrorT =
     | ParserError of ParserError
     | TypeCheckerError of string
     | BetaEngineError of string*Art
+    | SKIRuntimeError of string

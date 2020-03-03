@@ -12,6 +12,8 @@
     <Compile Include="TypeChecker/TypeCheckerTest.fs" />
     <Compile Include="BetaReduction/BetaEngine.fs" />
     <Compile Include="BetaReduction/TestBetaEngine.fs" />
+    <Compile Include="SKIReduction/SKICombinator.fs" />
+    <Compile Include="SKIReduction/TestSKI.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

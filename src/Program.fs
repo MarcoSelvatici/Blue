@@ -9,13 +9,18 @@ open TypeCheckerTest
 open BetaEngine
 open TestBetaEngine
 
+open SKIRuntime
+open TestSKIRuntime
+
 [<Tests>]
 let parserTest = createTestList "Parser Tests" parse testCasesParser
 [<Tests>]
 let typeCheckerTest = createTestList "Type Checker Tests" typeCheck testCasesTypeChecker
 [<Tests>]
 let betaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngine
-// TODO (oliver, fabio): Add your own unit tests.
+[<Tests>]
+let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCasesSKIRuntime
+// TODO (fabio): Add your own unit tests.
 
 [<EntryPoint>]
 let main argv =
