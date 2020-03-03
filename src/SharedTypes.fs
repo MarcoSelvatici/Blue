@@ -11,6 +11,8 @@ type BuiltInFunc =
     | Size // 'a list -> int
     | Append // Append to list. 'a -> 'a List -> 'a List
     | StrEq // Comparison between two strings. string -> string -> bool
+    | Explode // string -> string List
+    | Implode // string List -> string
     // ComparisonOp
     | Greater
     | GreaterEq

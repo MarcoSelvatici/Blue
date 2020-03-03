@@ -1,10 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
-
   <ItemGroup>
     <Compile Include="TestLib.fs" />
     <Compile Include="SharedTypes.fs" />
@@ -12,11 +10,12 @@
     <Compile Include="ParserTest.fs" />
     <Compile Include="TypeChecker.fs" />
     <Compile Include="TypeCheckerTest.fs" />
+    <Compile Include="BetaReduction/TokeniserParserStub.fs" />
+    <Compile Include="BetaReduction/BetaEngine.fs" />
+    <Compile Include="BetaReduction/TestBetaEngine.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Expecto.FsCheck" Version="8.13.1" />
   </ItemGroup>
-
 </Project>
