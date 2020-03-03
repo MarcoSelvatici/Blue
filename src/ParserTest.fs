@@ -5,7 +5,7 @@ module ParserTest
 open SharedTypes
 open Parser
 
-/// Like buildError, but allows to manually set the trace.
+/// Similar to buildParserError, but allows to manually set the trace.
 let buildErrorManually msg trace unmatchedTokens currentAsts = 
     Error <| ParserError {
         msg = msg;

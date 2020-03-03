@@ -65,7 +65,7 @@ let rec buildParseTrace (asts : Ast list) : string =
         sprintf "in %s " (List.head ids) + (buildParseTrace asts')
     | _ :: asts' -> buildParseTrace asts'
 
-let buildError msg unmatchedTokens currentAsts = 
+let buildParserError msg unmatchedTokens currentAsts = 
     Error {
         msg = msg;
         parseTrace = buildParseTrace currentAsts;
@@ -159,7 +159,7 @@ let pToken (tokenToMatch : Token) : ParseRule =
     | Ok (asts, token :: tokenlist) when token = tokenToMatch ->
         Ok (asts, tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError (sprintf "failed: pToken %A" tokenToMatch) tokenlist asts
+        buildParserError (sprintf "failed: pToken %A" tokenToMatch) tokenlist asts
 
 /// Tries to match the next token with a list of tokens, and, if successful,
 /// returns the unchanged Tokens list and a Null Ast.
@@ -172,7 +172,7 @@ let pNull (tokensToMatch : Token list) : ParseRule =
     | Ok (asts, token :: tokenlist) when List.contains token tokensToMatch ->
         Ok (Null :: asts, token :: tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError (sprintf "failed: pNull %A" tokensToMatch) tokenlist asts
+        buildParserError (sprintf "failed: pNull %A" tokensToMatch) tokenlist asts
 
 let pIdentifier : ParseRule =
     function
@@ -180,7 +180,7 @@ let pIdentifier : ParseRule =
     | Ok (asts, TIdentifier id :: tokenlist) ->
         Ok (Identifier id :: asts, tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError "failed: pIdentifier" tokenlist asts
+        buildParserError "failed: pIdentifier" tokenlist asts
 
 let pLiteral : ParseRule =
     function
@@ -188,7 +188,7 @@ let pLiteral : ParseRule =
     | Ok (asts, TLiteral lit :: tokenlist) ->
         Ok(Literal lit :: asts, tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError "failed: pLiteral" tokenlist asts
+        buildParserError "failed: pLiteral" tokenlist asts
 
 let pBuiltin : ParseRule =
     function
@@ -196,7 +196,7 @@ let pBuiltin : ParseRule =
     | Ok (asts, TBuiltInFunc func :: tokenlist) ->
         Ok (BuiltInFunc func :: asts, tokenlist)
     | Ok (asts, tokenlist) ->
-        buildError "failed: pBuiltin" tokenlist asts
+        buildParserError "failed: pBuiltin" tokenlist asts
 
 // Combnied rules.
 // Every rule has two parts:
@@ -261,7 +261,7 @@ and pLambdaExp pState =
     |> function
        | Error e -> Error e
        | Ok (_ :: IdentifierList [] :: asts, tkns) ->
-           buildError "failed: pLambdaExp. Invalid empty argument list" tkns asts
+           buildParserError "failed: pLambdaExp. Invalid empty argument list" tkns asts
        | Ok (lambdaBody :: IdentifierList lambdaParams :: asts, tkns) ->
            Ok (buildCarriedLambda lambdaParams lambdaBody :: asts, tkns)
        | _ -> impossible "pLambdaExp"
@@ -273,7 +273,7 @@ and pFuncDefExp pState =
     |> function
        | Error e -> Error e
        | Ok (_ :: _ :: IdentifierList [] :: asts, tkns) ->
-           buildError "failed: pFuncDefExp. Invalid empty argument list" tkns asts
+           buildParserError "failed: pFuncDefExp. Invalid empty argument list" tkns asts
        | Ok (rest :: funcBody :: IdentifierList funcParams :: asts, tkns) ->
            Ok (buildCarriedFunc funcParams funcBody rest :: asts, tkns)
        | _ -> impossible "pFuncDefExp"
@@ -306,7 +306,7 @@ and pExp pState =
     | Error e -> Error e
     | Ok (FuncAppList fAppList :: asts, tkns) ->
         match buildFuncAppTree fAppList with
-        | Error msg -> buildError msg tkns asts
+        | Error msg -> buildParserError msg tkns asts
         | Ok tree -> Ok (tree :: asts, tkns)
     | _ -> impossible "pExp"
 
@@ -316,4 +316,4 @@ let parse (tkns : Token list) : Result<Ast, ErrorT> =
     | Error e -> Error <| ParserError e
     | Ok ([ast], []) -> Ok ast
     | Ok (asts, unmatchedTokens) ->
-        Result.mapError ParserError (buildError "failed: top level" unmatchedTokens asts)
+        Result.mapError ParserError (buildParserError "failed: top level" unmatchedTokens asts)

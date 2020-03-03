@@ -217,8 +217,8 @@ and infer uid ctx ast : int * Result<Subst list * Type, string> =
     | FuncDefExp def        -> inferFuncDefExp uid ctx def
     | _ -> uid, Error <| sprintf "Type checking for %A is not implemented" ast
 
-let typeCheck ast =
+let typeCheck (ast : Ast) : Result<Type, ErrorT> =
     infer 0 [] ast
     |> function // Just return the type.
        | _, Ok (_, t) -> Ok t
-       | _, Error e -> Error e
+       | _, Error e -> Error <| TypeCheckerError e

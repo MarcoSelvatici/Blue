@@ -98,3 +98,4 @@ type ParserError = {
 // TODO: add other types of errors.
 type ErrorT =
     | ParserError of ParserError
+    | TypeCheckerError of string
