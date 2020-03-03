@@ -10,7 +10,6 @@
     <Compile Include="ParserTest.fs" />
     <Compile Include="TypeChecker.fs" />
     <Compile Include="TypeCheckerTest.fs" />
-    <Compile Include="BetaReduction/TokeniserParserStub.fs" />
     <Compile Include="BetaReduction/BetaEngine.fs" />
     <Compile Include="BetaReduction/TestBetaEngine.fs" />
     <Compile Include="Program.fs" />
