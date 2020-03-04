@@ -296,16 +296,13 @@ let rec combinatorReduc (exp:Ast) : Ast =
 
 
 /// Evaluate the output of the parser using bracket abstraction, S K I Y combinators and the evaluation of built-in functions
-let combinatorRuntime (input: Result<Ast,ErrorT>): Result<Ast,ErrorT> = 
-    match input with
-    | Ok x -> 
-        let bindings = Map []
-        match bracketAbstract x bindings with
-        | Ok x ->
-            match evalBuiltin (combinatorReduc x) with
-            | Ok x -> Ok x
-            | Error (SKIRuntimeError x) -> buildErrorSKI <| "SKI runtime error: Built-in function evaluation Error: \n" + x
-            | Error x -> Error x // will never occur
-        | Error (SKIRuntimeError x) -> buildErrorSKI <| "SKI runtime error: Bracket Abstraction Error: \n" + x
+let combinatorRuntime (input: Ast): Result<Ast,ErrorT> = 
+    let bindings = Map []
+    match bracketAbstract input bindings with
+    | Ok x ->
+        match evalBuiltin (combinatorReduc x) with
+        | Ok x -> Ok x
+        | Error (SKIRuntimeError x) -> buildErrorSKI <| "SKI runtime error: Built-in function evaluation Error: \n" + x
         | Error x -> Error x // will never occur
-    | Error _ -> input 
+    | Error (SKIRuntimeError x) -> buildErrorSKI <| "SKI runtime error: Bracket Abstraction Error: \n" + x
+    | Error x -> Error x // will never occur
