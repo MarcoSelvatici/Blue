@@ -228,7 +228,7 @@ and pSeqExp pState =
     |> Result.map (
         function
         | SeqExp _ :: _, _ as pState' -> pState' // Non empty sequence.
-        | asts, tkns -> SeqExp (Null, Null) :: asts, tkns // Empty sequence.
+        | asts, tkns -> Null :: asts, tkns // Empty sequence.
     )
 
 and pIfExp pState =
