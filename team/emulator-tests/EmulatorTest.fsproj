@@ -1,10 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <AssemblyName>emulator</AssemblyName>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
-<Compile Include="EEExtensions.fs" />
     <Compile Include="../editor/src/Emulator/TestLib.fs" />
     <Compile Include="../editor/src/Emulator/SharedTypes.fs" />
     <Compile Include="../editor/src/Emulator/Lexer/Lexer.fs" />
