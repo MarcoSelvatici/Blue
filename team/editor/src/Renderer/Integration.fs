@@ -24,6 +24,5 @@ let getProgram () =
 /// If current tab is TB run TB if this is possible
 let runCode () =
     let program = getProgram ()
-    showVexAlert <| program
-    let res = end2end true [TLiteral (IntLit 1)]
+    let res = end2end true program
     showVexAlert <| sprintf "%A" res
