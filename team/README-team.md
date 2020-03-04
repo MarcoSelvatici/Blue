@@ -17,7 +17,13 @@ This documentation will contain:
 
 ## Run the code
 
-Enter into the `src` directory and run with `dotnet run`.
+### Expecto tests
+
+Enter the `emulator-tests` directory and run with `dotnet run`.
+
+### GUI
+
+Enter the editor directory and follow the instructions in the README. 
 
 ## Features
 
