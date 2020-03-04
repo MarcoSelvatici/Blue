@@ -112,5 +112,8 @@ let testCasesLexer = [
         Error (LexerError "lexing error, expecting closing apostrophe: '\'' on line 0");
     "Unrecognised char", " let $a = 2",
         Error (LexerError "lexing error, unrecognised character '$' on line 0");
+    "lambda expression", "(\x.x+10) 12",
+        Ok [KOpenRound; KLambda; TIdentifier "x"; KDot; TIdentifier "x"; TBuiltInFunc Plus; 
+            TLiteral (IntLit 10); KCloseRound; TLiteral (IntLit 12)];
 ]
   

@@ -19,7 +19,7 @@ let rec buildNumber rowCount isFloat number input =
             buildNumber rowCount true (number + string currChar) tl
         | _ -> failwithf "lexing error, expecting decimal digit after dot on line %i" rowCount
     // If current char is a valid char that breaks the number, return the result.
-    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'&';'|';' ';'\n';'\t']) 
+    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'(';')';'[';']';'&';'|';' ';'\n';'\t']) 
         -> isFloat, number, input
     // Analoguely, if string is over, return valid result.
     | [] -> isFloat, number, input
