@@ -23,28 +23,8 @@ let betaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngi
 [<Tests>]
 let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCasesSKIRuntime
 
-let maybeTypeCheck checkTypes ast =
-    let printAndReturnUnchanged t =
-        printfn "\nTYPE: %A" t |> ignore
-        Ok ast // Return the unchanged ast
-    if not checkTypes
-    then Ok ast
-    else typeCheck ast |> Result.bind printAndReturnUnchanged 
-
-let reduce ast =
-    runAst ast//, combinatorRuntime ast
-
-let end2end checkTypes input =
-    input
-    |> tokeniseT3
-    |> Result.bind parse
-    |> Result.bind (maybeTypeCheck checkTypes)
-    |> Result.bind reduce
-    |> printfn "%A"
-
 [<EntryPoint>]
 let main argv =
     runTests()
-    //end2end true "(\x.x+10) 12"
     Console.ReadKey() |> ignore
     0
