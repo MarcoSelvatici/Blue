@@ -104,8 +104,8 @@ Strings can contain escape sequences, preceeded by the classical backwards slash
   - \t : tab
   - \v : vertical tab
   - \\\\ : backslash
-  - \" : quotation mark
-  - \' : apostrophe
+  - \\" : quotation mark
+  - \\' : apostrophe
 
 The tokeniser tries to match valid tokens as it goes through the input string. The error checking performed by the tokeniser is __exclusively__ on the validity of a single token, not on the logic sense of the expression. <br>
 The Tokens that the tokeniser would match and return as valid are defined as follow, using regexes. <br>
@@ -117,7 +117,8 @@ It is also specified a (non exahustive in any way) list of cases in which the pr
 | Floats | [0 - 9]+ [ . ] [0 - 9]+ |
 | String| [ " ][anychar, escape sequence]*[ " ] |
 | Identifier |  [ _ ]* [a - z A - Z ] [a - z A - Z _ ']* |
-<br><br>
+
+<br>
 
 | Token | Expected Result  | Actual Result |
 | --- | --- | --- |
@@ -148,5 +149,8 @@ It is also specified a (non exahustive in any way) list of cases in which the pr
 ```
 
 ### Parser
+### TypeChecker
+### SKI Engine
+### Beta Engine
 
 

@@ -13,7 +13,7 @@ let rec buildNumber rowCount isFloat number input =
     | currChar::tl when List.contains currChar (['0'..'9']) -> 
         buildNumber rowCount isFloat (number + string currChar) tl
     // If char = '.' either is a Float (if it is the first dot encountered) or throw an error.
-    | currChar::tl when (currChar.Equals('.') && (not isFloat)) ->  
+    | currChar::tl when (List.contains currChar ['.'] && (not isFloat)) ->  
         match tl with 
         | num::tl' when List.contains num (['0'..'9']) ->
             buildNumber rowCount true (number + string currChar) tl
@@ -47,18 +47,18 @@ let rec buildWord rowCount word input =
 let rec buildInlineComment input =
     match input with 
     // Discard everything up to newline.
-    | currChar::tl when not <| currChar.Equals('\n') -> buildInlineComment tl
+    | currChar::tl when not <| List.contains currChar ['\n'] -> buildInlineComment tl
     | _ -> input
 
 // Function called when multiline comment "(*" is encountered. 
 let rec buildMultilineComment rowCount input =
     match input with 
     // Discard everything up to newline.
-    | currChar::tl when currChar.Equals ('\n') -> buildMultilineComment (rowCount + 1) tl
-    | currChar::tl when not <| currChar.Equals ('*') -> buildMultilineComment rowCount tl
-    | currChar::tl when currChar.Equals ('*') -> 
+    | currChar::tl when List.contains currChar ['\n'] -> buildMultilineComment (rowCount + 1) tl
+    | currChar::tl when not <| List.contains currChar ['*'] -> buildMultilineComment rowCount tl
+    | currChar::tl when List.contains currChar ['*'] -> 
         match tl with 
-        | nextChar::tl' when nextChar.Equals(')') -> rowCount, tl'
+        | nextChar::tl' when List.contains nextChar [')'] -> rowCount, tl'
         | _ -> buildMultilineComment rowCount tl
     | _ -> rowCount, input
 
@@ -68,14 +68,14 @@ let rec buildString rowCount str input =
     // Match everything in the string that is not a closing quotation mark or an escape character.
     | currChar::tl when not <| List.contains currChar ['\\';'\"'] -> buildString rowCount (str + string currChar) tl
     // If an escape character is matched, try to match a valid escape sequence or throw an error.
-    | currChar::tl when currChar.Equals('\\') ->      
+    | currChar::tl when List.contains currChar ['\\'] ->      
         match tl with
         | esc::tl' when List.contains esc escSeq
             -> buildString rowCount (str + string ('\\' + esc)) tl'
         | esc::_ -> failwithf "lexing error, expected valid ESC sequence on line %i: \\%c is not valid" rowCount esc 
         | _ -> failwithf "lexing error, expected valid ESC sequence on line %i" rowCount  
     // If closing quotation mark is encountered, return valid result. Else throw an error.
-    | currChar::tl when currChar.Equals('\"') -> str, tl
+    | currChar::tl when List.contains currChar ['\"'] -> str, tl
     | _ -> failwithf "lexing error, expecting closing quotation mark: '\"' on line %i" rowCount
 
 // Function called when open apostrophe is met "'".
@@ -88,7 +88,7 @@ let rec buildChar rowCount input =
         |'\''::tl' -> currChar, tl'
         | _ -> failwithf "lexing error, expecting closing apostrophe: '\'' on line %i" rowCount
     // If escape character is met, try to match valid escape sequence or throw an error.
-    | currChar::tl when currChar.Equals('\\') ->      
+    | currChar::tl when List.contains currChar ['\\'] ->      
         match tl with
         | esc::tl' when List.contains esc escSeq
             -> ('\\' + esc), tl'
