@@ -1,0 +1,150 @@
+// Author: ms8817 (Marco Selvatici)
+
+module TypeCheckerTest
+
+open SharedTypes
+open Parser
+open TypeChecker
+
+let buildTypeCheckerError err = Error <| TypeCheckerError err
+
+let testCasesTypeChecker = [
+    "Simple Int", Literal (IntLit 1),
+        Ok (Base Int);
+    "Simple Identifer", Identifier "x",
+        buildTypeCheckerError "Identifier x is not bound";
+    "Simple if", IfExp (Literal (BoolLit true), Literal (IntLit 1), Literal (IntLit 2)),
+        Ok (Base Int);
+    "Simple if mismatch", IfExp (Literal (BoolLit true), Literal (StringLit "a"), Literal (IntLit 2)),
+        buildTypeCheckerError "Types Base String and Base Int are not compatable";
+    "Simple if non-bool", IfExp (Literal (IntLit 1), Literal (StringLit "a"), Literal (StringLit "b")),
+        buildTypeCheckerError "Types Base Int and Base Bool are not compatable";
+    "Nested if", IfExp (Literal (BoolLit false), IfExp (Literal (BoolLit true), Literal (StringLit "x"), Literal (StringLit "y")), Literal (StringLit "a")),
+        Ok (Base String);
+    "Nested if mismatch", IfExp (Literal (BoolLit false), IfExp (Literal (BoolLit true), Literal (IntLit 3), Literal (IntLit 4)), Literal (StringLit "a")),
+        buildTypeCheckerError "Types Base Int and Base String are not compatable";
+    "Plus", FuncApp (FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3)),
+        Ok (Base Int);
+    "Plus mismatch", FuncApp (FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (BoolLit true)),
+        buildTypeCheckerError "Types Base Int and Base Bool are not compatable";
+    "Plus bools", FuncApp (FuncApp (BuiltInFunc Plus, Literal (BoolLit false)), Literal (BoolLit true)),
+        buildTypeCheckerError "Types Base Int and Base Bool are not compatable";
+    "Greater than", FuncApp (FuncApp (BuiltInFunc Greater, Literal (IntLit 2)), Literal (IntLit 3)),
+        Ok (Base Bool);
+    "Less than mismatch", FuncApp (FuncApp (BuiltInFunc Less, Literal (BoolLit false)), Literal (IntLit 3)),
+        buildTypeCheckerError "Types Base Int and Base Bool are not compatable";
+    "Logical and", FuncApp (FuncApp (BuiltInFunc And, Literal (BoolLit false)), Literal (BoolLit true)),
+        Ok (Base Bool);
+    "Logical or mismatch", FuncApp (FuncApp (BuiltInFunc Or, Literal (BoolLit false)), Literal (IntLit 3)),
+        buildTypeCheckerError "Types Base Bool and Base Int are not compatable";
+    "Complex if exp `if 2<3 then 2-3 else 2/3`", IfExp (FuncApp (FuncApp (BuiltInFunc Less, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Minus, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Div, Literal (IntLit 2)), Literal (IntLit 3))),
+        Ok (Base Int);
+    "Simple lambda", buildLambda "x" (Identifier "x"),
+        Ok (Fun(Gen 0, Gen 0));
+    "Simple lambda int", buildLambda "x" (Literal (IntLit 1)),
+        Ok (Fun(Gen 0, Base Int));
+    "Simple lambda int plus", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Literal (IntLit 3))),
+        Ok (Fun(Base Int, Base Int));
+    "Simple lambda plus", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "x")),
+        Ok (Fun(Base Int, Base Int));
+    "Simple lambda unbound", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Identifier "y")),
+        buildTypeCheckerError "Identifier y is not bound";
+    "Nested lambdas", buildLambda "x" (buildLambda "y" (Identifier "y")),
+        Ok (Fun(Gen 0, Fun(Gen 1, Gen 1)));
+    "Simple partial application (\x. \y. y*x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Mult, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
+        Ok (Fun(Base Int, Base Int));
+    "Simple partial application bool (\x. \y. y<x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
+        Ok (Fun(Base Int, Base Bool));
+    "Simple partial application mismatch (\x. \y. y && x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc And, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
+        buildTypeCheckerError "Types Base Bool and Base Int are not compatable";
+    "Simple partial application not bound (\x. \y. y*x) x", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Mult, Identifier "y"), Identifier "x"))), Identifier "x"),
+        buildTypeCheckerError "Identifier x is not bound";
+    "Simple `let x = 1 in x`", FuncDefExp {FuncName="x"; FuncBody=Literal (IntLit 1); Rest=Identifier "x"},
+        Ok (Base Int);
+    "Partially applied `let x y = y in x`", buildCarriedFunc ["x"; "y"] (Identifier "y") (Identifier "x"),
+        Ok (Fun(Gen 0, Gen 0));
+    "Partially applied int `let x y = y + 1 in x`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (Identifier "x"),
+        Ok (Fun(Base Int, Base Int));
+    "Fully applied int `let x y = y + 1 in x 4`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (FuncApp (Identifier "x", Literal (IntLit 4))),
+        Ok (Base Int);
+    "Scoping `let x y = y in y`", buildCarriedFunc ["x"; "y"] (Identifier "y") (Identifier "y"),
+        buildTypeCheckerError "Identifier y is not bound";
+    "Lambda as input `let x y = y 1 in x \x.x+1`", buildCarriedFunc ["x"; "y"] (FuncApp (Identifier "y", Literal (IntLit 1))) (FuncApp (Identifier "x", buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "x"), Literal (IntLit 1))))),
+        Ok (Base Int);
+    "Different types `let f = \x.x in let g = f True in f 3`", buildCarriedFunc ["f"] (buildLambda "x" (Identifier "x")) (buildCarriedFunc ["g"] (FuncApp (Identifier "f", Literal (BoolLit true))) (FuncApp (Identifier "f", Literal (IntLit 3)))),
+        Ok (Base Int);
+    "No recursion `let x = x x in 1`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Literal (IntLit 1)),
+        buildTypeCheckerError "Identifier x is not bound"; // Recursion is not supported (yet).
+    "Simple StrEq", BuiltInFunc StrEq,
+        Ok (Fun(Base String, Fun (Base String, Base Bool)));
+    "Partially applied StrEq", FuncApp (BuiltInFunc StrEq, Literal (StringLit "hello")),
+        Ok (Fun (Base String, Base Bool));
+    "String equality in ifExp", IfExp ( FuncApp (FuncApp (BuiltInFunc StrEq, Literal (StringLit "s1")), Literal (StringLit "s2")), Literal (IntLit 1), Literal (IntLit 1)),
+        Ok (Base Int);
+    "Empty SeqExp", EmptySeq,
+        Ok EmptySeqType;
+    "Simple SeqExp", SeqExp (Literal (IntLit 1), EmptySeq),
+        Ok (Pair (Base Int, EmptySeqType));
+    "Simple SeqExp with base types `[1 , 'hello', true]`", SeqExp (Literal (IntLit 1), SeqExp (Literal (StringLit "hello"), SeqExp (Literal (BoolLit true), EmptySeq))),
+        Ok (Pair (Base Int, Pair (Base String, Pair (Base Bool, EmptySeqType))));
+    "Simple SeqExp with Lambda `[1 , \x.x]`", SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (Identifier "x"), EmptySeq)),
+        Ok (Pair (Base Int, Pair (Fun (Gen 0, Gen 0), EmptySeqType)));
+    "Unique ids `[\x.x, \y.y]`", SeqExp (buildLambda "y" (Identifier "y"), SeqExp (buildLambda "x" (Identifier "x"), EmptySeq)),
+        Ok (Pair (Fun (Gen 0, Gen 0), Pair ( Fun (Gen 1, Gen 1), EmptySeqType)));
+    "Simple Head", BuiltInFunc Head,
+        Ok (Fun (Pair (Gen 0, Gen 1), Gen 0));
+    "Applied Head `head [1]`", FuncApp (BuiltInFunc Head, SeqExp (Literal (IntLit 4), EmptySeq)), 
+        Ok (Base Int);
+    "Applied Head `head ['hello', 1, true]`", FuncApp (BuiltInFunc Head, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), EmptySeq)))), 
+        Ok (Base String);
+    "Applied Head `head [\x.x<1, 1, true]`", FuncApp (BuiltInFunc Head, SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), EmptySeq)))), 
+        Ok (Fun (Base Int, Base Bool));
+    "Simple Tail", BuiltInFunc Tail,
+        Ok (Fun (Pair (Gen 0, Gen 1), Gen 1));
+    "Applied Tail `tail [1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 4), EmptySeq)), 
+        Ok EmptySeqType;
+    "Applied Tail `tail ['hello', 1, true]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), EmptySeq)))), 
+        Ok (Pair (Base Int, Pair (Base Bool, EmptySeqType)));
+    "Applied Tail `tail [1, \x.x<1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), EmptySeq))),
+        Ok (Pair (Fun (Base Int, Base Bool), EmptySeqType));
+    "Simple Size", BuiltInFunc Size,
+        Ok (Fun (Pair (Gen 0, Gen 1), Base Int));
+    "Applied Size `size [1]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (IntLit 4), EmptySeq)), 
+        Ok (Base Int);
+    "Applied Size `size ['hello', 1, true]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), EmptySeq)))), 
+        Ok (Base Int);
+    "Simple Append", BuiltInFunc Append,
+        Ok (Fun (Gen 2, Fun (Pair (Gen 0, Gen 1), Pair (Gen 2, Pair (Gen 0, Gen 1)))));
+    "Applied Append to empty `append 1 []`", FuncApp (FuncApp (BuiltInFunc Append, Literal (IntLit 1)), EmptySeq), 
+        Ok (Pair (Base Int, EmptySeqType));
+    "Applied Append to empty `append 2 (append 1 [])`",FuncApp (FuncApp (BuiltInFunc Append, Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Append, Literal (IntLit 1)), EmptySeq)), 
+        Ok (Pair(Base Int, Pair (Base Int, EmptySeqType)));
+    "Applied Append `append true [1]`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), SeqExp (Literal (IntLit 4), EmptySeq)), 
+        Ok (Pair (Base Bool, Pair (Base Int, EmptySeqType)));
+    "Head not list `head 1`", FuncApp (BuiltInFunc Head, Literal (IntLit 1)),
+        buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Base Int));
+    "Tail not list `tail \x.x`", FuncApp (BuiltInFunc Tail, buildLambda "x" (Identifier "x")),
+        buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Fun (Gen 3, Gen 3)));
+    "Size not list `size 4`", FuncApp (BuiltInFunc Head, Literal (IntLit 2)),
+        buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Base Int));
+    "Append not list `append true 1`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), Literal (IntLit 4)),
+        buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 2, Gen 3)) (Base Int));
+    "Head of empty `head []`", FuncApp (BuiltInFunc Head, EmptySeq),
+        Ok (Base NullType);
+    "Tail of empty `tail []`", FuncApp (BuiltInFunc Tail, EmptySeq),
+        Ok (Base NullType);
+    "Size of empty `tail []`", FuncApp (BuiltInFunc Size, EmptySeq),
+        Ok (Base Int);
+    "Simple Implode", BuiltInFunc Implode,
+        Ok (Fun (Pair (Gen 0, Gen 1), Base String));
+    "Simple Explode", BuiltInFunc Explode,
+        Ok (Fun (Base String, Pair (Gen 0, Gen 1)));
+    "Applied Implode `implode ['a', 'b']`", FuncApp(BuiltInFunc Implode, SeqExp(Literal (StringLit "a"), SeqExp (Literal (StringLit "b"), EmptySeq))),
+        Ok (Base String);
+    "Applied Explode `explode 'ab'`", FuncApp(BuiltInFunc Explode, Literal (StringLit "ab")),
+        Ok (Pair (Gen 1, Gen 2));
+    "Simple Test", BuiltInFunc Test,
+        Ok (Fun(Gen 0, Base Bool));
+    "Applied Test `test \x.x`", FuncApp(BuiltInFunc Test, buildLambda "x" (Identifier "x")),
+        Ok (Base Bool);
+]
