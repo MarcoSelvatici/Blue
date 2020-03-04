@@ -44,7 +44,7 @@ let testCasesParser = [
     "Miss Else exp", [KIf; TIdentifier "y"; KThen; TIdentifier "z"; KElse; KFi],
         buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KFi] [Identifier "z"; Identifier "y"];
     "Empty SeqExp", [KOpenSquare; KCloseSquare],
-        Ok (Null);
+        Ok (SeqExp (Null, Null));
     "SeqExp 1 item", [KOpenSquare; TLiteral (IntLit 1); KCloseSquare],
         Ok (SeqExp (Literal (IntLit 1), Null));
     "SeqExp 2 items", [KOpenSquare; TLiteral (IntLit 1); KComma; TLiteral (IntLit 2); KCloseSquare],
