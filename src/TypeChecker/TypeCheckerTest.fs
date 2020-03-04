@@ -81,42 +81,46 @@ let testCasesTypeChecker = [
         Ok (Fun (Base String, Base Bool));
     "String equality in ifExp", IfExp ( FuncApp (FuncApp (BuiltInFunc StrEq, Literal (StringLit "s1")), Literal (StringLit "s2")), Literal (IntLit 1), Literal (IntLit 1)),
         Ok (Base Int);
-    "Empty SeqExp", SeqExp (Null, Null),
-        Ok (Pair (Base NullType, Base NullType));
-    "Simple SeqExp", SeqExp (Literal (IntLit 1), Null),
-        Ok (Pair (Base Int, Base NullType));
-    "Simple SeqExp with base types `[1 , 'hello', true]`", SeqExp (Literal (IntLit 1), SeqExp (Literal (StringLit "hello"), SeqExp (Literal (BoolLit true), Null))),
-        Ok (Pair (Base Int, Pair (Base String, Pair (Base Bool, Base NullType))));
-    "Simple SeqExp with Lambda `[1 , \x.x]`", SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (Identifier "x"), Null)),
-        Ok (Pair (Base Int, Pair (Fun (Gen 0, Gen 0), Base NullType)));
-    "Unique ids `[\x.x, \y.y]`", SeqExp (buildLambda "y" (Identifier "y"), SeqExp (buildLambda "x" (Identifier "x"), Null)),
-        Ok (Pair (Fun (Gen 0, Gen 0), Pair ( Fun (Gen 1, Gen 1), Base NullType)));
+    "Empty SeqExp", EmptySeq,
+        Ok EmptySeqType;
+    "Simple SeqExp", SeqExp (Literal (IntLit 1), EmptySeq),
+        Ok (Pair (Base Int, EmptySeqType));
+    "Simple SeqExp with base types `[1 , 'hello', true]`", SeqExp (Literal (IntLit 1), SeqExp (Literal (StringLit "hello"), SeqExp (Literal (BoolLit true), EmptySeq))),
+        Ok (Pair (Base Int, Pair (Base String, Pair (Base Bool, EmptySeqType))));
+    "Simple SeqExp with Lambda `[1 , \x.x]`", SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (Identifier "x"), EmptySeq)),
+        Ok (Pair (Base Int, Pair (Fun (Gen 0, Gen 0), EmptySeqType)));
+    "Unique ids `[\x.x, \y.y]`", SeqExp (buildLambda "y" (Identifier "y"), SeqExp (buildLambda "x" (Identifier "x"), EmptySeq)),
+        Ok (Pair (Fun (Gen 0, Gen 0), Pair ( Fun (Gen 1, Gen 1), EmptySeqType)));
     "Simple Head", BuiltInFunc Head,
         Ok (Fun (Pair (Gen 0, Gen 1), Gen 0));
-    "Applied Head `head [1]`", FuncApp (BuiltInFunc Head, SeqExp (Literal (IntLit 4), Null)), 
+    "Applied Head `head [1]`", FuncApp (BuiltInFunc Head, SeqExp (Literal (IntLit 4), EmptySeq)), 
         Ok (Base Int);
-    "Applied Head `head ['hello', 1, true]`", FuncApp (BuiltInFunc Head, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
+    "Applied Head `head ['hello', 1, true]`", FuncApp (BuiltInFunc Head, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), EmptySeq)))), 
         Ok (Base String);
-    "Applied Head `head [\x.x<1, 1, true]`", FuncApp (BuiltInFunc Head, SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
+    "Applied Head `head [\x.x<1, 1, true]`", FuncApp (BuiltInFunc Head, SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), EmptySeq)))), 
         Ok (Fun (Base Int, Base Bool));
     "Simple Tail", BuiltInFunc Tail,
         Ok (Fun (Pair (Gen 0, Gen 1), Gen 1));
-    "Applied Tail `tail [1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 4), Null)), 
-        Ok (Base NullType);
-    "Applied Tail `tail ['hello', 1, true]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
-        Ok (Pair (Base Int, Pair (Base Bool, Base NullType)));
-    "Applied Tail `tail [1, \x.x<1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), Null))),
-        Ok (Pair (Fun (Base Int, Base Bool), Base NullType));
+    "Applied Tail `tail [1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 4), EmptySeq)), 
+        Ok EmptySeqType;
+    "Applied Tail `tail ['hello', 1, true]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), EmptySeq)))), 
+        Ok (Pair (Base Int, Pair (Base Bool, EmptySeqType)));
+    "Applied Tail `tail [1, \x.x<1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), EmptySeq))),
+        Ok (Pair (Fun (Base Int, Base Bool), EmptySeqType));
     "Simple Size", BuiltInFunc Size,
         Ok (Fun (Pair (Gen 0, Gen 1), Base Int));
-    "Applied Size `size [1]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (IntLit 4), Null)), 
+    "Applied Size `size [1]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (IntLit 4), EmptySeq)), 
         Ok (Base Int);
-    "Applied Size `size ['hello', 1, true]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), Null)))), 
+    "Applied Size `size ['hello', 1, true]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), EmptySeq)))), 
         Ok (Base Int);
     "Simple Append", BuiltInFunc Append,
         Ok (Fun (Gen 2, Fun (Pair (Gen 0, Gen 1), Pair (Gen 2, Pair (Gen 0, Gen 1)))));
-    "Applied Append `append true [1]`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), SeqExp (Literal (IntLit 4), Null)), 
-        Ok (Pair (Base Bool, Pair (Base Int, Base NullType)));
+    "Applied Append to empty `append 1 []`", FuncApp (FuncApp (BuiltInFunc Append, Literal (IntLit 1)), EmptySeq), 
+        Ok (Pair (Base Int, EmptySeqType));
+    "Applied Append to empty `append 2 (append 1 [])`",FuncApp (FuncApp (BuiltInFunc Append, Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Append, Literal (IntLit 1)), EmptySeq)), 
+        Ok (Pair(Base Int, Pair (Base Int, EmptySeqType)));
+    "Applied Append `append true [1]`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), SeqExp (Literal (IntLit 4), EmptySeq)), 
+        Ok (Pair (Base Bool, Pair (Base Int, EmptySeqType)));
     "Head not list `head 1`", FuncApp (BuiltInFunc Head, Literal (IntLit 1)),
         buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Base Int));
     "Tail not list `tail \x.x`", FuncApp (BuiltInFunc Tail, buildLambda "x" (Identifier "x")),
@@ -125,4 +129,10 @@ let testCasesTypeChecker = [
         buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Base Int));
     "Append not list `append true 1`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), Literal (IntLit 4)),
         buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 2, Gen 3)) (Base Int));
+    "Head of empty `head []`", FuncApp (BuiltInFunc Head, EmptySeq),
+        Ok (Base NullType);
+    "Tail of empty `tail []`", FuncApp (BuiltInFunc Tail, EmptySeq),
+        Ok (Base NullType);
+    "Size of empty `tail []`", FuncApp (BuiltInFunc Size, EmptySeq),
+        Ok (Base Int);
 ]

@@ -44,15 +44,21 @@ let testCasesParser = [
     "Miss Else exp", [KIf; TIdentifier "y"; KThen; TIdentifier "z"; KElse; KFi],
         buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KFi] [Identifier "z"; Identifier "y"];
     "Empty SeqExp", [KOpenSquare; KCloseSquare],
-        Ok (SeqExp (Null, Null));
+        Ok EmptySeq;
+    "Nested Empty SeqExp [[]]", [KOpenSquare; KOpenSquare; KCloseSquare; KCloseSquare],
+        Ok (SeqExp(EmptySeq, EmptySeq));
+    "Double Empty SeqExp [[],[]]", [KOpenSquare; KOpenSquare; KCloseSquare; KComma; KOpenSquare; KCloseSquare; KCloseSquare],
+        Ok (SeqExp(EmptySeq, SeqExp(EmptySeq, EmptySeq)));
+    "Triple Empty SeqExp [[[],[]],[[],[]]]", [KOpenSquare; KOpenSquare; KOpenSquare; KCloseSquare; KComma; KOpenSquare; KCloseSquare; KCloseSquare; KComma; KOpenSquare; KOpenSquare; KCloseSquare; KComma; KOpenSquare; KCloseSquare; KCloseSquare; KCloseSquare],
+        Ok (SeqExp(SeqExp(EmptySeq, SeqExp(EmptySeq, EmptySeq)), SeqExp(SeqExp(EmptySeq, SeqExp(EmptySeq, EmptySeq)), EmptySeq)));
     "SeqExp 1 item", [KOpenSquare; TLiteral (IntLit 1); KCloseSquare],
-        Ok (SeqExp (Literal (IntLit 1), Null));
+        Ok (SeqExp (Literal (IntLit 1), EmptySeq));
     "SeqExp 2 items", [KOpenSquare; TLiteral (IntLit 1); KComma; TLiteral (IntLit 2); KCloseSquare],
-        Ok (SeqExp (Literal (IntLit 1), SeqExp (Literal (IntLit 2), Null)));
+        Ok (SeqExp (Literal (IntLit 1), SeqExp (Literal (IntLit 2), EmptySeq)));
     "SeqExp func app", [KOpenSquare; TIdentifier "x"; TIdentifier "y"; KCloseSquare],
-        Ok (SeqExp (FuncApp (Identifier "x", Identifier "y"), Null));
+        Ok (SeqExp (FuncApp (Identifier "x", Identifier "y"), EmptySeq));
     "SeqExp 5 items", [KOpenSquare; TLiteral (IntLit 1); KComma; TLiteral (IntLit 2); KComma; TLiteral (IntLit 3); KComma; TLiteral (IntLit 4); KComma; TLiteral (IntLit 5); KCloseSquare],
-        Ok (SeqExp (Literal (IntLit 1), SeqExp (Literal (IntLit 2), SeqExp (Literal (IntLit 3), SeqExp (Literal (IntLit 4), SeqExp (Literal (IntLit 5), Null))))))
+        Ok (SeqExp (Literal (IntLit 1), SeqExp (Literal (IntLit 2), SeqExp (Literal (IntLit 3), SeqExp (Literal (IntLit 4), SeqExp (Literal (IntLit 5), EmptySeq))))))
     "Miss first Exp", [KOpenSquare; KComma; TIdentifier "y"; KCloseSquare],
         buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KComma; TIdentifier "y"; KCloseSquare] []
     "Simple FuncApp Lit", [TIdentifier "f"; TLiteral (IntLit 42)],
