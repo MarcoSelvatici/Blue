@@ -44,7 +44,7 @@ let end2end checkTypes input =
 
 [<EntryPoint>]
 let main argv =
-    //runTests()
-    end2end true "(\x.x+10) 12"
+    runTests()
+    //end2end true "(\x.x+10) 12"
     Console.ReadKey() |> ignore
     0

@@ -31,3 +31,6 @@ like `Token`, `Ast` and error types.
 core modules of our language. Their top level functions all return a
 `Result<someType, ErrorT>` where `someType` is the type returning for a correct
 execution of the program.
+
+Note: the type checker is best effort for functions `Implode` and `Explode`.
+Since our lists are untyped it is impractical to check the list types.

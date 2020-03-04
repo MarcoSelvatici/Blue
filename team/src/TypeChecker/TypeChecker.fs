@@ -140,12 +140,25 @@ let inferListOp uid op =
         uid, Ok ([], Fun (tNewHead, Fun (Pair (tHead, tTail), Pair (tNewHead, Pair (tHead, tTail)))))
     | _ -> impossible "type checker, inferListOp"
 
+let inferImplodeExplode uid f =
+    // Return a generic list. This is a best effort type checking.
+    let tHead, uid = newGen uid
+    let tTail, uid = newGen uid    
+    match f with
+    | Explode -> uid, Ok ([], Fun (Base String, Pair (tHead, tTail)))
+    | Implode -> uid, Ok ([], Fun (Pair (tHead, tTail), Base String))
+    | _ -> impossible "type checker, inferImplodeExplode"
+
 let inferBuiltInFunc uid f =
     let isListOp op = List.contains op [Head; Tail; Size; Append]
     match f with
     | op when isBinaryOp op -> uid, inferBinOp op
     | op when isListOp op -> inferListOp uid op
+    | Implode | Explode -> inferImplodeExplode uid f
     | StrEq -> uid, Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
+    | Test ->
+        let t, uid = newGen uid
+        uid, Ok ([], Fun(t, Base Bool))
     | _ -> uid, Error <| sprintf "Type checking for %A is not implemented" f
 
 let rec inferIfExp uid ctx c t e =

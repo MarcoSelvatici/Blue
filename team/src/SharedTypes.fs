@@ -4,64 +4,64 @@ module SharedTypes
 
 type BuiltInFunc =
     // Builtin with no special treatment.
-    | Not        
-    | Head       
-    | Tail       
-    | Size       
-    | Implode    
-    | Explode    
-    | Append     
-    | StrEq      
+    | Not
+    | Head
+    | Tail
+    | Size
+    | Implode
+    | Explode
+    | Append
+    | StrEq
+    | Test
     // ComparisonOp.
-    | Greater    
-    | GreaterEq  
-    | Less       
-    | LessEq     
-    | Equal      
+    | Greater
+    | GreaterEq
+    | Less
+    | LessEq
+    | Equal
     // LogicalOp.
-    | And        
-    | Or         
-    // BitwiseOp
-    | BitAnd     
-    | BitOr      
+    | And
+    | Or
+    // TODO (fabio) REMOVE THESE TWO
+    | BitAnd
+    | BitOr
     // AdditiveOp.
-    | Plus       
-    | Minus      
+    | Plus
+    | Minus
     // MultiplicativeOp.
-    | Mult       
-    | Div       
+    | Mult
+    | Div
 
 type Literal =
-    | IntLit of int        
-    | FloatLit of float    
-    | BoolLit of bool      
-    | CharLit of char      
-    | StringLit of string  
+    | IntLit of int
+    | FloatLit of float
+    | BoolLit of bool
+    | CharLit of char
+    | StringLit of string
 
 type Token =
-    | TLiteral of Literal       
+    | TLiteral of Literal
     | TIdentifier of string
     | TBuiltInFunc of BuiltInFunc
-    
     // Keywords. 
-    | KLet          
-    | KEq           
-    | KRec          
-    | KIn           
-    | KNi           
-    | KComma        
-    | KSemiColon       
-    | KOpenRound    
-    | KCloseRound   
-    | KOpenSquare   
-    | KCloseSquare  
-    | KLambda       
-    | KDot          
-    | KIf           
-    | KThen         
-    | KElse         
-    | KFi           
-    | KNull  
+    | KLet
+    | KEq
+    | KRec
+    | KIn
+    | KNi
+    | KComma
+    | KSemiColon
+    | KOpenRound
+    | KCloseRound
+    | KOpenSquare
+    | KCloseSquare
+    | KLambda
+    | KDot
+    | KIf
+    | KThen
+    | KElse
+    | KFi
+    | KNull
 
 type Ast =
     | FuncDefExp of FuncDefExpType
@@ -102,6 +102,9 @@ let (|EMPTYSEQ|_|) =
     function
     | SeqExp(Null, Null) -> Some 0
     | _ -> None
+
+
+/// For beta reduction.
 
 type Art =
     | Def of FuncDefArt

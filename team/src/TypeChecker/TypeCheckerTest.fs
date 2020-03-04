@@ -135,4 +135,16 @@ let testCasesTypeChecker = [
         Ok (Base NullType);
     "Size of empty `tail []`", FuncApp (BuiltInFunc Size, EmptySeq),
         Ok (Base Int);
+    "Simple Implode", BuiltInFunc Implode,
+        Ok (Fun (Pair (Gen 0, Gen 1), Base String));
+    "Simple Explode", BuiltInFunc Explode,
+        Ok (Fun (Base String, Pair (Gen 0, Gen 1)));
+    "Applied Implode `implode ['a', 'b']`", FuncApp(BuiltInFunc Implode, SeqExp(Literal (StringLit "a"), SeqExp (Literal (StringLit "b"), EmptySeq))),
+        Ok (Base String);
+    "Applied Explode `explode 'ab'`", FuncApp(BuiltInFunc Explode, Literal (StringLit "ab")),
+        Ok (Pair (Gen 1, Gen 2));
+    "Simple Test", BuiltInFunc Test,
+        Ok (Fun(Gen 0, Base Bool));
+    "Applied Test `test \x.x`", FuncApp(BuiltInFunc Test, buildLambda "x" (Identifier "x")),
+        Ok (Base Bool);
 ]
