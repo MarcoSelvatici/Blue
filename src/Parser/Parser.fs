@@ -152,14 +152,21 @@ let rec buildFuncAppTree (itemsList : Ast list): Result<Ast, string> =
 
 // Base rules.
 
-/// Tries to parse a token and, if successful, consumes that token.
-let pToken (tokenToMatch : Token) : ParseRule =
+let pToken' addToAst (tokenToMatch : Token) : ParseRule =
     function
     | Error e -> Error e
-    | Ok (asts, token :: tokenlist) when token = tokenToMatch ->
+    | Ok (asts, token :: tokenlist) when token = tokenToMatch && addToAst ->
+        Ok (Token token :: asts, tokenlist)
+    | Ok (asts, token :: tokenlist) when token = tokenToMatch && not addToAst ->
         Ok (asts, tokenlist)
     | Ok (asts, tokenlist) ->
         buildParserError (sprintf "failed: pToken %A" tokenToMatch) tokenlist asts
+
+/// Tries to parse a token and, if successful, consumes that token.
+let pToken    = pToken' false
+/// Tries to parse a token and, if successful, consumes that token and adds it
+/// to the ast.
+let pTokenAdd = pToken' true
 
 /// Tries to match the next token with a list of tokens, and, if successful,
 /// returns the unchanged Tokens list and a Null Ast.
@@ -207,18 +214,15 @@ let pBuiltin : ParseRule =
 // an Ok result, hence require a normal pattern matching.
 
 let rec pSeqList pState =
-    let seqExpListTerminators = [KCloseSquare]
-    // At least one element will be present in the sequence, since empty
-    // sequences are matched in pSeqExp.
     pState
-    |> (pExp .+. (pNull seqExpListTerminators .|. pToken KComma .+. pSeqList))
+    |> (pExp .+. (pTokenAdd KCloseSquare .|. pTokenAdd KComma .+. pSeqList))
     |> Result.map (
         function
-        | Null :: exp :: asts, tkns ->
-            SeqExp (exp, Null) :: asts, tkns
-        | SeqExp (fst, snd) :: exp :: asts, tkns ->
-            SeqExp (exp, SeqExp (fst, snd)) :: asts, tkns
-        | _ -> impossible "pSeqList"
+        | SeqExp (h, t) :: Token KComma :: exp :: asts, tkns ->
+            SeqExp (exp, SeqExp (h, t)) :: asts, tkns
+        | Token KCloseSquare :: exp :: asts, tkns ->
+            SeqExp (exp, EmptySeq) :: asts, KCloseSquare :: tkns
+        | state -> impossible <| sprintf "pSeqList %A" state
     )
 
 and pSeqExp pState =
@@ -228,7 +232,7 @@ and pSeqExp pState =
     |> Result.map (
         function
         | SeqExp _ :: _, _ as pState' -> pState' // Non empty sequence.
-        | asts, tkns -> SeqExp (Null, Null) :: asts, tkns // Empty sequence.
+        | asts, tkns -> EmptySeq :: asts, tkns // Empty sequence.
     )
 
 and pIfExp pState =

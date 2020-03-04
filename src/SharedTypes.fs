@@ -70,8 +70,9 @@ type Ast =
     | IdentifierList of string list // Transformed into a list of Identifier.
     | Literal of Literal
     | BuiltInFunc of BuiltInFunc
-    | Null
+    | Null // Used in the EmptySeq, which terminates the sequences.
     | Combinator of CombinatorType
+    | Token of Token // Should not appear in the final ast.
 
 // Curried.
 and FuncDefExpType = {
@@ -90,6 +91,13 @@ and CombinatorType =
     | S 
     | K
     | I    
+
+// Handy definition of EmptySeq [] and PAP to match it.
+let EmptySeq = SeqExp (Null, Null)
+let (|EMPTYSEQ|_|) =
+    function
+    | SeqExp(Null, Null) -> Some 0
+    | _ -> None
 
 type Art =
     | Def of FuncDefArt
