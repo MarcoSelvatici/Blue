@@ -6,6 +6,8 @@
   <ItemGroup>
     <Compile Include="TestLib.fs" />
     <Compile Include="SharedTypes.fs" />
+    <Compile Include="Lexer/Lexer.fs" />
+    <Compile Include="Lexer/LexerTest.fs" />
     <Compile Include="Parser/Parser.fs" />
     <Compile Include="Parser/ParserTest.fs" />
     <Compile Include="TypeChecker/TypeChecker.fs" />

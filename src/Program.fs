@@ -1,6 +1,8 @@
 open System
 open Expecto
 open TestLib
+open Lexer
+open LexerTest
 open Parser
 open ParserTest
 open TypeChecker
@@ -12,6 +14,8 @@ open TestBetaEngine
 open SKIRuntime
 open TestSKIRuntime
 
+[<Tests>]
+let lexerTest = createTestList "Lexer Tests" tokeniseT3 testCasesLexer
 [<Tests>]
 let parserTest = createTestList "Parser Tests" parse testCasesParser
 [<Tests>]

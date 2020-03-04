@@ -2,62 +2,66 @@
 
 module SharedTypes
 
-// TODO: change this to actual tokens type.
 type BuiltInFunc =
-    // Builtin with no special treatment
-    | Not
-    | Head // 'a list -> 'a
-    | Tail // 'a list -> 'a list
-    | Size // 'a list -> int
-    | Append // Append to list. 'a -> 'a List -> 'a List
-    | StrEq // Comparison between two strings. string -> string -> bool
-    | Explode // string -> string List
-    | Implode // string List -> string
-    // ComparisonOp
-    | Greater
-    | GreaterEq
-    | Less
-    | LessEq
-    | Equal
-    // LogicalOp
-    | And
-    | Or
-    // AdditiveOp
-    | Plus
-    | Minus
-    // MultiplicativeOp
-    | Mult
-    | Div
+    // Builtin with no special treatment.
+    | Not        
+    | Head       
+    | Tail       
+    | Size       
+    | Implode    
+    | Explode    
+    | Append     
+    | StrEq      
+    // ComparisonOp.
+    | Greater    
+    | GreaterEq  
+    | Less       
+    | LessEq     
+    | Equal      
+    // LogicalOp.
+    | And        
+    | Or         
+    // BitwiseOp
+    | BitAnd     
+    | BitOr      
+    // AdditiveOp.
+    | Plus       
+    | Minus      
+    // MultiplicativeOp.
+    | Mult       
+    | Div       
 
-// TODO: change this to actual tokens type.
 type Literal =
-    | IntLit of int
-    | BoolLit of bool
-    | StringLit of string
+    | IntLit of int        
+    | FloatLit of float    
+    | BoolLit of bool      
+    | CharLit of char      
+    | StringLit of string  
 
-// TODO: change this to actual tokens type.
 type Token =
-    | TLiteral of Literal
+    | TLiteral of Literal       
     | TIdentifier of string
     | TBuiltInFunc of BuiltInFunc
-    // Keywords
-    | KLet
-    | KRec
-    | KEq
-    | KIn
-    | KNi
-    | KComma
-    | KOpenRound
-    | KCloseRound
-    | KOpenSquare
-    | KCloseSquare
-    | KLambda
-    | KDot
-    | KIf
-    | KThen
-    | KElse
-    | KFi
-    | KNull
+    
+    // Keywords. 
+    | KLet          
+    | KEq           
+    | KRec          
+    | KIn           
+    | KNi           
+    | KComma        
+    | KSemiColon       
+    | KOpenRound    
+    | KCloseRound   
+    | KOpenSquare   
+    | KCloseSquare  
+    | KLambda       
+    | KDot          
+    | KIf           
+    | KThen         
+    | KElse         
+    | KFi           
+    | KNull  
 
 type Ast =
     | FuncDefExp of FuncDefExpType
@@ -126,6 +130,7 @@ type ParserError = {
 
 // TODO: add other types of errors.
 type ErrorT =
+    | LexerError of string
     | ParserError of ParserError
     | TypeCheckerError of string
     | BetaEngineError of string*Art
