@@ -136,7 +136,6 @@ type ParserError = {
     currentAsts: Ast list;
 }
 
-// TODO: add other types of errors.
 type ErrorT =
     | LexerError of string
     | ParserError of ParserError
