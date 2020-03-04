@@ -13,13 +13,15 @@ type Base =
     | Int
     | Bool
     | String
-    | NullType // To terminate lists.
+    | NullType // Used in the EmptySeqType, which terminates the sequences.
 
 type Type =
     | Base of Base
     | Gen of int // Generic type with unique identifier.
     | Fun of Type * Type
     | Pair of Type * Type // Used for lists.
+
+let EmptySeqType = Pair(Base NullType, Base NullType)
 
 type Var = string * Type
 
