@@ -1,0 +1,107 @@
+﻿<!doctype html>
+<html>
+
+<head>
+    <title>VisUAL2</title>
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="css/photon.css">
+    <link rel="stylesheet" href="css/vistally.css">
+    <link rel="stylesheet" href="css/vex.css" />
+    <link rel="stylesheet" href="css/vex-theme-default.css" />
+    <!--<link rel="stylesheet" href="css/material-icons.css">-->
+</head>
+
+<body id="vis-body" class="invisible">
+    <div class="window">
+        <!-- .toolbar-header sits at the top of your app -->
+        <header id="vis-header" class="toolbar toolbar-header">
+            <div class="toolbar-actions">
+                <div class="btn-group">
+                    <button id="explore" class="btn btn-default">
+                        <span class="icon icon-folder"></span>
+                    </button>
+                    <!-- open btn -->
+                    <button id="save" class="btn btn-default">
+                        <span class="icon icon-floppy"></span>
+                    </button>
+                    <!-- save btn -->
+                </div>
+                <!-- btn-group -->
+
+                <button id="run" class="btn btn-fixed btn-default button-run">
+                    Run
+                </button>
+                <!-- run btn -->
+
+                <button id="reset" class="btn btn-default">
+                    Reset
+                </button>
+
+            </div>
+        </header>
+        <!-- Header -->
+
+        <div class="window-content">
+            <div class="pane-group">
+                <div class="pane" id="file-view-pane">
+                    <div id="tabs-files" class="tab-group">
+                        <div id="new-file-tab" class="tab-item tab-item-fixed">
+                            <span class="icon icon-plus"></span>
+                        </div>
+                    </div>
+                    <div id="darken-overlay" class="invisible"></div>
+                </div>
+                <!-- editor -->
+
+                <div id="dashboard" class="pane">
+                    <div id="controls">
+                        <ul class="list-group">
+                            <li class="list-group-item" style="padding:0px">
+                                <div class="tab-group full-width">
+                                    <tab id="tab-reg" class="tab-item active">Registers</tab>
+                                    <tab id="tab-mem" class="tab-item">Memory</tab>
+                                    <tab id="tab-sym" class="tab-item">Symbols</tab>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div id="viewer">
+                        <!--TODO put our terminals here-->
+                    </div>
+
+                    <!-- window-content>
+                    <footer id="viewer-footer" class="toolbar toolbar-footer">
+                    not needed for now
+                    </footer-->
+                </div>
+
+                <!-- table -->
+            </div>
+            <!-- pane-group -->
+        </div>
+        <!-- Header -->
+
+    </div>
+    <!-- window -->
+    <script>
+        // Monaco uses a custom amd loader that over-rides node's require.
+        // Keep a reference to node's require so we can restore it after executing the amd loader file.
+        var nodeRequire = global.require;
+        global.require('electron-settings');
+    </script>
+    <script>console.log('hello from index.html');</script>
+    <script src="js/renderer.js"></script>
+    <script>console.log('renderer.js has been successfully loaded!');</script>
+    <script src="js/tippy.all.min.js"></script>
+    <script src="js/vex.combined.min.js"></script>
+    <script>vex.defaultOptions.className = 'vex-theme-default'</script>
+    <script src="js/svg.min.js"></script>
+    <script src="js/vs/loader.js"></script>
+    <script>console.log('loader done...');</script>
+    <script src="js/monaco-init.js"></script>
+
+
+</body>
+
+</html>

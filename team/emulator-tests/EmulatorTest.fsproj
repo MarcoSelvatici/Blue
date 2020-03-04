@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>emulator</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+<Compile Include="EEExtensions.fs" />
+    <Compile Include="../editor/src/Emulator/TestLib.fs" />
+    <Compile Include="../editor/src/Emulator/SharedTypes.fs" />
+    <Compile Include="../editor/src/Emulator/Lexer/Lexer.fs" />
+    <Compile Include="../editor/src/Emulator/Lexer/LexerTest.fs" />
+    <Compile Include="../editor/src/Emulator/Parser/Parser.fs" />
+    <Compile Include="../editor/src/Emulator/Parser/ParserTest.fs" />
+    <Compile Include="../editor/src/Emulator/TypeChecker/TypeChecker.fs" />
+    <Compile Include="../editor/src/Emulator/TypeChecker/TypeCheckerTest.fs" />
+    <Compile Include="../editor/src/Emulator/BetaReduction/BetaEngine.fs" />
+    <Compile Include="../editor/src/Emulator/BetaReduction/TestBetaEngine.fs" />
+    <Compile Include="../editor/src/Emulator/SKIReduction/SKICombinator.fs" />
+    <Compile Include="../editor/src/Emulator/SKIReduction/TestSKI.fs" />
+    <Compile Include="EmulatorTest.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Expecto.FsCheck" Version="8.13.1" />
+  </ItemGroup>
+</Project>
