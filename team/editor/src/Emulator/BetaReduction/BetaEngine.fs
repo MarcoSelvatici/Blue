@@ -2,11 +2,11 @@ module  BetaEngine
 
 open SharedTypes
 
+// introspection tools
 let print a = 
     printf "%A\n" a 
     a
 
-// introspection tools
 let printFA env f x = 
     printfn "functionApplication: " 
     printf "f: "
@@ -17,119 +17,101 @@ let printFA env f x =
     print env |> ignore
     printf "\n"
 
-let printEval env art =
+let printEval env ast =
     printf "evaluate: " 
-    print art |> ignore
+    print ast |> ignore
     printf "env: "
     print env |> ignore
     printf "\n"
 
-////////////////////
-/// TREE MAPPING ///
-////////////////////
+/// ENVIOURMENT ///
+type AstResult = NonReduced of Ast | Reduced of Ast
+type Enviourment = Map<string,AstResult> 
+type AstState = Result<Ast*(Enviourment Option),BetaEngineError>
 
-/// from Ast to Art (Ast Run Time)
-/// Curently useless - planned to support memoisation
+let extendEnv map name body : Enviourment=
+    Map.add name (NonReduced body) map
+let updateEnv map name body : Enviourment = 
+    Map.add name (Reduced body) map
+let mergeEnv originalEnv (returnedEnv: Enviourment option ): Enviourment = 
+    // Option.fold  ( Map.fold (fun map key ast -> Map.add key ast map) ) originalEnv returnedEnv
+    match returnedEnv with
+    | Some retEnv -> Map.fold (fun map key ast -> Map.add key ast map) originalEnv retEnv
+    | None -> originalEnv
+let mergeEnvS originalEnv returnedEnv = mergeEnv originalEnv returnedEnv |> Some
+let removeEnv env name : Enviourment =
+    Map.remove name env
+let mergeUpdateEnvS originalEnv returnedEnv name body : Enviourment Option =
+    updateEnv (mergeEnv originalEnv returnedEnv) name body |> Some
+    
+let OkN ast = Ok (ast, None)
 
-type Counter() =
-  static let mutable x = int64 0
-  static member getID = 
-    x <- x + (int64 1); 
-    Some x
-  static member getIDstub =
-    Some (int64 -1)
-
-let newIDstub = int64 0
-
-// TODO: add better error reporting - for now function just return None
-let AstToArt ast =
-    let rec (|MapAstArt|_|) ast =
-        match ast with
-        | FuncDefExp {FuncName = name; FuncBody = MapAstArt body ; Rest = MapAstArt rest} 
-            -> Def ({Name = name; Body = body; Rest = rest}) |> Some
-        | LambdaExp  { LambdaParam = name; LambdaBody = MapAstArt body}
-            -> Lam {Var = name; Body = body;} |> Some
-        | FuncApp (MapAstArt l, MapAstArt r)
-            -> App (l, r, Counter.getIDstub) |> Some
-        | Null -> Nul |> Some
-        | Literal lit -> Lit lit |> Some
-        | Identifier i -> Idn i |> Some
-        | BuiltInFunc b -> BIF b |> Some
-        | IfExp (MapAstArt b, MapAstArt t, MapAstArt e)
-            -> IfE (b,t,e) |> Some
-        | SeqExp (MapAstArt l, MapAstArt r)
-            -> Seq (l,r, Counter.getIDstub) |> Some
-        | FuncAppList _
-        | IdentifierList _ -> None
-        | _ -> None
-    (|MapAstArt|_|) ast
-
-let ArtToAst art = 
-    let rec (|MapArtAst|_|) art = 
-        match art with
-        | Def ({Name = name; Body = MapArtAst body; Rest = MapArtAst rest}) 
-            -> FuncDefExp {FuncName = name; FuncBody = body ; Rest = rest} |> Some
-        | Lam  {Var = name; Body = MapArtAst body; }               
-            -> LambdaExp { LambdaParam = name; LambdaBody =  body} |> Some
-        | App (MapArtAst l ,MapArtAst r,_)
-            -> FuncApp (l, r) |> Some
-        | Nul -> Null |> Some
-        | Lit l -> Literal l |> Some
-        | Idn i -> Identifier i |> Some
-        | BIF b -> BuiltInFunc b |> Some
-        | IfE (MapArtAst b,MapArtAst t, MapArtAst e) -> IfExp (b,t,e) |> Some
-        | Seq (MapArtAst l, MapArtAst r,_) -> SeqExp (l,r) |> Some
-        | _ -> None
-    (|MapArtAst|_|) art
-
-//////////////
 /// ERRORS ///
-//////////////
+let buildError message ast =
+    Error {msg= message; trace=[]; ast=ast }
 
-let buildError (message:string) (art:Art) =
-     Error (message, art)
+let addTrace (err:BetaEngineError) traceMsg =
+    Error {err with trace = ("in " + traceMsg)::err.trace}
 
-let buildErrorS string art = 
-    buildError string art |> Some
+let buildErrorS string ast = 
+    buildError string ast |> Some
 
-//////////////////////
-// BUILIN FUNCTIONS //
-//////////////////////
+let astToString ast = 
+    match ast with 
+    | FuncDefExp {FuncName = name; FuncBody = body ; Rest = rest} 
+        -> "Let "+name
+    | LambdaExp  { LambdaParam = name; LambdaBody = body}
+        -> "\."+name
+    | FuncApp (l, r)
+        -> "FuncApp"
+    | Null -> "Null"
+    | Literal lit -> sprintf "%A" lit
+    | Identifier i -> i
+    | BuiltInFunc b -> sprintf "%A" b
+    | IfExp (b,t,e) -> "IfExp"
+    | SeqExp (l, r) -> "SeqExp"
+    | FuncAppList _ -> "FuncAppList"
+    | IdentifierList _ -> "IdentifierList"
+    | Combinator _ -> "Combinator"
+    | Token _ -> "Token"
+
+
+/// BUILIN FUNCTIONS ///
 
 //  PAP matching on Ast - building block for builtIn functions
 //  used for type-checking and unpacking the values
 
 // D.U. defined types
-let (|INTLIT|_|)    = function Lit (IntLit    v) -> Some v | _ -> None
-let (|BOOLLIT|_|)   = function Lit (BoolLit   v) -> Some v | _ -> None
-let (|STRINGLIT|_|) = function Lit (StringLit v) -> Some v | _ -> None
-let (|SEQEXP|_|)    = function Seq (l,r,_) ->   Some (l,r) | _ -> None
+let (|INTLIT|_|)    = function Literal (IntLit    v) -> Some v | _ -> None
+let (|BOOLLIT|_|)   = function Literal (BoolLit   v) -> Some v | _ -> None
+let (|STRINGLIT|_|) = function Literal (StringLit v) -> Some v | _ -> None
+let (|SEQEXP|_|)    = function SeqExp (l,r) ->   Some (l,r) | _ -> None
 
 // additionaly defined types
 
-// match Null or Seq 
+// match Null or SeqExp 
 let (|LISTLAZY|_|) x =
     match x with
-    | Nul | Seq _ -> Some x
+    | SeqExp _ -> Some x
     | _ -> None
 // match whole list    
 let rec (|LIST|_|) x =
     match x with
-    | Nul -> Some []
-    | Seq (hd, LIST tlLst, _) -> Some (hd::tlLst)
+    | SeqExp (Null,Null) -> Some []
+    | SeqExp (hd, LIST tlLst) -> Some (hd::tlLst)
     | _ -> None
 // match string list
 let rec (|STRLIST|_|) x =
     match x with
-    | Nul -> Some []
-    | Seq (STRINGLIT s, STRLIST tlLst, _) -> Some (s::tlLst)
+    | SeqExp (Null,Null) -> Some []
+    | SeqExp (STRINGLIT s, STRLIST tlLst) -> Some (s::tlLst)
     | _ -> None
 
 // helper function 
 let rec buildList list =
     match list with
-    | [] -> Nul
-    | ele::rest -> Seq (ele, buildList rest, Counter.getIDstub)
+    | [] -> SeqExp (Null,Null)
+    | ele::rest -> SeqExp (ele, buildList rest)
 
 /// PAP buildier for unary built-in operators
 /// * if 'full match' is detected - the function is evaluated and result returned (Pass)
@@ -145,9 +127,9 @@ let rec buildList list =
 /// - originalAst - to be returned if evaluatian needs to be delayed
 let buildUnaryBuiltIn b f (|InType|_|) (argLst, originalAst) =
     match argLst with
-    | (InType x)::[] -> Ok (f x)
-    | (Idn _)::_ | (App _)::_ | (IfE _)::_ -> Ok originalAst // TODO: CAN DELETE THIS ROW ?
-    | arg::[] 
+    | [InType x] -> Ok (f x)
+    | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_ -> Ok originalAst// TODO: CAN DELETE THIS ROW ?
+    | [arg] 
         -> buildError (sprintf "%A is unsuported for %A" b arg) originalAst
     | _ -> buildError (sprintf "What? buildUnaryBuiltIn %A %A" b argLst) originalAst
 
@@ -174,12 +156,12 @@ let mapInputOutputUnary inputTransformer outputTransformer lstBind =
 /// - originalAst - to be returned if evaluatian needs to be delayed
 let buildBinaryBuiltIn b f (|InType1|_|) (|InType2|_|) (argLst, originalAst) =
     match argLst with
-    | (InType2 val2)::(InType1 val1)::[] -> Ok (f val1 val2)
-    //| (Idn _)::_ | (App _)::_ | (IfE _)::_    // TODO: CAN DELETE THIS ROW ?
-    //| _::(Idn _)::_ | _::(App _)::_ | _::(IfE _)::_
-    | _::[] | _::_::_::_
+    | (InType2 val2)::[InType1 val1] -> Ok (f val1 val2)
+    //| (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_    // TODO: CAN DELETE THIS ROW ?
+    //| _::(Identifier _)::_ | _::(FuncApp _)::_ | _::(IfExp _)::_
+    | [_] | _::_::_::_
         -> Ok originalAst
-    | arg2::arg1::[] 
+    | arg2::[arg1] 
         -> buildError (sprintf "%A is unsuported for %A, %A" b arg1 arg2) originalAst
     | _ -> buildError (sprintf "What? buildBinaryBuiltIn %A %A" b argLst) originalAst
 
@@ -194,25 +176,25 @@ let mapInputOutputBin inputTransformer1 inputTransformer2 outputTransformer lstB
 /// Map from BuiltInFunc token to Builtin Functions
 let BuiltIn = 
     [   // BINARY
-        mapInputOutputBin (|BOOLLIT|_|) (|BOOLLIT|_|) (BoolLit>>Lit)
+        mapInputOutputBin (|BOOLLIT|_|) (|BOOLLIT|_|) (BoolLit>>Literal)
          [ // bool -> bool -> bool
             And, (&&); 
             Or,  (||);
          ];
         
-        mapInputOutputBin (|STRINGLIT|_|) (|STRINGLIT|_|) (BoolLit>>Lit) 
+        mapInputOutputBin (|STRINGLIT|_|) (|STRINGLIT|_|) (BoolLit>>Literal) 
          [   StrEq, (=) ]; // string -> string -> bool
         
-        mapInputOutputBin (|INTLIT|_|) (|INTLIT|_|) (BoolLit>>Lit)
+        mapInputOutputBin (|INTLIT|_|) (|INTLIT|_|) (BoolLit>>Literal)
          [  // int -> int -> bool
-            Greater,   (>); 
-            GreaterEq, (>=); 
-            Less,      (<); 
-            LessEq,    (<=); 
-            Equal,     (=);  
+            Greater,   (>);
+            GreaterEq, (>=);
+            Less,      (<);
+            LessEq,    (<=);
+            Equal,     (=);
          ];
         
-        mapInputOutputBin (|INTLIT|_|) (|INTLIT|_|) (IntLit>>Lit)
+        mapInputOutputBin (|INTLIT|_|) (|INTLIT|_|) (IntLit>>Literal)
          [ // int -> int -> int
             Plus, (+);
             Minus,(-);   
@@ -222,60 +204,60 @@ let BuiltIn =
          //fun x -> Some x
         
         mapInputOutputBin (fun x -> Some x) (|LISTLAZY|_|)  id
-         [  Append, (fun l r -> Seq (l,r,Counter.getIDstub)); ];
+         [  Append, (fun l r -> SeqExp (l,r)); ];
          
         // UNARY
-        mapInputOutputUnary (|BOOLLIT|_|) (BoolLit>>Lit)
+        mapInputOutputUnary (|BOOLLIT|_|) (BoolLit>>Literal)
          [ Not, not ]; // bool -> bool
 
-        mapInputOutputUnary (|LIST|_|) (IntLit>>Lit)
+        mapInputOutputUnary (|LIST|_|) (IntLit>>Literal)
          [ Size, List.length ] // List -> int
 
         mapInputOutputUnary (|SEQEXP|_|) id
-         [  // Seq -> Art 
-            Head, (fun (hd,tl) -> hd);
-            Tail, (fun (hd,tl) -> tl);         
+         [  // SeqExp -> ast 
+            Head, (fun (hd,_) -> hd);
+            Tail, (fun (_,tl) -> tl);         
          ];
 
          mapInputOutputUnary (|STRINGLIT|_|) id
-         [ // String -> Art 
+         [ // String -> ast 
             Explode, Seq.toList 
-                     >> List.map (string >> StringLit >> Lit) 
+                     >> List.map (string >> StringLit >> Literal) 
                      >> buildList ;
          ];
 
-         mapInputOutputUnary (|STRLIST|_|) (StringLit>>Lit)
-          [ //  [String] -> 
+         mapInputOutputUnary (|STRLIST|_|) (StringLit>>Literal)
+          [ // [String] -> String 
             Implode, Seq.fold (+) ""
           ];
 
     ] |> List.concat |> Map
-   
-type Enviourment = string list * Map<string, Art>
 
-let extendEnv map name body =
-     Map.add name body map
+
+let (|UnexpectedTypes|) ast =
+    match ast with
+    | FuncAppList _   ->  "What? FuncAppList"    
+    | IdentifierList _->  "What? IdentifierList"
+    | Combinator _    ->  "What? Combinator" 
+    | Token _         ->  "What? Token"
+    | _ ->  "What? UnexpectedTypes didn't match"
+    |> fun a -> buildError (a + " in BetaEngine") ast 
 
 // subsititute value for the variable
-let rec lambdaBetaReduction variable value art =
+let rec lambdaBetaReduction variable value ast =
     let rCall = lambdaBetaReduction variable value
-    match art with
-    | Def ({Name = name; Body = body; Rest = rest}) when name <> variable
-        -> Def ({Name = name; Body = rCall body; Rest = rCall rest})
-    | Lam  {Var = name; Body = body; } when name <> variable           
-        -> Lam { Var = name; Body = rCall body}
-    | App (l ,r, _)
-        -> App (rCall l, rCall r, Counter.getIDstub)
-    | IfE (b,t,e) -> IfE (rCall b, rCall t, rCall e)
-    | Seq (l,r,_) -> Seq (rCall l, rCall r, Counter.getIDstub)
-    | Idn i when i = variable -> value
-    | Idn _ | Def _ | Lam _ | Nul | Lit _ | BIF _ -> art
-
-let rec decodeIdentifier env name = 
-    match Map.tryFind name env with
-        | Some (Idn i) -> decodeIdentifier env i
-        | Some art -> Ok art
-        | None -> buildError (sprintf "Idn \'%s\' is not defined" name) (Idn name);
+    match ast with
+    | FuncDefExp ({FuncName = name; FuncBody = body; Rest = rest}) when name <> variable
+        -> FuncDefExp ({FuncName = name; FuncBody = rCall body; Rest = rCall rest})
+    | LambdaExp  {LambdaParam = name; LambdaBody = body; } when name <> variable           
+        -> LambdaExp { LambdaParam = name; LambdaBody = rCall body}
+    | FuncApp (l ,r)
+        -> FuncApp (rCall l, rCall r)
+    | IfExp (b,t,e) -> IfExp (rCall b, rCall t, rCall e)
+    | SeqExp (l,r) -> SeqExp (rCall l, rCall r)
+    | Identifier i when i = variable -> value
+    | Identifier _ | FuncDefExp _ | LambdaExp _ | Null | Literal _ | BuiltInFunc _ -> ast
+    | _ -> ast
 
 /// Builds PAP for matching build-in expressions in the map 
 /// * if the (list of arguments) and (function token) is succesfuly extracted from the tree
@@ -288,83 +270,94 @@ let rec decodeIdentifier env name =
 /// - map - Map from Builtin token to F# function
 /// - env - envoiurment needed if x is identifier
 /// - f,x - left- and righthandside of function application
-let rec FlatAndMatch n map env (f, x) = 
+let rec FlatAndMatch n map (env:Enviourment) (f, x) : AstState option= 
     /// flattens nested FuncApp to list of arguments and the builin function token
     /// retruns (function token), (list of arguments)
-    let rec (|FlatArg|_|) n (f, x, _) =
-        let (|FlatArgNless1|_|) = (|FlatArg|_|) (n-1)
-        match f, evaluate env x with  // ugly dependence on evaluate - TODO: get rid of this
+    let rec (|FlatArg|_|) (env:Enviourment) n (f, x) =
+        let (|FlatArgNless1|_|) = (|FlatArg|_|) env (n-1)
+        match f, evaluate env x with
         | _ when n = 0 -> None
-        | BIF b, Ok ex ->  (b, [ex]) |> Some
-        | App (FlatArgNless1 (b, argLst )), Ok ex -> (b, ex::argLst ) |> Some
+        | BuiltInFunc b, Ok (ex, retEnv) -> (b, [ex], (mergeEnvS env retEnv)) |> Some
+        | FuncApp (FlatArgNless1 (b, argLst, retEnv1)), Ok (ex, retEnv2) 
+            -> (b, ex::argLst, mergeEnvS (mergeEnv env retEnv1) retEnv2 ) |> Some // TODO: (reason about to see if this makes sense)
         | _ -> None
     
-    let (|FlatArgN|_|) = (|FlatArg|_|) n
-    match (f,x,None) with
-    | FlatArgN (b, argLst) when Map.containsKey b map
-        -> (Map.find b map) (argLst, App (f,x,None)) |> Some
+    let (|FlatArgN|_|) = (|FlatArg|_|) env n
+    match (f,x) with
+    | FlatArgN (b, argLst, retEnv) when Map.containsKey b map
+        -> ((Map.find b map) (argLst, FuncApp (f,x)) ,  retEnv ) |> Some
     | _ -> None
 
-and functionApplication env f x =
+    |> function
+    | Some (Ok ast, retEnv) -> (ast, mergeEnvS env retEnv) |> Ok |> Some
+    | Some (Error e, _) -> e |> Error |> Some
+    | None -> None
+
+and decodeIdentifier (env:Enviourment) name = 
+    match Map.tryFind name env with // TODO : refactor
+        | Some (Reduced ast) -> Ok (ast, None)
+        | Some (NonReduced ast) ->
+        (   match evaluate env ast with
+            | Error e -> Error e
+            | Ok( reducedAst, retEnv) -> Ok(reducedAst, mergeUpdateEnvS env retEnv name reducedAst)
+        )
+        | None -> buildError (sprintf "Identifier \'%s\' is not defined" name) (Identifier name);
+
+and functionApplication (env: Enviourment) f x = //: AstState=
     let (|BultinMatchWEnv|_|) = FlatAndMatch 2 BuiltIn env
     //printFA env f x
     // match evaluate env f, evaluate env x with
     match evaluate env x with
     | Error e -> Error e
-    | Ok inp -> Ok (f , inp)
+    | Ok (inp,retEnv) -> Ok (f , inp)
     |> Result.map (function
-        | BultinMatchWEnv res -> res   
-        | (Idn _ as uf), _ 
-        | (IfE _ as uf), _  
-        | (App _ as uf), _ 
-        | (Def _ as uf), _-> 
+        | BultinMatchWEnv res -> res
+
+        | (Identifier _ as uf), _
+        | (IfExp _ as uf), _  
+        | (FuncApp _ as uf), _ 
+        | (FuncDefExp _ as uf), _-> 
             match evaluate env uf with
-            | Error e -> Error e
-            | Ok evalf -> functionApplication env evalf x
-        | Lam  { Var = name; Body = body }, art
-            -> lambdaBetaReduction name art body |> evaluate env      
-        | (Nul as art), _  | (Lit _ as art), _ | (Seq _ as art), _ 
-            -> buildError (sprintf "%A non-reducable" art ) art
-        | (f, x) -> buildError (sprintf "What? %A in functionApplication" (f,x)) (App (f,x,None))
+            | Error e -> addTrace e (astToString uf)
+            | Ok (evalf,retEnv) -> functionApplication (mergeEnv env retEnv) evalf x
+        | LambdaExp  { LambdaParam = name; LambdaBody = body}, ast
+            -> lambdaBetaReduction name ast body |> evaluate env      
+        | (Null as ast), _  | (Literal _ as ast), _ | (SeqExp _ as ast), _ 
+            -> buildError (sprintf "%s non-reducable" (astToString ast) ) ast
+        | (f, x) -> buildError (sprintf "What? %A in FuncApp" (f,x)) (FuncApp (f,x))
         )
     |> function
     | Ok ( Ok ast ) -> Ok ast
     | Ok ( Error e)
     | Error e -> Error e
 
-and evaluate env art =
-    //printEval env art
-    match art with
-    | Def {Name = name; Body = body; Rest = rest} -> 
+and evaluate (env:Enviourment) (ast:Ast) : AstState=
+    //printEval env ast
+    match ast with
+    | FuncDefExp {FuncName = name; FuncBody = body; Rest = rest} -> 
         evaluate (extendEnv env name body) rest
-    | Lam  { Var = name; Body = body } as l
-        -> Ok l
-    | App (f,x,id) -> functionApplication env f x
-    | IfE (bool,bTrue,bFalse) ->
+    | LambdaExp  { LambdaParam = name; LambdaBody = body } as l
+        -> (l, None) |> Ok
+    | FuncApp (f,x) -> functionApplication env f x
+    | IfExp (bool,bTrue,bFalse) ->
         match evaluate env bool with
-        | Ok (Lit (BoolLit true))  -> evaluate env bTrue
-        | Ok (Lit (BoolLit false)) -> evaluate env bFalse
-        | Ok ( exp ) -> Ok (IfE (exp,bTrue,bFalse))
-        | Error e -> Error e
-    | Idn i -> decodeIdentifier env i
-    | Nul | Lit _ | BIF _ | Seq _ 
-        -> Ok art
+        | Ok (Literal (BoolLit true),  retEnv) -> evaluate (mergeEnv env retEnv) bTrue
+        | Ok (Literal (BoolLit false), retEnv) -> evaluate (mergeEnv env retEnv) bFalse
+        | Ok ( exp, retEnv ) -> Ok (IfExp (exp,bTrue,bFalse), (mergeEnvS env retEnv))
+        | Error e -> addTrace e "IfExp"
+    | Identifier i -> decodeIdentifier env i
+    | Identifier _
+    | Null | Literal _ | BuiltInFunc _ | SeqExp _ 
+        -> Ok (ast, None)
+    | UnexpectedTypes e -> e
 
-let upcastError =
+let upcastErrorDropEnv =
     function
     | Error e -> Error <| BetaEngineError e
-    | Ok x -> Ok x
+    | Ok (ast,_) -> Ok ast
 
 /// top level function for reducing the AST
 let runAst ast =
-    AstToArt ast
-    |> function
-    | None -> buildError "What? couldn't transform Ast to Art (AST Run Time)" Nul
-    | Some art -> evaluate (Map.empty) art
-    |> (fun art -> (Result.map ArtToAst art, art))
-    |> function
-    | Ok (Some ast), _ -> Ok ast
-    | Ok (None), Ok (art) -> buildError "What? couldn't transform Art back to Ast" art
-    | Error e, _ -> Error e
-    | _ -> buildError "What? runAst" Nul
-    |> upcastError
+    ast
+    |> evaluate Map.empty
+    |> upcastErrorDropEnv
