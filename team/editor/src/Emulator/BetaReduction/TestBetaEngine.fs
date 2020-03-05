@@ -5,7 +5,7 @@ open SharedTypes
 open BetaEngine
 //open Expecto
 
-type TestInfo = (string * Ast * Result<Ast,string*Art>) list
+type TestInfo = (string * Ast * Result<Ast,BetaEngineError>) list
 
 // helper functions to shorten and decluter test definitions
 let trueL = Literal (BoolLit true)
@@ -222,25 +222,25 @@ let testOk : TestInfo=
 let testErr : TestInfo= 
     let id = int64 -1 |> Some
     [
-    "idn", "foo", idn "foo", "Idn \'foo\' is not defined", Idn "foo";
-    "Function Application List", "[]", FuncAppList [], "What? couldn't transform Ast to Art (AST Run Time)", Nul;
-    "Identifier List", "[]", IdentifierList [],"What? couldn't transform Ast to Art (AST Run Time)", Nul;
+    "idn", "foo", idn "foo", "Identifier \'foo\' is not defined", Identifier "foo";
+    //"Function Application List", "[]", FuncAppList [], "What? couldn't transform Ast to Art (AST Run Time)", Null;
+    //"Identifier List", "[]", IdentifierList [],"What? couldn't transform Ast to Art (AST Run Time)", Null;
 
     "> wrong type", "3 > Null", F2builtIn Greater (intL 3) Null, 
-    "Greater is unsuported for Lit (IntLit 3), Nul", 
-    (App (App (BIF Greater, Lit (IntLit 3), id), Nul, None));
-
+    "Greater is unsuported for Literal (IntLit 3), Null", 
+    F2builtIn Greater (intL 3) Null;
+   
     "= wrong type" ,"true = 1", F2builtIn Equal trueL (intL 1), 
-    "Equal is unsuported for Lit (BoolLit true), Lit (IntLit 1)", 
-    App (App (BIF Equal, Lit (BoolLit true), id), Lit (IntLit 1), None);
+    "Equal is unsuported for Literal (BoolLit true), Literal (IntLit 1)", 
+    F2builtIn Equal trueL (intL 1);
 
     "String Equality wrong type" , "StrEq \"dog\" Null", F2builtIn StrEq (stringL "dog") Null, 
-    "StrEq is unsuported for Lit (StringLit \"dog\"), Nul", 
-    (App (App (BIF StrEq, Lit (StringLit "dog"), id), Nul, None));
+    "StrEq is unsuported for Literal (StringLit \"dog\"), Null", 
+    F2builtIn StrEq (stringL "dog") Null;
 
-    "Head wrong type", "Head Null", FbuiltIn Head Null, "Head is unsuported for Nul", App (BIF Head, Nul, None);
+    "Head wrong type", "Head Null", FbuiltIn Head Null, "Head is unsuported for Null", FbuiltIn Head Null;
     ]
-    |> List.map (fun (n,d,i,m,o) -> (concatDescription n d,i,Error (m,o)))
+    |> List.map (fun (n,d,i,m,o) -> (concatDescription n d,i,Error {msg=m; trace=[]; ast=o}))
 
 let upcastError =
     function
