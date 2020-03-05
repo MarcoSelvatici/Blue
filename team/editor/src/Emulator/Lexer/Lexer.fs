@@ -188,7 +188,6 @@ let tokeniseT3 (str: string) =
             | "then" -> [KThen] @ tokenise rowCount rest
             | "else" -> [KElse] @ tokenise rowCount rest
             | "fi" -> [KFi] @ tokenise rowCount rest
-            | "null" -> [KNull] @ tokenise rowCount rest
             | _ -> [word |> TIdentifier] @ tokenise rowCount rest
         // End case, the whole string has been succesfully matched.
         | [] -> []
