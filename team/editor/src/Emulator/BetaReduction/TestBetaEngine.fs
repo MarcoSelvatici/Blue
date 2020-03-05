@@ -18,7 +18,7 @@ let def name body rest =
     FuncDefExp {FuncName=name; FuncBody=body; Rest=rest}
 let rec buildList list =
     match list with
-    | [] -> Null
+    | [] -> SeqExp (Null,Null)
     | ele::rest -> SeqExp(ele, buildList rest)
 
 let F a1 a2 = FuncApp (a1,a2)
@@ -88,8 +88,8 @@ let testId : TestInfo=
 let testOk : TestInfo= 
     [
     // internal    
-    "buildList empty","buildList [] -> Null", buildList [], Null;
-    "buildList","buildList [Null; Null] -> [Null; Null]", buildList [Null; Null], SeqExp (Null, SeqExp (Null, Null));  
+    "buildList empty","buildList [] -> Null", buildList [], SeqExp(Null,Null);
+    "buildList","buildList [Null; Null] -> [Null; Null]", buildList [Null; Null], SeqExp (Null, SeqExp (Null, SeqExp (Null, Null)));  
     
     "if true", "if true then \"abc\" else Null", 
     IfExp (trueL, stringL "abc", Null),  stringL "abc";
@@ -197,7 +197,7 @@ let testOk : TestInfo=
     "Size 1", "Size [ Null ] -> 1", FbuiltIn Size (buildList [Null]), intL 1;
     "Size 99", "Size [ 0..98 ] -> 99", FbuiltIn Size (buildList ([ 0..98 ]|> List.map (intL))), intL 99;
     "Append","Append 1 [2] -> [1 2]", F2builtIn Append (intL 1) (buildList [intL 2]), buildList [intL 1;intL 2];
-    "Append empty", "Append 9 [] -> [9]", F2builtIn Append (intL 9) Null, buildList [intL 9];
+    "Append empty", "Append 9 [] -> [9]", F2builtIn Append (intL 9) (buildList []), buildList [intL 9];
     "Append diffrent types", "Append true [\"997\", 997, Null, [1] ] ->[true ,\"997\", 997, Null, [] ] ",
     F2builtIn Append trueL (buildList [stringL "997"; intL 997; Null; buildList [intL 1] ]), 
     buildList [trueL; stringL "997"; intL 997; Null; buildList [intL 1] ];

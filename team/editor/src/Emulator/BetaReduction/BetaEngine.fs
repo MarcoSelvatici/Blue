@@ -92,25 +92,25 @@ let (|SEQEXP|_|)    = function SeqExp (l,r) ->   Some (l,r) | _ -> None
 // match Null or SeqExp 
 let (|LISTLAZY|_|) x =
     match x with
-    | Null | SeqExp _ -> Some x
+    | SeqExp _ -> Some x
     | _ -> None
 // match whole list    
 let rec (|LIST|_|) x =
     match x with
-    | Null -> Some []
+    | SeqExp (Null,Null) -> Some []
     | SeqExp (hd, LIST tlLst) -> Some (hd::tlLst)
     | _ -> None
 // match string list
 let rec (|STRLIST|_|) x =
     match x with
-    | Null -> Some []
+    | SeqExp (Null,Null) -> Some []
     | SeqExp (STRINGLIT s, STRLIST tlLst) -> Some (s::tlLst)
     | _ -> None
 
 // helper function 
 let rec buildList list =
     match list with
-    | [] -> Null
+    | [] -> SeqExp (Null,Null)
     | ele::rest -> SeqExp (ele, buildList rest)
 
 /// PAP buildier for unary built-in operators
@@ -187,11 +187,11 @@ let BuiltIn =
         
         mapInputOutputBin (|INTLIT|_|) (|INTLIT|_|) (BoolLit>>Literal)
          [  // int -> int -> bool
-            Greater,   (>); 
-            GreaterEq, (>=); 
-            Less,      (<); 
-            LessEq,    (<=); 
-            Equal,     (=);  
+            Greater,   (>);
+            GreaterEq, (>=);
+            Less,      (<);
+            LessEq,    (<=);
+            Equal,     (=);
          ];
         
         mapInputOutputBin (|INTLIT|_|) (|INTLIT|_|) (IntLit>>Literal)
