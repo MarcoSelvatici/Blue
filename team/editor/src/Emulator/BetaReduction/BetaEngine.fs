@@ -29,21 +29,21 @@ type AstResult = NonReduced of Ast | Reduced of Ast
 type Enviourment = Map<string,AstResult> 
 type AstState = Result<Ast*(Enviourment Option),BetaEngineError>
 
+let extendEnv map name body : Enviourment=
+    Map.add name (NonReduced body) map
+let updateEnv map name body : Enviourment = 
+    Map.add name (Reduced body) map
 let mergeEnv originalEnv (returnedEnv: Enviourment option ): Enviourment = 
     // Option.fold  ( Map.fold (fun map key ast -> Map.add key ast map) ) originalEnv returnedEnv
     match returnedEnv with
-    | Some rEnv -> Map.fold (fun map key ast -> Map.add key ast map) originalEnv rEnv
+    | Some retEnv -> Map.fold (fun map key ast -> Map.add key ast map) originalEnv retEnv
     | None -> originalEnv
-
-let mergeEnvS originalEnv returnedEnv =
-    mergeEnv originalEnv returnedEnv |> Some
-
+let mergeEnvS originalEnv returnedEnv = mergeEnv originalEnv returnedEnv |> Some
 let removeEnv env name : Enviourment =
     Map.remove name env
-
-let extendEnv map name body : Enviourment=
-     Map.add name (NonReduced body) map
-
+let mergeUpdateEnvS originalEnv returnedEnv name body : Enviourment Option =
+    updateEnv (mergeEnv originalEnv returnedEnv) name body |> Some
+    
 let OkN ast = Ok (ast, None)
 
 /// ERRORS ///
@@ -208,7 +208,7 @@ let BuiltIn =
          
         // UNARY
         mapInputOutputUnary (|BOOLLIT|_|) (BoolLit>>Literal)
-         [ Not, not ]; // bool -> bool
+         [ Not, (fun x-> x |> print |> not) ]; // bool -> bool
 
         mapInputOutputUnary (|LIST|_|) (IntLit>>Literal)
          [ Size, List.length ] // List -> int
@@ -259,14 +259,6 @@ let rec lambdaBetaReduction variable value ast =
     | Identifier _ | FuncDefExp _ | LambdaExp _ | Null | Literal _ | BuiltInFunc _ -> ast
     | _ -> ast
 
-let rec decodeIdentifier (env:Enviourment) name = 
-    match Map.tryFind name env with // TODO : refactor
-        | Some (NonReduced (Identifier i)) -> decodeIdentifier env i
-        | Some (Reduced (Identifier i)) -> decodeIdentifier env i
-        | Some (Reduced ast) -> Ok (ast, None)
-        | Some (NonReduced ast) -> Ok (ast, None)
-        | None -> buildError (sprintf "Identifier \'%s\' is not defined" name) (Identifier name);
-
 /// Builds PAP for matching build-in expressions in the map 
 /// * if the (list of arguments) and (function token) is succesfuly extracted from the tree
 /// * and (function token) is a key in the map
@@ -285,39 +277,49 @@ let rec FlatAndMatch n map (env:Enviourment) (f, x) : AstState option=
         let (|FlatArgNless1|_|) = (|FlatArg|_|) env (n-1)
         match f, evaluate env x with
         | _ when n = 0 -> None
-        | BuiltInFunc b, Ok (ex, rEnv) -> (b, [ex], (mergeEnvS env rEnv)) |> Some
-        | FuncApp (FlatArgNless1 (b, argLst, rEnv1)), Ok (ex, rEnv2) 
-            -> (b, ex::argLst, mergeEnvS (mergeEnv env rEnv1) rEnv2 ) |> Some // TODO: (reason about to see if this makes sense)
+        | BuiltInFunc b, Ok (ex, retEnv) -> (b, [ex], (mergeEnvS env retEnv)) |> Some
+        | FuncApp (FlatArgNless1 (b, argLst, retEnv1)), Ok (ex, retEnv2) 
+            -> (b, ex::argLst, mergeEnvS (mergeEnv env retEnv1) retEnv2 ) |> Some // TODO: (reason about to see if this makes sense)
         | _ -> None
     
     let (|FlatArgN|_|) = (|FlatArg|_|) env n
     match (f,x) with
-    | FlatArgN (b, argLst, rEnv) when Map.containsKey b map
-        -> ((Map.find b map) (argLst, FuncApp (f,x)) ,  rEnv ) |> Some
+    | FlatArgN (b, argLst, retEnv) when Map.containsKey b map
+        -> ((Map.find b map) (argLst, FuncApp (f,x)) ,  retEnv ) |> Some
     | _ -> None
 
     |> function
-    | Some (Ok ast, rEnv) -> (ast, mergeEnvS env rEnv) |> Ok |> Some
+    | Some (Ok ast, retEnv) -> (ast, mergeEnvS env retEnv) |> Ok |> Some
     | Some (Error e, _) -> e |> Error |> Some
     | None -> None
 
-    
+and decodeIdentifier (env:Enviourment) name = 
+    match Map.tryFind name env with // TODO : refactor
+        | Some (Reduced ast) -> Ok (ast, None)
+        | Some (NonReduced ast) ->
+        (   match evaluate env ast with
+            | Error e -> Error e
+            | Ok( reducedAst, retEnv) -> Ok(reducedAst, mergeUpdateEnvS env retEnv name reducedAst)
+        )
+        | None -> buildError (sprintf "Identifier \'%s\' is not defined" name) (Identifier name);
+
 and functionApplication (env: Enviourment) f x = //: AstState=
     let (|BultinMatchWEnv|_|) = FlatAndMatch 2 BuiltIn env
     //printFA env f x
     // match evaluate env f, evaluate env x with
     match evaluate env x with
     | Error e -> Error e
-    | Ok (inp,rEnv) -> Ok (f , inp)
+    | Ok (inp,retEnv) -> Ok (f , inp)
     |> Result.map (function
         | BultinMatchWEnv res -> res
-        | (Identifier _ as uf), _ // make a special case 
+
+        | (Identifier _ as uf), _
         | (IfExp _ as uf), _  
         | (FuncApp _ as uf), _ 
         | (FuncDefExp _ as uf), _-> 
             match evaluate env uf with
             | Error e -> addTrace e (astToString uf)
-            | Ok (evalf,rEnv) -> functionApplication env evalf x
+            | Ok (evalf,retEnv) -> functionApplication (mergeEnv env retEnv) evalf x
         | LambdaExp  { LambdaParam = name; LambdaBody = body}, ast
             -> lambdaBetaReduction name ast body |> evaluate env      
         | (Null as ast), _  | (Literal _ as ast), _ | (SeqExp _ as ast), _ 
@@ -330,7 +332,7 @@ and functionApplication (env: Enviourment) f x = //: AstState=
     | Error e -> Error e
 
 and evaluate (env:Enviourment) (ast:Ast) : AstState=
-    //printEval env ast
+    printEval env ast
     match ast with
     | FuncDefExp {FuncName = name; FuncBody = body; Rest = rest} -> 
         evaluate (extendEnv env name body) rest
@@ -339,11 +341,12 @@ and evaluate (env:Enviourment) (ast:Ast) : AstState=
     | FuncApp (f,x) -> functionApplication env f x
     | IfExp (bool,bTrue,bFalse) ->
         match evaluate env bool with
-        | Ok (Literal (BoolLit true),  rEnv) -> evaluate (mergeEnv env rEnv) bTrue
-        | Ok (Literal (BoolLit false), rEnv) -> evaluate (mergeEnv env rEnv) bFalse
-        | Ok ( exp, rEnv ) -> Ok (IfExp (exp,bTrue,bFalse), (mergeEnvS env rEnv))
+        | Ok (Literal (BoolLit true),  retEnv) -> evaluate (mergeEnv env retEnv) bTrue
+        | Ok (Literal (BoolLit false), retEnv) -> evaluate (mergeEnv env retEnv) bFalse
+        | Ok ( exp, retEnv ) -> Ok (IfExp (exp,bTrue,bFalse), (mergeEnvS env retEnv))
         | Error e -> addTrace e "IfExp"
     | Identifier i -> decodeIdentifier env i
+    | Identifier _
     | Null | Literal _ | BuiltInFunc _ | SeqExp _ 
         -> Ok (ast, None)
     | UnexpectedTypes e -> e
@@ -351,7 +354,7 @@ and evaluate (env:Enviourment) (ast:Ast) : AstState=
 let upcastErrorDropEnv =
     function
     | Error e -> Error <| BetaEngineError e
-    | Ok (x,env) -> Ok x
+    | Ok (ast,_) -> Ok ast
 
 /// top level function for reducing the AST
 let runAst ast =
