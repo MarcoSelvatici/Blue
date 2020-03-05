@@ -208,7 +208,7 @@ let BuiltIn =
          
         // UNARY
         mapInputOutputUnary (|BOOLLIT|_|) (BoolLit>>Literal)
-         [ Not, (fun x-> x |> print |> not) ]; // bool -> bool
+         [ Not, not ]; // bool -> bool
 
         mapInputOutputUnary (|LIST|_|) (IntLit>>Literal)
          [ Size, List.length ] // List -> int
@@ -332,7 +332,7 @@ and functionApplication (env: Enviourment) f x = //: AstState=
     | Error e -> Error e
 
 and evaluate (env:Enviourment) (ast:Ast) : AstState=
-    printEval env ast
+    //printEval env ast
     match ast with
     | FuncDefExp {FuncName = name; FuncBody = body; Rest = rest} -> 
         evaluate (extendEnv env name body) rest
