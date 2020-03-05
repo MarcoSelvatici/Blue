@@ -256,3 +256,11 @@ let testCasesBetaEngine =
     [testId; testOk; testErr]
     |> List.reduce List.append
     |> List.map (fun (d,i,o) -> (d,i,upcastError o))
+
+(*
+    Bidning to future variable ?
+   Let b = 6 in
+   Let a = b in 
+    \.b.a
+    ni ni 
+*)

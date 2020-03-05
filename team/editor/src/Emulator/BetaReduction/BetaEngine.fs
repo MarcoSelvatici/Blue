@@ -24,11 +24,27 @@ let printEval env ast =
     print env |> ignore
     printf "\n"
 
-//////////////
-/// ERRORS ///
-//////////////
+/// ENVIOURMENT ///
+type AstResult = NonReduced of Ast | Reduced of Ast
+type Enviourment = Map<string,AstResult> 
+type AstState = Result<Ast*(Enviourment Option),BetaEngineError>
 
-let buildError message ast : Result<Ast,BetaEngineError>=
+let mergeEnv originalEnv returnedEnv : Enviourment = 
+    // Option.fold  ( Map.fold (fun map key ast -> Map.add key ast map) ) originalEnv returnedEnv
+    match returnedEnv with
+    | Some rEnv -> Map.fold (fun map key ast -> Map.add key ast map) originalEnv rEnv
+    | None -> originalEnv
+    
+let removeEnv env name : Enviourment =
+    Map.remove name env
+
+let extendEnv map name body : Enviourment=
+     Map.add name body map
+
+let OkN ast = Ok (ast, None)
+
+/// ERRORS ///
+let buildError message ast =
     Error {msg= message; trace=[]; ast=ast }
 
 let addTrace (err:BetaEngineError) traceMsg =
@@ -57,9 +73,7 @@ let astToString ast =
     | Token _ -> "Token"
 
 
-//////////////////////
-// BUILIN FUNCTIONS //
-//////////////////////
+/// BUILIN FUNCTIONS ///
 
 //  PAP matching on Ast - building block for builtIn functions
 //  used for type-checking and unpacking the values
@@ -108,10 +122,10 @@ let rec buildList list =
 /// - (|InType|_|) - PAP for matching (and unpacking) the left  Ast input type
 /// - argLst - list of arguments to be matched
 /// - originalAst - to be returned if evaluatian needs to be delayed
-let buildUnaryBuiltIn b f (|InType|_|) (argLst, originalAst) =
+let buildUnaryBuiltIn b f (|InType|_|) (argLst, originalAst) : AstState =
     match argLst with
-    | [InType x] -> Ok (f x)
-    | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_ -> Ok originalAst // TODO: CAN DELETE THIS ROW ?
+    | [InType x] -> OkN (f x)
+    | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_ -> OkN originalAst// TODO: CAN DELETE THIS ROW ?
     | [arg] 
         -> buildError (sprintf "%A is unsuported for %A" b arg) originalAst
     | _ -> buildError (sprintf "What? buildUnaryBuiltIn %A %A" b argLst) originalAst
@@ -137,9 +151,9 @@ let mapInputOutputUnary inputTransformer outputTransformer lstBind =
 /// - (|InType2|_|) - PAP for matching (and unpacking) the right Ast input type
 /// - argLst - list of arguments to be matched
 /// - originalAst - to be returned if evaluatian needs to be delayed
-let buildBinaryBuiltIn b f (|InType1|_|) (|InType2|_|) (argLst, originalAst) =
+let buildBinaryBuiltIn b f (|InType1|_|) (|InType2|_|) (argLst, originalAst) : AstState =
     match argLst with
-    | (InType2 val2)::[InType1 val1] -> Ok (f val1 val2)
+    | (InType2 val2)::[InType1 val1] -> OkN (f val1 val2)
     //| (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_    // TODO: CAN DELETE THIS ROW ?
     //| _::(Identifier _)::_ | _::(FuncApp _)::_ | _::(IfExp _)::_
     | [_] | _::_::_::_
@@ -215,11 +229,7 @@ let BuiltIn =
           ];
 
     ] |> List.concat |> Map
-   
-type Enviourment = string list * Map<string, Ast>
 
-let extendEnv map name body =
-     Map.add name body map
 
 let (|UnexpectedTypes|) ast =
     match ast with
@@ -249,9 +259,8 @@ let rec lambdaBetaReduction variable value ast =
 let rec decodeIdentifier env name = 
     match Map.tryFind name env with
         | Some (Identifier i) -> decodeIdentifier env i
-        | Some ast -> Ok ast
+        | Some ast -> Ok (ast, None)
         | None -> buildError (sprintf "Identifier \'%s\' is not defined" name) (Identifier name);
-
 
 /// Builds PAP for matching build-in expressions in the map 
 /// * if the (list of arguments) and (function token) is succesfuly extracted from the tree
@@ -269,7 +278,7 @@ let rec FlatAndMatch n map env (f, x) =
     /// retruns (function token), (list of arguments)
     let rec (|FlatArg|_|) n (f, x) =
         let (|FlatArgNless1|_|) = (|FlatArg|_|) (n-1)
-        match f, evaluate env x with  // ugly dependence on evaluate - TODO: get rid of this
+        match f, evaluate env x with
         | _ when n = 0 -> None
         | BuiltInFunc b, Ok ex ->  (b, [ex]) |> Some
         | FuncApp (FlatArgNless1 (b, argLst )), Ok ex -> (b, ex::argLst ) |> Some
@@ -289,8 +298,8 @@ and functionApplication env f x =
     | Error e -> Error e
     | Ok inp -> Ok (f , inp)
     |> Result.map (function
-        | BultinMatchWEnv res -> res   
-        | (Identifier _ as uf), _ 
+        | BultinMatchWEnv res -> res
+        | (Identifier _ as uf), _ // make a special case 
         | (IfExp _ as uf), _  
         | (FuncApp _ as uf), _ 
         | (FuncDefExp _ as uf), _-> 
@@ -308,23 +317,25 @@ and functionApplication env f x =
     | Ok ( Error e)
     | Error e -> Error e
 
-and evaluate env ast =
+// type AstState = Result<Ast*(Enviourment Option),BetaEngineError>
+
+and evaluate env ast : AstState=
     //printEval env ast
     match ast with
     | FuncDefExp {FuncName = name; FuncBody = body; Rest = rest} -> 
-        evaluate (extendEnv env name body) rest
+        evaluate (extendEnv env name (NonReduced body)) rest
     | LambdaExp  { LambdaParam = name; LambdaBody = body } as l
-        -> Ok l
+        -> (l, None) |> Ok
     | FuncApp (f,x) -> functionApplication env f x
     | IfExp (bool,bTrue,bFalse) ->
         match evaluate env bool with
-        | Ok (Literal (BoolLit true))  -> evaluate env bTrue
-        | Ok (Literal (BoolLit false)) -> evaluate env bFalse
-        | Ok ( exp ) -> Ok (IfExp (exp,bTrue,bFalse))
+        | Ok (Literal (BoolLit true),  rEnv) -> evaluate (mergeEnv env rEnv) bTrue
+        | Ok (Literal (BoolLit false), rEnv) -> evaluate (mergeEnv env rEnv) bFalse
+        | Ok ( exp, rEnv ) -> Ok (IfExp (exp,bTrue,bFalse), (mergeEnv env rEnv))
         | Error e -> addTrace e "IfExp"
     | Identifier i -> decodeIdentifier env i
     | Null | Literal _ | BuiltInFunc _ | SeqExp _ 
-        -> Ok ast
+        -> Ok (ast, None)
     | UnexpectedTypes e -> e
 
 let upcastError =
@@ -335,5 +346,5 @@ let upcastError =
 /// top level function for reducing the AST
 let runAst ast =
     ast
-    |> evaluate Map.empty 
+    |> evaluate Map.empty
     |> upcastError
