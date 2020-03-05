@@ -223,8 +223,8 @@ let testErr : TestInfo=
     let id = int64 -1 |> Some
     [
     "idn", "foo", idn "foo", "Identifier \'foo\' is not defined", Identifier "foo";
-    //"Function Application List", "[]", FuncAppList [], "What? couldn't transform Ast to Art (AST Run Time)", Null;
-    //"Identifier List", "[]", IdentifierList [],"What? couldn't transform Ast to Art (AST Run Time)", Null;
+    "Function Application List", "[]", FuncAppList [], "What? FuncAppList in BetaEngine", FuncAppList [];
+    "Identifier List", "[]", IdentifierList [],"What? IdentifierList in BetaEngine", IdentifierList [];
 
     "> wrong type", "3 > Null", F2builtIn Greater (intL 3) Null, 
     "Greater is unsuported for Literal (IntLit 3), Null", 
@@ -240,7 +240,12 @@ let testErr : TestInfo=
 
     "Head wrong type", "Head Null", FbuiltIn Head Null, "Head is unsuported for Null", FbuiltIn Head Null;
     ]
-    |> List.map (fun (n,d,i,m,o) -> (concatDescription n d,i,Error {msg=m; trace=[]; ast=o}))
+    |> List.map (fun (n,d,i,m,o) -> concatDescription n d,i,Error {msg=m; trace=[]; ast=o} ) 
+
+let testErrTrace : TestInfo =
+    [
+        
+    ]
 
 let upcastError =
     function

@@ -31,11 +31,31 @@ let printEval env ast =
 let buildError message ast : Result<Ast,BetaEngineError>=
     Error {msg= message; trace=[]; ast=ast }
 
-let errorAddTrace (err:BetaEngineError) traceMsg =
-    Error {err with trace = traceMsg::err.trace}
+let addTrace (err:BetaEngineError) traceMsg =
+    Error {err with trace = ("in " + traceMsg)::err.trace}
 
 let buildErrorS string ast = 
     buildError string ast |> Some
+
+let astToString ast = 
+    match ast with 
+    | FuncDefExp {FuncName = name; FuncBody = body ; Rest = rest} 
+        -> "Let "+name
+    | LambdaExp  { LambdaParam = name; LambdaBody = body}
+        -> "\."+name
+    | FuncApp (l, r)
+        -> "FuncApp"
+    | Null -> "Null"
+    | Literal lit -> sprintf "%A" lit
+    | Identifier i -> i
+    | BuiltInFunc b -> sprintf "%A" b
+    | IfExp (b,t,e) -> "IfExp"
+    | SeqExp (l, r) -> "SeqExp"
+    | FuncAppList _ -> "FuncAppList"
+    | IdentifierList _ -> "IdentifierList"
+    | Combinator _ -> "Combinator"
+    | Token _ -> "Token"
+
 
 //////////////////////
 // BUILIN FUNCTIONS //
@@ -90,9 +110,9 @@ let rec buildList list =
 /// - originalAst - to be returned if evaluatian needs to be delayed
 let buildUnaryBuiltIn b f (|InType|_|) (argLst, originalAst) =
     match argLst with
-    | (InType x)::[] -> Ok (f x)
+    | [InType x] -> Ok (f x)
     | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_ -> Ok originalAst // TODO: CAN DELETE THIS ROW ?
-    | arg::[] 
+    | [arg] 
         -> buildError (sprintf "%A is unsuported for %A" b arg) originalAst
     | _ -> buildError (sprintf "What? buildUnaryBuiltIn %A %A" b argLst) originalAst
 
@@ -119,12 +139,12 @@ let mapInputOutputUnary inputTransformer outputTransformer lstBind =
 /// - originalAst - to be returned if evaluatian needs to be delayed
 let buildBinaryBuiltIn b f (|InType1|_|) (|InType2|_|) (argLst, originalAst) =
     match argLst with
-    | (InType2 val2)::(InType1 val1)::[] -> Ok (f val1 val2)
+    | (InType2 val2)::[InType1 val1] -> Ok (f val1 val2)
     //| (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_    // TODO: CAN DELETE THIS ROW ?
     //| _::(Identifier _)::_ | _::(FuncApp _)::_ | _::(IfExp _)::_
-    | _::[] | _::_::_::_
+    | [_] | _::_::_::_
         -> Ok originalAst
-    | arg2::arg1::[] 
+    | arg2::[arg1] 
         -> buildError (sprintf "%A is unsuported for %A, %A" b arg1 arg2) originalAst
     | _ -> buildError (sprintf "What? buildBinaryBuiltIn %A %A" b argLst) originalAst
 
@@ -178,8 +198,8 @@ let BuiltIn =
 
         mapInputOutputUnary (|SEQEXP|_|) id
          [  // SeqExp -> ast 
-            Head, (fun (hd,tl) -> hd);
-            Tail, (fun (hd,tl) -> tl);         
+            Head, (fun (hd,_) -> hd);
+            Tail, (fun (_,tl) -> tl);         
          ];
 
          mapInputOutputUnary (|STRINGLIT|_|) id
@@ -190,7 +210,7 @@ let BuiltIn =
          ];
 
          mapInputOutputUnary (|STRLIST|_|) (StringLit>>Literal)
-          [ //  [String] -> 
+          [ // [String] -> String 
             Implode, Seq.fold (+) ""
           ];
 
@@ -203,10 +223,12 @@ let extendEnv map name body =
 
 let (|UnexpectedTypes|) ast =
     match ast with
-    | FuncAppList _   -> buildError "What? FuncAppList"    ast
-    | IdentifierList _-> buildError "What? IdentifierList" ast
-    | Combinator _    -> buildError "What? Combinator"     ast
-    | _ -> buildError "What? UnexpectedTypes didn't match" ast
+    | FuncAppList _   ->  "What? FuncAppList"    
+    | IdentifierList _->  "What? IdentifierList"
+    | Combinator _    ->  "What? Combinator" 
+    | Token _         ->  "What? Token"
+    | _ ->  "What? UnexpectedTypes didn't match"
+    |> fun a -> buildError (a + " in BetaEngine") ast 
 
 // subsititute value for the variable
 let rec lambdaBetaReduction variable value ast =
@@ -222,7 +244,7 @@ let rec lambdaBetaReduction variable value ast =
     | SeqExp (l,r) -> SeqExp (rCall l, rCall r)
     | Identifier i when i = variable -> value
     | Identifier _ | FuncDefExp _ | LambdaExp _ | Null | Literal _ | BuiltInFunc _ -> ast
-    | _ -> ast  // TODO : delete
+    | _ -> ast
 
 let rec decodeIdentifier env name = 
     match Map.tryFind name env with
@@ -273,13 +295,13 @@ and functionApplication env f x =
         | (FuncApp _ as uf), _ 
         | (FuncDefExp _ as uf), _-> 
             match evaluate env uf with
-            | Error e -> Error e
+            | Error e -> addTrace e (astToString uf)
             | Ok evalf -> functionApplication env evalf x
         | LambdaExp  { LambdaParam = name; LambdaBody = body}, ast
             -> lambdaBetaReduction name ast body |> evaluate env      
         | (Null as ast), _  | (Literal _ as ast), _ | (SeqExp _ as ast), _ 
-            -> buildError (sprintf "%A non-reducable" ast ) ast
-        | (f, x) -> buildError (sprintf "What? %A in functionApplication" (f,x)) (FuncApp (f,x))
+            -> buildError (sprintf "%s non-reducable" (astToString ast) ) ast
+        | (f, x) -> buildError (sprintf "What? %A in FuncApp" (f,x)) (FuncApp (f,x))
         )
     |> function
     | Ok ( Ok ast ) -> Ok ast
@@ -299,7 +321,7 @@ and evaluate env ast =
         | Ok (Literal (BoolLit true))  -> evaluate env bTrue
         | Ok (Literal (BoolLit false)) -> evaluate env bFalse
         | Ok ( exp ) -> Ok (IfExp (exp,bTrue,bFalse))
-        | Error e -> Error e
+        | Error e -> addTrace e "IfExp"
     | Identifier i -> decodeIdentifier env i
     | Null | Literal _ | BuiltInFunc _ | SeqExp _ 
         -> Ok ast
