@@ -61,7 +61,6 @@ type Token =
     | KThen
     | KElse
     | KFi
-    | KNull
 
 type Ast =
     | FuncDefExp of FuncDefExpType
