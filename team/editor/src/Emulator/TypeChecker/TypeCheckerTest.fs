@@ -62,7 +62,7 @@ let testCasesTypeChecker = [
     "Simple `let x = 1 in x`", FuncDefExp {FuncName="x"; FuncBody=Literal (IntLit 1); Rest=Identifier "x"},
         Ok (Base Int);
     "Partially applied `let x y = y in x`", buildCarriedFunc ["x"; "y"] (Identifier "y") (Identifier "x"),
-        Ok (Fun(Gen 0, Gen 0));
+        Ok (Fun(Gen 1, Gen 1));
     "Partially applied int `let x y = y + 1 in x`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (Identifier "x"),
         Ok (Fun(Base Int, Base Int));
     "Fully applied int `let x y = y + 1 in x 4`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (FuncApp (Identifier "x", Literal (IntLit 4))),
@@ -73,8 +73,6 @@ let testCasesTypeChecker = [
         Ok (Base Int);
     "Different types `let f = \x.x in let g = f True in f 3`", buildCarriedFunc ["f"] (buildLambda "x" (Identifier "x")) (buildCarriedFunc ["g"] (FuncApp (Identifier "f", Literal (BoolLit true))) (FuncApp (Identifier "f", Literal (IntLit 3)))),
         Ok (Base Int);
-    "No recursion `let x = x x in 1`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Literal (IntLit 1)),
-        buildTypeCheckerError "Identifier x is not bound"; // Recursion is not supported (yet).
     "Simple StrEq", BuiltInFunc StrEq,
         Ok (Fun(Base String, Fun (Base String, Base Bool)));
     "Partially applied StrEq", FuncApp (BuiltInFunc StrEq, Literal (StringLit "hello")),
@@ -148,5 +146,11 @@ let testCasesTypeChecker = [
     "Applied Test `test \x.x`", FuncApp(BuiltInFunc Test, buildLambda "x" (Identifier "x")),
         Ok (Base Bool);
     "Unify empty list with populated list. `let lst = [1] in if true then [] else lst fi`", buildCarriedFunc ["lst"] (SeqExp(Literal (IntLit 1), EmptySeq)) (IfExp (Literal(BoolLit true), EmptySeq, Identifier "lst")),
-        Ok (Pair (Base Int, Pair (Gen 0, Gen 1)));
+        Ok (Pair (Base Int, Pair (Gen 1, Gen 2)));
+    "Unused recursion `let x = x x in 1`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Literal (IntLit 1)),
+        Ok (Base Int);
+    "Recursion `let x = x x in x`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Identifier "x"),
+        Ok (Fun (Gen 0, Gen 1));
+    "List.map", (FuncDefExp { FuncName = "listMap"; FuncBody = LambdaExp { LambdaParam = "f"; LambdaBody = LambdaExp { LambdaParam = "lst"; LambdaBody = IfExp (FuncApp (FuncApp (BuiltInFunc Equal, FuncApp (BuiltInFunc Size, Identifier "lst")), Literal (IntLit 0)), SeqExp (Null,Null), FuncApp (FuncApp (BuiltInFunc Append, FuncApp (Identifier "f", FuncApp (BuiltInFunc Head, Identifier "lst"))), FuncApp (FuncApp (Identifier "listMap", Identifier "f"), FuncApp (BuiltInFunc Tail, Identifier "lst")))) } }; Rest = Identifier "listMap" }),
+        Ok (Fun (Fun (Gen 17,Gen 15),Gen 20));
 ]

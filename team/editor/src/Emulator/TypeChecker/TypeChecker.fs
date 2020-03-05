@@ -210,15 +210,20 @@ and inferLambdaExp uid ctx lam =
     | uid2, Ok (s1, t1) -> uid2, Ok (s1, Fun(apply s1 newWildcard, t1))
 
 and inferFuncDefExp uid ctx def =
-    // We infer the type of the body without keeping the function name in
-    // our context. This makes recursion impossible for now.
+    // Extend the context with a generic type for our function, this allows
+    // recursion.
+    let funcType, uid = newGen uid
+    let ctx = (extend ctx def.FuncName funcType)
     match infer uid ctx def.FuncBody with
     | uid, Error e -> uid, Error e
     | uid, Ok (s1, t1) ->
-        let ctx' = applyToCtx s1 ctx
-        match infer uid (extend ctx' def.FuncName t1) def.Rest with
-        | uid, Error e -> uid, Error e
-        | uid, Ok (s2, t2) -> uid, Ok (s1 @ s2, t2)
+        match unify t1 funcType with
+        | Error e -> uid, Error e
+        | Ok sFuncType ->
+            let ctx = applyToCtx (s1 @ sFuncType) ctx
+            match infer uid ctx def.Rest with
+            | uid, Error e -> uid, Error e
+            | uid, Ok (s2, t2) -> uid, Ok (s1 @ s2, t2)
 
 /// Infer the type of an ast, and return the substitutions, together with the
 /// type of the ast.

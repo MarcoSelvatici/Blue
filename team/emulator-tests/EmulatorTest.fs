@@ -23,8 +23,19 @@ let betaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngi
 [<Tests>]
 let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCasesSKIRuntime
 
+let print x =
+    printfn "%A" x
+    x
+
+let printParsedAst input =
+    input
+    |> tokeniseT3
+    |> Result.bind parse
+    |> print
+    |> ignore
+
 [<EntryPoint>]
 let main argv =
-    runTests()
+    runTests()    
     Console.ReadKey() |> ignore
     0
