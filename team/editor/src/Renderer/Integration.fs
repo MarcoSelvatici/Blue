@@ -16,6 +16,18 @@ let resetEmulator() =
     Editors.removeEditorDecorations currentFileTabId
     Editors.enableEditors()
 
+//let enableTypeCheck() =
+//    showVexAlert "enable type check"
+
+//let disableTypeCheck() =
+//    showVexAlert "disable type check"
+
+//let enableSki() =
+//    showVexAlert "enable SKI"
+
+//let enableBeta() =
+//    showVexAlert "enable BETA"
+
 let getProgram () =
     textOfTId currentFileTabId
     |> List.fold (fun r s -> r + s + "\n") ""
@@ -24,5 +36,6 @@ let getProgram () =
 /// If current tab is TB run TB if this is possible
 let runCode () =
     let program = getProgram ()
-    let res = end2end true program
+    let res = end2end currentTypeCheck currentRuntime program
     showVexAlert <| sprintf "%A" res
+

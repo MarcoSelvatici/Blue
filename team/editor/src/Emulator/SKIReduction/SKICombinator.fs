@@ -112,11 +112,12 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,ErrorT
                     bracketAbstract expT bindings
                 | Ok (Literal (BoolLit false)) -> 
                     bracketAbstract expF bindings
-                | _ -> buildErrorSKI "Unexpected value in ifThenElse condition"
+                | x -> buildErrorSKI "Unexpected value in ifThenElse condition"
             | Error x -> Error x
 
     | FuncAppList _     -> buildErrorSKI "FuncAppList should not be returned by parser"
     | IdentifierList _  -> buildErrorSKI "IdentifierList should not be returned by parser"
+    | Token _           -> buildErrorSKI "Token should not be returned by parser"
 
 
 /// Determine if a variable is free in an expression
@@ -141,7 +142,7 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
     | FuncApp( BuiltInFunc Implode, exp) -> 
         let rec imp lst =
             match lst with
-            | SeqExp ( Literal (StringLit head) , Null) ->
+            | SeqExp ( Literal (StringLit head) , SeqExp(Null,Null)) ->
                 Some head 
             | SeqExp (Literal (StringLit head), tail) ->
                 match imp tail with
@@ -170,18 +171,18 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
     // head
     | FuncApp( BuiltInFunc Head, x) -> 
         match evalBuiltin x with
+        | Ok(SeqExp(Null,Null)) -> Ok(SeqExp(Null,Null))
         | Ok (SeqExp (head, tail)) ->
             head |> Ok
-        | Ok Null -> Ok Null // empty list case
         | _ ->
             buildErrorSKI "Error getting head of list/sequence"
 
     // tail
     | FuncApp( BuiltInFunc Tail, x) -> 
         match evalBuiltin x with
+        | Ok(SeqExp(Null,Null)) -> Ok(SeqExp(Null,Null))
         | Ok (SeqExp (head, tail)) ->
             tail |> Ok
-        | Ok Null -> Ok Null // empty list case
         | _ ->
             buildErrorSKI "Error getting tail of list/sequence"
 
@@ -189,9 +190,7 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
     | FuncApp( BuiltInFunc Size, exp) -> 
         let rec sizeOf x =
             match x with
-            | Null -> 0 // empty list case
-            | SeqExp (head, Null) ->
-                1 
+            | SeqExp(Null,Null) -> 0 // empty list case
             | SeqExp (head, tail) ->
                 1 + (sizeOf tail)
             | _ ->
@@ -263,13 +262,14 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
     | FuncDefExp _      -> buildErrorSKI "FuncDefExp should not exist after bracket abstraction"
     | FuncAppList _     -> buildErrorSKI "FuncAppList should not be returned by parser"
     | IdentifierList _  -> buildErrorSKI "IdentifierList should not be returned by parser"
+    | Token _           -> buildErrorSKI "Token should not be returned by parser"
 
 
 /// Builds a list in our language out of an F# list
 let rec buildList lst =
     match lst with
-    | [] ->  Null
-    | [x] -> SeqExp (Literal (StringLit x), Null)
+    | [] ->  SeqExp(Null,Null)
+    | [x] -> SeqExp (Literal (StringLit x), SeqExp(Null,Null))
     | head::tail -> SeqExp ( Literal (StringLit head), buildList tail )
 
 

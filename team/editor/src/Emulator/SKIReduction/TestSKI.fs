@@ -12,8 +12,8 @@ open SKIRuntime
 ///Takes an F# list as input and returns a list made of nested pairs in our language (SeqExp)
 let rec buildList lstType lst =
     match lst with
-    | [] -> Null
-    | [x] -> SeqExp (Literal (lstType x), Null)
+    | [] -> SeqExp(Null,Null)
+    | [x] -> SeqExp (Literal (lstType x), SeqExp(Null,Null))
     | head::tail -> SeqExp ( Literal (lstType head), buildList lstType tail )
 
 
@@ -51,8 +51,8 @@ let listTests = [
     Ok (Literal (IntLit 3));
 
     "ListSize long", 
-    FuncApp( BuiltInFunc Size, (IntLit, [1..6000]) ||> buildList), 
-    Ok (Literal (IntLit 6000));
+    FuncApp( BuiltInFunc Size, (IntLit, [1..5000]) ||> buildList), 
+    Ok (Literal (IntLit 5000));
 
     "ListSize 1", 
     FuncApp( BuiltInFunc Size, (IntLit, [1]) ||> buildList),
@@ -67,7 +67,7 @@ let listTests = [
     buildErrorSKI "SKI runtime error: Built-in function evaluation Error: \nError getting size of list: Invalid input: Literal (StringLit \"I'm a string!\")";
 
     "List Size string",
-    FuncApp( BuiltInFunc Size, SeqExp ( Literal (StringLit "this is a list"), Null)),
+    FuncApp( BuiltInFunc Size, SeqExp ( Literal (StringLit "this is a list"), SeqExp(Null,Null))),
     Ok (Literal (IntLit 1));
 
     "List Head",
@@ -79,8 +79,8 @@ let listTests = [
     buildErrorSKI "SKI runtime error: Built-in function evaluation Error: \nError getting head of list/sequence";
 
     "List tail",
-    FuncApp( BuiltInFunc Tail, SeqExp ( Literal (IntLit 1), SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null )))),
-    Ok (SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), Null )));
+    FuncApp( BuiltInFunc Tail, SeqExp ( Literal (IntLit 1), SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), SeqExp(Null,Null) )))),
+    Ok (SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), SeqExp(Null,Null) )));
 
     "List Tail error",
     FuncApp( BuiltInFunc Tail, Literal (IntLit 10)),

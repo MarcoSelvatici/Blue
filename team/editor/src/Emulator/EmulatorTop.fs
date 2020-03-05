@@ -33,15 +33,20 @@ let maybeTypeCheck checkTypes ast =
     then Ok ast
     else typeCheck ast |> Result.bind printAndReturnUnchanged 
 
-let reduce ast =
-    runAst ast//, combinatorRuntime ast
+let selectRuntime runtime ast =
+    if runtime // true == beta, false == ski
+    then runAst ast
+    else combinatorRuntime ast
 
-let end2end checkTypes input =
+let reduce ast =
+    combinatorRuntime ast//runAst ast//, 
+
+let end2end checkTypes runtime input =
     input
     |> tokeniseT3
     |> Result.bind parse
     |> Result.bind (maybeTypeCheck checkTypes)
-    |> Result.bind reduce
+    |> Result.bind (selectRuntime runtime)
 
 //[<EntryPoint>]
 //let main argv =

@@ -105,6 +105,11 @@
     font-size: 15px;
 }
 
+.btn-rep:hover {
+    background-color: darkslategray;
+    font-size: 15px;
+}
+
 .btn-rep-enabled {
     background-color: darkgray;
 }
