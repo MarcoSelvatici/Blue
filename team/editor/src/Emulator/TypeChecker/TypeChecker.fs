@@ -13,7 +13,6 @@ type Base =
     | Int
     | Bool
     | String
-    | NullType // Used in the EmptySeqType, which terminates the sequences.
 
 type Type =
     | Base of Base
@@ -21,7 +20,8 @@ type Type =
     | Fun of Type * Type
     | Pair of Type * Type // Used for lists.
 
-let EmptySeqType = Pair(Base NullType, Base NullType)
+// Note: empty sequences have a generic type Pair(Gen _, Gen _).
+// This is similar to the f# type of an empty list: val []: 'a list.
 
 type Var = string * Type
 
@@ -112,6 +112,11 @@ let isBinaryOp op = List.contains op (int2int @ int2bool @ bool2bool)
 //=====================//
 // Inference functions //
 //=====================//
+
+let inferNullType uid =
+    // Assign generic type, since this will be used in empty sequences.
+    let g, uid = newGen uid
+    uid, Ok ([], g)
 
 let inferIdentifier uid ctx name =
     match lookUpType ctx name with
@@ -219,10 +224,10 @@ and inferFuncDefExp uid ctx def =
 /// type of the ast.
 and infer uid ctx ast : int * Result<Subst list * Type, string> =
     match ast with
-    | Null                  -> uid, Ok ([], Base NullType)
     | Literal (IntLit _)    -> uid, Ok ([], Base Int)
     | Literal (BoolLit _)   -> uid, Ok ([], Base Bool)
     | Literal (StringLit _) -> uid, Ok ([], Base String)
+    | Null                  -> inferNullType uid
     | Identifier name       -> inferIdentifier uid ctx name
     | BuiltInFunc f         -> inferBuiltInFunc uid f
     | IfExp (c, t, e)       -> inferIfExp uid ctx c t e
