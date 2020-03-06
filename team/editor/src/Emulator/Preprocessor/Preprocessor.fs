@@ -6,19 +6,15 @@ let buildError s = s |> PreprocessorError |> Error
 /////////
 let libraries = 
     [ 
-        "List",
-        ("let listMap f lst =
+    "List",
+    ("let listMap f lst =
     if size lst == 0
     then []
     else append (f (head lst)) (listMap f (tail lst))
-    fi
-in
+    fi in", 1);
 
-let inc i =
-    i + 1
-in"
-,2);
-
+    "Test",
+    ("let test = 0 in",1);
     ]
     |> Map
 
@@ -86,13 +82,11 @@ let bindFolder folder state el =
 let print a = printf "%A\n" a ; a
 let preprocess rawInput =
     rawInput
-    |> print
     |> splitLines
     |> List.fold (bindFolder replaceImport) ( Ok ([],0) )
     |> Result.map (
         mapFirst (List.rev >> List.toSeq >> String.concat "\n" )
         >> concatNi
         )
-    |> print
     
 // TODO : test w empty lines

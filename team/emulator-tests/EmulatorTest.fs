@@ -1,6 +1,8 @@
 open System
 open Expecto
 open TestLib
+open Preprocessor
+open PreprocessorTest
 open Lexer
 open LexerTest
 open Parser
@@ -13,6 +15,8 @@ open SKIRuntime
 open TestSKIRuntime
 
 [<Tests>]
+let preprocessorTest = createTestList "Preprocessor Tests" preprocess testCasesPreprocessor
+[<Tests>]
 let lexerTest = createTestList "Lexer Tests" tokeniseT3 testCasesLexer
 [<Tests>]
 let parserTest = createTestList "Parser Tests" parse testCasesParser
@@ -22,6 +26,8 @@ let typeCheckerTest = createTestList "Type Checker Tests" typeCheck testCasesTyp
 let betaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngine
 [<Tests>]
 let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCasesSKIRuntime
+
+
 
 let print x =
     printfn "%A" x
@@ -37,5 +43,4 @@ let printParsedAst input =
 [<EntryPoint>]
 let main argv =
     runTests()    
-    Console.ReadKey() |> ignore
     0
