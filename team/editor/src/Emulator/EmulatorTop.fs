@@ -48,6 +48,17 @@ let end2end checkTypes runtime input =
     |> Result.bind (maybeTypeCheck checkTypes)
     |> Result.bind (selectRuntime runtime)
 
+let getAst input =
+    input
+    |> tokeniseT3
+    |> Result.bind parse
+
+let getType input =
+    input
+    |> tokeniseT3
+    |> Result.bind parse
+    |> Result.bind typeCheck
+
 //[<EntryPoint>]
 //let main argv =
 //    runTests()
