@@ -1,6 +1,8 @@
 open System
 open Expecto
 open TestLib
+open Preprocessor
+open PreprocessorTest
 open Lexer
 open LexerTest
 open Parser
@@ -15,6 +17,8 @@ open E2ETest
  
 
 // Unit testing.
+[<Tests>]
+let preprocessorTest = createTestList "Preprocessor Tests" preprocess testCasesPreprocessor
 [<Tests>]
 let lexerTest = createTestList "Lexer Tests" tokeniseT3 testCasesLexer
 [<Tests>]
@@ -31,8 +35,20 @@ let e2eTests = e2eCreateTestList "E2E Tests" combinatorRuntime parse tokeniseT3 
 
 
 
+
+
+let print x =
+    printfn "%A" x
+    x
+
+let printParsedAst input =
+    input
+    |> tokeniseT3
+    |> Result.bind parse
+    |> print
+    |> ignore
+
 [<EntryPoint>]
 let main argv =
-    runTests()
-    Console.ReadKey() |> ignore
+    runTests()    
     0

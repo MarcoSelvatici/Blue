@@ -3,6 +3,7 @@ module EmulatorTop
 open System
 open Expecto
 open TestLib
+open Preprocessor
 open Lexer
 open LexerTest
 open Parser
@@ -33,15 +34,29 @@ let maybeTypeCheck checkTypes ast =
     then Ok ast
     else typeCheck ast |> Result.bind printAndReturnUnchanged 
 
-let reduce ast =
-    runAst ast//, combinatorRuntime ast
+let selectRuntime runtime ast =
+    if runtime // true == beta, false == ski
+    then runAst ast
+    else combinatorRuntime ast
 
-let end2end checkTypes input =
+let end2end checkTypes runtime input =
+    input
+    |> preprocess 
+    |> Result.bind tokeniseT3
+    |> Result.bind parse
+    |> Result.bind (maybeTypeCheck checkTypes)
+    |> Result.bind (selectRuntime runtime)
+
+let getAst input =
     input
     |> tokeniseT3
     |> Result.bind parse
-    |> Result.bind (maybeTypeCheck checkTypes)
-    |> Result.bind reduce
+
+let getType input =
+    input
+    |> tokeniseT3
+    |> Result.bind parse
+    |> Result.bind typeCheck
 
 //[<EntryPoint>]
 //let main argv =

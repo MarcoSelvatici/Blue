@@ -29,7 +29,7 @@ let calcDashboardWidth() =
     let w =
         match currentRep, currentView with
         | Bin, _ -> "--dashboard-width-binrep"
-        | _, Registers -> "--dashboard-width-init-registers"
+        | _, Output -> "--dashboard-width-init-output"
         | _ -> "--dashboard-width-init-other"
         |> getCustomCSS
     printf "Setting width to %s" w
@@ -48,6 +48,34 @@ let setRepresentation rep =
     // Reassign currentRep, new mutability required
     // keep constants defining GUI sizes in CSS
     currentRep <- rep
+    calcDashboardWidth()
+
+let setTypeCheck setting =
+    (// Disable the other button
+    typeToggle currentTypeCheck).classList.remove("btn-rep-enabled")
+    |> ignore
+
+    // Enable the newly pressed button
+    let btnNew = typeToggle setting
+    btnNew.classList.add ("btn-rep-enabled");
+
+    // Reassign currentRep, new mutability required
+    // keep constants defining GUI sizes in CSS
+    currentTypeCheck <- setting
+    calcDashboardWidth()
+
+let setRuntime setting =
+    (// Disable the other button
+    runtimeSelect currentRuntime).classList.remove("btn-rep-enabled")
+    |> ignore
+
+    // Enable the newly pressed button
+    let btnNew = runtimeSelect setting
+    btnNew.classList.add ("btn-rep-enabled");
+
+    // Reassign currentRep, new mutability required
+    // keep constants defining GUI sizes in CSS
+    currentRuntime <- setting
     calcDashboardWidth()
 
 /// make an HTML element

@@ -37,9 +37,9 @@ type Representations =
 
 /// Select View in RH window
 type Views =
-    | Registers
-    | Memory
-    | Symbols
+    | Output
+    //| Memory  TABS
+    //| Symbols
 
 type VSettings = {
     EditorFontSize : string
@@ -185,6 +185,10 @@ let runSimulationBtn : HTMLButtonElement = getHtml "run" :?> HTMLButtonElement
 let resetSimulationBtn = getHtml "reset" :?> HTMLButtonElement
 let stepForwardBtn = getHtml "stepf" :?> HTMLButtonElement
 let stepBackBtn = getHtml "stepb" :?> HTMLButtonElement
+let enableTypeCheckBtn = getHtml "type-on" :?> HTMLButtonElement   
+let disableTypeCheckBtn = getHtml "type-off" :?> HTMLButtonElement  
+let skiBtn = getHtml "ski" :?> HTMLButtonElement  
+let betaBtn = getHtml "beta" :?> HTMLButtonElement  
 /// get byte/word switch button element
 let byteViewBtn = getHtml "byte-view"
 
@@ -220,25 +224,45 @@ let repToId =
         UDec, "rep-udec";
     ]
 
+/// used to get type checker settings
+let typeCheckSettings =
+    Map.ofList [
+        true, "type-on";
+        false, "type-off";
+    ]
+
+/// used to get runtime settings
+let runtimeSettings =
+    Map.ofList [
+        true, "beta";
+        false, "ski";
+    ]
+
 /// used to get ID used in DOM for each View
 let viewToIdView =
     Map.ofList [
-        Registers, "view-reg";
-        Memory, "view-mem";
-        Symbols, "view-sym";
+        Output, "view-out";
+        //Memory, "view-mem"; TABS
+        //Symbols, "view-sym";
     ]
 /// used to get Tab ID in DOM for each View
 let viewToIdTab =
     Map.ofList [
-        Registers, "tab-reg";
-        Memory, "tab-mem";
-        Symbols, "tab-sym"
+        Output, "tab-out";
+        //Memory, "tab-mem"; TABS
+        //Symbols, "tab-sym"
     ]
 /// Get Flag display element from ID ("C", "V", "N", "Z")
 let flag id = getHtml <| sprintf "flag_%s" id
 
 /// get button for specific representation
 let representation rep = getHtml repToId.[rep]
+
+///get button for type check toggle
+let typeToggle setting = getHtml typeCheckSettings.[setting]
+
+///get button for SKI/Beta toggle
+let runtimeSelect setting = getHtml runtimeSettings.[setting]
 
 /// get View pane element from View
 let viewView view = getHtml viewToIdView.[view]
@@ -543,10 +567,18 @@ let mutable currentTabWidgets : Map<string, obj> = Map.empty
 let mutable settingsTab : int option = None
 /// The current number representation being used
 let mutable currentRep = Hex
+
+
+/// type check current setting
+let mutable currentTypeCheck = true
+///runtime current setting
+let mutable currentRuntime = true
+
+
 /// indicates what the current DOM symbols display representation is
 let mutable displayedCurrentRep = Hex
 /// The current View in the right-hand pane
-let mutable currentView = Registers
+let mutable currentView = Output
 
 /// Global debug level set from main process.
 /// 0 => production. 1 => development. 2 => debug parameter.

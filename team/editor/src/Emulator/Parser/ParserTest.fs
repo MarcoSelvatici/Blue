@@ -60,7 +60,7 @@ let testCasesParser = [
     "SeqExp 5 items", [KOpenSquare; TLiteral (IntLit 1); KComma; TLiteral (IntLit 2); KComma; TLiteral (IntLit 3); KComma; TLiteral (IntLit 4); KComma; TLiteral (IntLit 5); KCloseSquare],
         Ok (SeqExp (Literal (IntLit 1), SeqExp (Literal (IntLit 2), SeqExp (Literal (IntLit 3), SeqExp (Literal (IntLit 4), SeqExp (Literal (IntLit 5), EmptySeq))))))
     "Miss first Exp", [KOpenSquare; KComma; TIdentifier "y"; KCloseSquare],
-        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KComma; TIdentifier "y"; KCloseSquare] []
+        buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [KComma; TIdentifier "y"; KCloseSquare] [Token KOpenSquare]
     "Simple FuncApp Lit", [TIdentifier "f"; TLiteral (IntLit 42)],
         Ok (FuncApp (Identifier "f", Literal (IntLit 42)));
     "Simple FuncApp Ident", [TIdentifier "f"; TIdentifier "x"],
@@ -115,4 +115,10 @@ let testCasesParser = [
         buildErrorManually "failed: pToken KIn" "in x " [KNi; TIdentifier "x"; KNi] [FuncApp (FuncApp (BuiltInFunc Div, Identifier "x"), Identifier "y"); IdentifierList ["x"; "y"]];
     "Lambda with let in", [KLambda; TIdentifier "x"; KDot; KLet; TIdentifier "y"; KEq; TLiteral (BoolLit true); KIn; TIdentifier "x"; TBuiltInFunc Mult; TLiteral (IntLit 2); KNi; TIdentifier "y"],
         Ok (buildLambda "x" (FuncApp ((FuncDefExp {FuncName="y"; FuncBody=Literal (BoolLit true); Rest=FuncApp (FuncApp (BuiltInFunc Mult, Identifier "x"), Literal (IntLit 2))}), Identifier "y")));
+    "IfExp with empty seq", [KIf; TLiteral (BoolLit true); KThen; KOpenSquare; KCloseSquare; KElse; KOpenSquare; KCloseSquare; KFi],
+        Ok (IfExp(Literal (BoolLit true), EmptySeq, EmptySeq));
+    "IfExp with non empty seq", [KIf; TLiteral (BoolLit true); KThen; KOpenSquare; TIdentifier "x"; KCloseSquare; KElse; KOpenSquare; KCloseSquare; KFi],
+        Ok (IfExp(Literal (BoolLit true), SeqExp(Identifier "x", EmptySeq), EmptySeq));
+    "IfExp with non empty seq 1", [KIf; TLiteral (BoolLit true); KThen; KOpenSquare; TIdentifier "x"; KCloseSquare; KElse; KOpenSquare;  TIdentifier "y"; KCloseSquare; KFi],
+        Ok (IfExp(Literal (BoolLit true), SeqExp(Identifier "x", EmptySeq), SeqExp(Identifier "y", EmptySeq)));
 ]

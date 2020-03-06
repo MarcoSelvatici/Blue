@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/vistally.css">
     <link rel="stylesheet" href="css/vex.css" />
     <link rel="stylesheet" href="css/vex-theme-default.css" />
+    <link rel="stylesheet" href="css/buttons.css" />
     <!--<link rel="stylesheet" href="css/material-icons.css">-->
 </head>
 
@@ -38,7 +39,24 @@
                     Reset
                 </button>
 
+                <div class="btn-group pull-right">
+                    <button id="type-on" class="btn btn-rep btn-rep-enabled">
+                        Type Check On
+                    </button>
+
+                    <button id="type-off"  class="btn btn-rep">
+                        Type Check Off
+                    </button>
+                </div>
+
+                <div class="btn-group pull-right">
+                    <button id="beta" class="btn btn-rep btn-rep-enabled">Beta Reduction</button>
+                    <button id="ski" class="btn btn-rep">SKI Reduction</button>
+                </div>
             </div>
+
+
+
         </header>
         <!-- Header -->
 
@@ -59,9 +77,9 @@
                         <ul class="list-group">
                             <li class="list-group-item" style="padding:0px">
                                 <div class="tab-group full-width">
-                                    <tab id="tab-reg" class="tab-item active">Registers</tab>
-                                    <tab id="tab-mem" class="tab-item">Memory</tab>
-                                    <tab id="tab-sym" class="tab-item">Symbols</tab>
+                                    <tab id="tab-out" class="tab-item active">Output</tab>
+                                    <!--tab id="tab-mem" class="tab-item">Memory</tab-->
+                                    <!--tab id="tab-sym" class="tab-item">Symbols</tab-->
                                 </div>
                             </li>
                         </ul>

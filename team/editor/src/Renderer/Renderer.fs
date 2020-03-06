@@ -90,6 +90,36 @@ let init() =
         Integration.resetEmulator() :> obj
     )
 
+    //enableTypeCheckBtn.addEventListener_click (fun _ ->
+    //    Integration.enableTypeCheck() :> obj
+    //)
+
+    //disableTypeCheckBtn.addEventListener_click (fun _ ->
+    //    Integration.disableTypeCheck() :> obj
+    //)
+
+    //skiBtn.addEventListener_click (fun _ ->
+    //    Integration.enableSki() :> obj
+    //)
+
+    //betaBtn.addEventListener_click (fun _ ->
+    //    Integration.enableBeta() :> obj
+    //)
+
+    mapClickAttacher typeCheckSettings Refs.typeToggle (fun setting ->
+        Browser.console.log (sprintf "TypeCheck changed to %A" setting) |> ignore
+        Views.setTypeCheck setting |> ignore
+        //Views.updateMemory()
+        //Views.updateSymTable() :> obj
+    )
+
+    mapClickAttacher runtimeSettings Refs.runtimeSelect (fun setting ->
+        Browser.console.log (sprintf "Runtime changed to %A" setting) |> ignore
+        Views.setRuntime setting |> ignore
+        //Views.updateMemory()
+        //Views.updateSymTable() :> obj
+    )
+
     mapClickAttacher viewToIdTab Refs.viewTab (fun view ->
         Browser.console.log (sprintf "View changed to %A" view) |> ignore
         Views.setView view :> obj

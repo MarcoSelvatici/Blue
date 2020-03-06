@@ -62,7 +62,7 @@ let testCasesTypeChecker = [
     "Simple `let x = 1 in x`", FuncDefExp {FuncName="x"; FuncBody=Literal (IntLit 1); Rest=Identifier "x"},
         Ok (Base Int);
     "Partially applied `let x y = y in x`", buildCarriedFunc ["x"; "y"] (Identifier "y") (Identifier "x"),
-        Ok (Fun(Gen 0, Gen 0));
+        Ok (Fun(Gen 1, Gen 1));
     "Partially applied int `let x y = y + 1 in x`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (Identifier "x"),
         Ok (Fun(Base Int, Base Int));
     "Fully applied int `let x y = y + 1 in x 4`", buildCarriedFunc ["x"; "y"] (FuncApp (FuncApp (BuiltInFunc Plus, Identifier "y"), Literal (IntLit 1))) (FuncApp (Identifier "x", Literal (IntLit 4))),
@@ -73,8 +73,6 @@ let testCasesTypeChecker = [
         Ok (Base Int);
     "Different types `let f = \x.x in let g = f True in f 3`", buildCarriedFunc ["f"] (buildLambda "x" (Identifier "x")) (buildCarriedFunc ["g"] (FuncApp (Identifier "f", Literal (BoolLit true))) (FuncApp (Identifier "f", Literal (IntLit 3)))),
         Ok (Base Int);
-    "No recursion `let x = x x in 1`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Literal (IntLit 1)),
-        buildTypeCheckerError "Identifier x is not bound"; // Recursion is not supported (yet).
     "Simple StrEq", BuiltInFunc StrEq,
         Ok (Fun(Base String, Fun (Base String, Base Bool)));
     "Partially applied StrEq", FuncApp (BuiltInFunc StrEq, Literal (StringLit "hello")),
@@ -82,15 +80,15 @@ let testCasesTypeChecker = [
     "String equality in ifExp", IfExp ( FuncApp (FuncApp (BuiltInFunc StrEq, Literal (StringLit "s1")), Literal (StringLit "s2")), Literal (IntLit 1), Literal (IntLit 1)),
         Ok (Base Int);
     "Empty SeqExp", EmptySeq,
-        Ok EmptySeqType;
+        Ok (Pair (Gen 0, Gen 1));
     "Simple SeqExp", SeqExp (Literal (IntLit 1), EmptySeq),
-        Ok (Pair (Base Int, EmptySeqType));
+        Ok (Pair (Base Int, Pair (Gen 0, Gen 1)));
     "Simple SeqExp with base types `[1 , 'hello', true]`", SeqExp (Literal (IntLit 1), SeqExp (Literal (StringLit "hello"), SeqExp (Literal (BoolLit true), EmptySeq))),
-        Ok (Pair (Base Int, Pair (Base String, Pair (Base Bool, EmptySeqType))));
+        Ok (Pair (Base Int, Pair (Base String, Pair (Base Bool, Pair (Gen 0, Gen 1)))));
     "Simple SeqExp with Lambda `[1 , \x.x]`", SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (Identifier "x"), EmptySeq)),
-        Ok (Pair (Base Int, Pair (Fun (Gen 0, Gen 0), EmptySeqType)));
+        Ok (Pair (Base Int, Pair (Fun (Gen 0, Gen 0), Pair (Gen 1, Gen 2))));
     "Unique ids `[\x.x, \y.y]`", SeqExp (buildLambda "y" (Identifier "y"), SeqExp (buildLambda "x" (Identifier "x"), EmptySeq)),
-        Ok (Pair (Fun (Gen 0, Gen 0), Pair ( Fun (Gen 1, Gen 1), EmptySeqType)));
+        Ok (Pair (Fun (Gen 0, Gen 0), Pair ( Fun (Gen 1, Gen 1), Pair (Gen 2, Gen 3))));
     "Simple Head", BuiltInFunc Head,
         Ok (Fun (Pair (Gen 0, Gen 1), Gen 0));
     "Applied Head `head [1]`", FuncApp (BuiltInFunc Head, SeqExp (Literal (IntLit 4), EmptySeq)), 
@@ -102,11 +100,11 @@ let testCasesTypeChecker = [
     "Simple Tail", BuiltInFunc Tail,
         Ok (Fun (Pair (Gen 0, Gen 1), Gen 1));
     "Applied Tail `tail [1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 4), EmptySeq)), 
-        Ok EmptySeqType;
+        Ok (Pair (Gen 3, Gen 4));
     "Applied Tail `tail ['hello', 1, true]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (StringLit "hello"), SeqExp (Literal (IntLit 1), SeqExp (Literal (BoolLit true), EmptySeq)))), 
-        Ok (Pair (Base Int, Pair (Base Bool, EmptySeqType)));
+        Ok (Pair (Base Int, Pair (Base Bool, Pair (Gen 3, Gen 4))));
     "Applied Tail `tail [1, \x.x<1]`", FuncApp (BuiltInFunc Tail, SeqExp (Literal (IntLit 1), SeqExp (buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "x"), Literal (IntLit 1))), EmptySeq))),
-        Ok (Pair (Fun (Base Int, Base Bool), EmptySeqType));
+        Ok (Pair (Fun (Base Int, Base Bool), Pair (Gen 6, Gen 7)));
     "Simple Size", BuiltInFunc Size,
         Ok (Fun (Pair (Gen 0, Gen 1), Base Int));
     "Applied Size `size [1]`", FuncApp (BuiltInFunc Size, SeqExp (Literal (IntLit 4), EmptySeq)), 
@@ -116,11 +114,11 @@ let testCasesTypeChecker = [
     "Simple Append", BuiltInFunc Append,
         Ok (Fun (Gen 2, Fun (Pair (Gen 0, Gen 1), Pair (Gen 2, Pair (Gen 0, Gen 1)))));
     "Applied Append to empty `append 1 []`", FuncApp (FuncApp (BuiltInFunc Append, Literal (IntLit 1)), EmptySeq), 
-        Ok (Pair (Base Int, EmptySeqType));
+        Ok (Pair (Base Int, Pair (Gen 2, Gen 3)));
     "Applied Append to empty `append 2 (append 1 [])`",FuncApp (FuncApp (BuiltInFunc Append, Literal (IntLit 2)), FuncApp (FuncApp (BuiltInFunc Append, Literal (IntLit 1)), EmptySeq)), 
-        Ok (Pair(Base Int, Pair (Base Int, EmptySeqType)));
+        Ok (Pair(Base Int, Pair (Base Int, Pair (Gen 7, Gen 8))));
     "Applied Append `append true [1]`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), SeqExp (Literal (IntLit 4), EmptySeq)), 
-        Ok (Pair (Base Bool, Pair (Base Int, EmptySeqType)));
+        Ok (Pair (Base Bool, Pair (Base Int, Pair (Gen 5, Gen 6))));
     "Head not list `head 1`", FuncApp (BuiltInFunc Head, Literal (IntLit 1)),
         buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Base Int));
     "Tail not list `tail \x.x`", FuncApp (BuiltInFunc Tail, buildLambda "x" (Identifier "x")),
@@ -130,9 +128,9 @@ let testCasesTypeChecker = [
     "Append not list `append true 1`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), Literal (IntLit 4)),
         buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 2, Gen 3)) (Base Int));
     "Head of empty `head []`", FuncApp (BuiltInFunc Head, EmptySeq),
-        Ok (Base NullType);
+        Ok (Gen 1);
     "Tail of empty `tail []`", FuncApp (BuiltInFunc Tail, EmptySeq),
-        Ok (Base NullType);
+        Ok (Gen 2);
     "Size of empty `tail []`", FuncApp (BuiltInFunc Size, EmptySeq),
         Ok (Base Int);
     "Simple Implode", BuiltInFunc Implode,
@@ -147,4 +145,16 @@ let testCasesTypeChecker = [
         Ok (Fun(Gen 0, Base Bool));
     "Applied Test `test \x.x`", FuncApp(BuiltInFunc Test, buildLambda "x" (Identifier "x")),
         Ok (Base Bool);
+    "Unify empty list with populated list. `let lst = [1] in if true then [] else lst fi`", buildCarriedFunc ["lst"] (SeqExp(Literal (IntLit 1), EmptySeq)) (IfExp (Literal(BoolLit true), EmptySeq, Identifier "lst")),
+        Ok (Pair (Base Int, Pair (Gen 1, Gen 2)));
+    "Unused recursion `let x = x x in 1`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Literal (IntLit 1)),
+        Ok (Base Int);
+    "Recursion `let x = x x in x`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Identifier "x"),
+        Ok (Gen 1);
+    "List.map", (FuncDefExp { FuncName = "listMap"; FuncBody = LambdaExp { LambdaParam = "f"; LambdaBody = LambdaExp { LambdaParam = "lst"; LambdaBody = IfExp (FuncApp (FuncApp (BuiltInFunc Equal, FuncApp (BuiltInFunc Size, Identifier "lst")), Literal (IntLit 0)), SeqExp (Null,Null), FuncApp (FuncApp (BuiltInFunc Append, FuncApp (Identifier "f", FuncApp (BuiltInFunc Head, Identifier "lst"))), FuncApp (FuncApp (Identifier "listMap", Identifier "f"), FuncApp (BuiltInFunc Tail, Identifier "lst")))) } }; Rest = Identifier "listMap" }),
+        Ok (Fun(Fun (Gen 22,Gen 8), Fun (Pair (Gen 6,Gen 7),Pair (Gen 8,Pair (Gen 12,Gen 13)))))
+    "If then else empty list", IfExp(Literal (BoolLit true), EmptySeq, EmptySeq),
+        Ok (Pair(Gen 0, Gen 1));
+    "Recursion `let x i = x (tail i) in x ni", FuncDefExp {FuncName = "x"; FuncBody = LambdaExp {LambdaParam = "i"; LambdaBody = FuncApp (Identifier "x",FuncApp (BuiltInFunc Tail, Identifier "i"))}; Rest = (Identifier "x")},
+       Ok (Fun (Pair (Gen 4,Gen 5),Gen 2))
 ]

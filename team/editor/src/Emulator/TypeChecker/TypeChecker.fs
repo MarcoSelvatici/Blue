@@ -13,7 +13,6 @@ type Base =
     | Int
     | Bool
     | String
-    | NullType // Used in the EmptySeqType, which terminates the sequences.
 
 type Type =
     | Base of Base
@@ -21,7 +20,8 @@ type Type =
     | Fun of Type * Type
     | Pair of Type * Type // Used for lists.
 
-let EmptySeqType = Pair(Base NullType, Base NullType)
+// Note: empty sequences have a generic type Pair(Gen _, Gen _).
+// This is similar to the f# type of an empty list: val []: 'a list.
 
 type Var = string * Type
 
@@ -112,6 +112,11 @@ let isBinaryOp op = List.contains op (int2int @ int2bool @ bool2bool)
 //=====================//
 // Inference functions //
 //=====================//
+
+let inferNullType uid =
+    // Assign generic type, since this will be used in empty sequences.
+    let g, uid = newGen uid
+    uid, Ok ([], g)
 
 let inferIdentifier uid ctx name =
     match lookUpType ctx name with
@@ -205,24 +210,29 @@ and inferLambdaExp uid ctx lam =
     | uid2, Ok (s1, t1) -> uid2, Ok (s1, Fun(apply s1 newWildcard, t1))
 
 and inferFuncDefExp uid ctx def =
-    // We infer the type of the body without keeping the function name in
-    // our context. This makes recursion impossible for now.
+    // Extend the context with a generic type for our function, this allows
+    // recursion.
+    let funcType, uid = newGen uid
+    let ctx = (extend ctx def.FuncName funcType)
     match infer uid ctx def.FuncBody with
     | uid, Error e -> uid, Error e
     | uid, Ok (s1, t1) ->
-        let ctx' = applyToCtx s1 ctx
-        match infer uid (extend ctx' def.FuncName t1) def.Rest with
-        | uid, Error e -> uid, Error e
-        | uid, Ok (s2, t2) -> uid, Ok (s1 @ s2, t2)
+        match unify t1 funcType with
+        | Error e -> uid, Error e
+        | Ok sFuncType ->
+            let ctx = applyToCtx (sFuncType @ s1) ctx
+            match infer uid ctx def.Rest with
+            | uid, Error e -> uid, Error e
+            | uid, Ok (s2, t2) -> uid, Ok (sFuncType @ s1 @ s2, t2)
 
 /// Infer the type of an ast, and return the substitutions, together with the
 /// type of the ast.
 and infer uid ctx ast : int * Result<Subst list * Type, string> =
     match ast with
-    | Null                  -> uid, Ok ([], Base NullType)
     | Literal (IntLit _)    -> uid, Ok ([], Base Int)
     | Literal (BoolLit _)   -> uid, Ok ([], Base Bool)
     | Literal (StringLit _) -> uid, Ok ([], Base String)
+    | Null                  -> inferNullType uid
     | Identifier name       -> inferIdentifier uid ctx name
     | BuiltInFunc f         -> inferBuiltInFunc uid f
     | IfExp (c, t, e)       -> inferIfExp uid ctx c t e

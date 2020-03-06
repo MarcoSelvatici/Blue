@@ -61,14 +61,13 @@ type Token =
     | KThen
     | KElse
     | KFi
-    | KNull
 
 type Ast =
     | FuncDefExp of FuncDefExpType
     | LambdaExp of LambdaType
     | IfExp of Ast * Ast * Ast
     | SeqExp of Ast * Ast
-    | FuncApp of Ast * Ast
+    | FuncApp of (Ast * Ast)
     | FuncAppList of Ast list // Transformed into a tree of FuncApp.
     | Identifier of string
     | IdentifierList of string list // Transformed into a list of Identifier.
@@ -103,31 +102,6 @@ let (|EMPTYSEQ|_|) =
     | SeqExp(Null, Null) -> Some 0
     | _ -> None
 
-
-/// For beta reduction.
-
-type Art =
-    | Def of FuncDefArt
-    | Lam of LambdaR
-    | App of (Art * Art * int64 option)
-    | Nul
-    | Lit of Literal
-    | Idn of string
-    | BIF of BuiltInFunc
-    | IfE of Art * Art * Art
-    | Seq of (Art * Art * int64 option)
-
-and FuncDefArt = {
-    Name: string;
-    Body: Art;
-    Rest: Art;
-}
-
-and LambdaR = {
-    Var: string;
-    Body: Art;
-}
-
 //========//
 // Errors //
 //========//
@@ -139,9 +113,16 @@ type ParserError = {
     currentAsts: Ast list;
 }
 
+type BetaEngineError = {
+    msg: string;
+    trace: string list;
+    ast: Ast;
+}
+
 type ErrorT =
+    | PreprocessorError of string
     | LexerError of string
     | ParserError of ParserError
     | TypeCheckerError of string
-    | BetaEngineError of string*Art
+    | BetaEngineError of BetaEngineError
     | SKIRuntimeError of string

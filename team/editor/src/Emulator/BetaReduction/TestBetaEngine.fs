@@ -5,7 +5,7 @@ open SharedTypes
 open BetaEngine
 //open Expecto
 
-type TestInfo = (string * Ast * Result<Ast,string*Art>) list
+type TestInfo = (string * Ast * Result<Ast,BetaEngineError>) list
 
 // helper functions to shorten and decluter test definitions
 let trueL = Literal (BoolLit true)
@@ -18,7 +18,7 @@ let def name body rest =
     FuncDefExp {FuncName=name; FuncBody=body; Rest=rest}
 let rec buildList list =
     match list with
-    | [] -> Null
+    | [] -> SeqExp (Null,Null)
     | ele::rest -> SeqExp(ele, buildList rest)
 
 let F a1 a2 = FuncApp (a1,a2)
@@ -88,8 +88,8 @@ let testId : TestInfo=
 let testOk : TestInfo= 
     [
     // internal    
-    "buildList empty","buildList [] -> Null", buildList [], Null;
-    "buildList","buildList [Null; Null] -> [Null; Null]", buildList [Null; Null], SeqExp (Null, SeqExp (Null, Null));  
+    "buildList empty","buildList [] -> Null", buildList [], SeqExp(Null,Null);
+    "buildList","buildList [Null; Null] -> [Null; Null]", buildList [Null; Null], SeqExp (Null, SeqExp (Null, SeqExp (Null, Null)));  
     
     "if true", "if true then \"abc\" else Null", 
     IfExp (trueL, stringL "abc", Null),  stringL "abc";
@@ -197,7 +197,7 @@ let testOk : TestInfo=
     "Size 1", "Size [ Null ] -> 1", FbuiltIn Size (buildList [Null]), intL 1;
     "Size 99", "Size [ 0..98 ] -> 99", FbuiltIn Size (buildList ([ 0..98 ]|> List.map (intL))), intL 99;
     "Append","Append 1 [2] -> [1 2]", F2builtIn Append (intL 1) (buildList [intL 2]), buildList [intL 1;intL 2];
-    "Append empty", "Append 9 [] -> [9]", F2builtIn Append (intL 9) Null, buildList [intL 9];
+    "Append empty", "Append 9 [] -> [9]", F2builtIn Append (intL 9) (buildList []), buildList [intL 9];
     "Append diffrent types", "Append true [\"997\", 997, Null, [1] ] ->[true ,\"997\", 997, Null, [] ] ",
     F2builtIn Append trueL (buildList [stringL "997"; intL 997; Null; buildList [intL 1] ]), 
     buildList [trueL; stringL "997"; intL 997; Null; buildList [intL 1] ];
@@ -222,25 +222,30 @@ let testOk : TestInfo=
 let testErr : TestInfo= 
     let id = int64 -1 |> Some
     [
-    "idn", "foo", idn "foo", "Idn \'foo\' is not defined", Idn "foo";
-    "Function Application List", "[]", FuncAppList [], "What? couldn't transform Ast to Art (AST Run Time)", Nul;
-    "Identifier List", "[]", IdentifierList [],"What? couldn't transform Ast to Art (AST Run Time)", Nul;
+    "idn", "foo", idn "foo", "Identifier \'foo\' is not defined", Identifier "foo";
+    "Function Application List", "[]", FuncAppList [], "What? FuncAppList in BetaEngine", FuncAppList [];
+    "Identifier List", "[]", IdentifierList [],"What? IdentifierList in BetaEngine", IdentifierList [];
 
     "> wrong type", "3 > Null", F2builtIn Greater (intL 3) Null, 
-    "Greater is unsuported for Lit (IntLit 3), Nul", 
-    (App (App (BIF Greater, Lit (IntLit 3), id), Nul, None));
-
+    "Greater is unsuported for Literal (IntLit 3), Null", 
+    F2builtIn Greater (intL 3) Null;
+   
     "= wrong type" ,"true = 1", F2builtIn Equal trueL (intL 1), 
-    "Equal is unsuported for Lit (BoolLit true), Lit (IntLit 1)", 
-    App (App (BIF Equal, Lit (BoolLit true), id), Lit (IntLit 1), None);
+    "Equal is unsuported for Literal (BoolLit true), Literal (IntLit 1)", 
+    F2builtIn Equal trueL (intL 1);
 
     "String Equality wrong type" , "StrEq \"dog\" Null", F2builtIn StrEq (stringL "dog") Null, 
-    "StrEq is unsuported for Lit (StringLit \"dog\"), Nul", 
-    (App (App (BIF StrEq, Lit (StringLit "dog"), id), Nul, None));
+    "StrEq is unsuported for Literal (StringLit \"dog\"), Null", 
+    F2builtIn StrEq (stringL "dog") Null;
 
-    "Head wrong type", "Head Null", FbuiltIn Head Null, "Head is unsuported for Nul", App (BIF Head, Nul, None);
+    "Head wrong type", "Head Null", FbuiltIn Head Null, "Head is unsuported for Null", FbuiltIn Head Null;
     ]
-    |> List.map (fun (n,d,i,m,o) -> (concatDescription n d,i,Error (m,o)))
+    |> List.map (fun (n,d,i,m,o) -> concatDescription n d,i,Error {msg=m; trace=[]; ast=o} ) 
+
+let testErrTrace : TestInfo =
+    [
+        
+    ]
 
 let upcastError =
     function
@@ -251,3 +256,11 @@ let testCasesBetaEngine =
     [testId; testOk; testErr]
     |> List.reduce List.append
     |> List.map (fun (d,i,o) -> (d,i,upcastError o))
+
+(*
+    Bidning to future variable ?
+   Let b = 6 in
+   Let a = b in 
+    \.b.a
+    ni ni 
+*)
