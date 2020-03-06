@@ -46,6 +46,7 @@ let end2end checkTypes runtime input =
     |> Result.bind parse
     |> Result.bind (maybeTypeCheck checkTypes)
     |> Result.bind (selectRuntime runtime)
+    |> prettyPrint
 
 let getAst input =
     input

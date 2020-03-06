@@ -295,6 +295,37 @@ let rec combinatorReduc (exp:Ast) : Ast =
     | _ -> exp  // let built-in functions pass through to then be evaluated in evalBuiltin
 
 
+/// Pretty print ASTs
+let prettyPrint (inp: Result<Ast,ErrorT>): string =
+    let toString x =
+        sprintf "%A" x
+    let rec printList (inp: Ast) : string =
+        match inp with
+        | SeqExp (Null, Null) -> ""
+        | SeqExp (head,SeqExp (Null, Null)) -> (printFormat  <| head |> sprintf "%A")
+        | SeqExp (head,tail) -> (printFormat  <| head |> sprintf "%A,") + (printList <| tail |> sprintf "%A")
+        | _ ->  "Error: PrettyPrint: PrintList is broken"
+    and printFormat inp = 
+        match inp with
+        | Identifier x  -> toString x
+        | Combinator x -> toString x
+        | Literal (IntLit x) -> toString x 
+        | Literal (BoolLit x) -> toString x 
+        | Literal (StringLit x) -> toString x 
+        | Literal (CharLit x) -> toString x 
+        | Literal (FloatLit x) -> toString x 
+        | Null -> "Null" // should this be an error ?
+        | LambdaExp { LambdaParam = name; LambdaBody = exp } -> 
+            sprintf "(\\%A.%A)" name (printFormat exp)
+        | SeqExp _ -> "[" + printList inp + "]"
+        | FuncApp (x , y) -> "(" + (printFormat  <| x |> sprintf "%A") + " " + (printFormat <| y |> sprintf "%A") + ")" // should this be an error ?
+        | FuncDefExp _ | FuncAppList _ | IdentifierList _ | Token _ | IfExp _ | BuiltInFunc _ -> sprintf "Error: \'%A\' should not be returned by runtime" inp
+    match inp with
+    | Error x -> toString x
+    | Ok x -> printFormat x
+        
+
+
 /// Evaluate the output of the parser using bracket abstraction, S K I Y combinators and the evaluation of built-in functions
 let combinatorRuntime (input: Ast): Result<Ast,ErrorT> = 
     let bindings = Map []
