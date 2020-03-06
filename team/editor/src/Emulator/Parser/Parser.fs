@@ -227,12 +227,17 @@ let rec pSeqList pState =
 
 and pSeqExp pState =
     pState
-    |> (pToken KOpenSquare .+. pToken KCloseSquare .|. // Empty sequence.
-        pToken KOpenSquare .+. pSeqList .+. pToken KCloseSquare)
+    |> (pTokenAdd KOpenSquare .+. pTokenAdd KCloseSquare .|. // Empty sequence.
+        pTokenAdd KOpenSquare .+. pSeqList .+. pTokenAdd KCloseSquare)
     |> Result.map (
         function
-        | SeqExp _ :: _, _ as pState' -> pState' // Non empty sequence.
-        | asts, tkns -> EmptySeq :: asts, tkns // Empty sequence.
+        | Token KCloseSquare :: SeqExp (l,r) :: Token KOpenSquare :: asts, tkns -> 
+            // Non empty sequence.
+            SeqExp (l, r) :: asts, tkns
+        | Token KCloseSquare :: Token KOpenSquare :: asts, tkns ->
+            // Empty sequence.
+            EmptySeq :: asts, tkns
+        | _ -> impossible "pSeqExp"
     )
 
 and pIfExp pState =

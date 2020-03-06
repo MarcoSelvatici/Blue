@@ -150,7 +150,11 @@ let testCasesTypeChecker = [
     "Unused recursion `let x = x x in 1`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Literal (IntLit 1)),
         Ok (Base Int);
     "Recursion `let x = x x in x`", buildCarriedFunc ["x"] (FuncApp (Identifier "x", Identifier "x")) (Identifier "x"),
-        Ok (Fun (Gen 0, Gen 1));
+        Ok (Gen 1);
     "List.map", (FuncDefExp { FuncName = "listMap"; FuncBody = LambdaExp { LambdaParam = "f"; LambdaBody = LambdaExp { LambdaParam = "lst"; LambdaBody = IfExp (FuncApp (FuncApp (BuiltInFunc Equal, FuncApp (BuiltInFunc Size, Identifier "lst")), Literal (IntLit 0)), SeqExp (Null,Null), FuncApp (FuncApp (BuiltInFunc Append, FuncApp (Identifier "f", FuncApp (BuiltInFunc Head, Identifier "lst"))), FuncApp (FuncApp (Identifier "listMap", Identifier "f"), FuncApp (BuiltInFunc Tail, Identifier "lst")))) } }; Rest = Identifier "listMap" }),
-        Ok (Fun (Fun (Gen 17,Gen 15),Gen 20));
+        Ok (Fun(Fun (Gen 22,Gen 8), Fun (Pair (Gen 6,Gen 7),Pair (Gen 8,Pair (Gen 12,Gen 13)))))
+    "If then else empty list", IfExp(Literal (BoolLit true), EmptySeq, EmptySeq),
+        Ok (Pair(Gen 0, Gen 1));
+    "Recursion `let x i = x (tail i) in x ni", FuncDefExp {FuncName = "x"; FuncBody = LambdaExp {LambdaParam = "i"; LambdaBody = FuncApp (Identifier "x",FuncApp (BuiltInFunc Tail, Identifier "i"))}; Rest = (Identifier "x")},
+       Ok (Fun (Pair (Gen 4,Gen 5),Gen 2))
 ]

@@ -220,10 +220,10 @@ and inferFuncDefExp uid ctx def =
         match unify t1 funcType with
         | Error e -> uid, Error e
         | Ok sFuncType ->
-            let ctx = applyToCtx (s1 @ sFuncType) ctx
+            let ctx = applyToCtx (sFuncType @ s1) ctx
             match infer uid ctx def.Rest with
             | uid, Error e -> uid, Error e
-            | uid, Ok (s2, t2) -> uid, Ok (s1 @ s2, t2)
+            | uid, Ok (s2, t2) -> uid, Ok (sFuncType @ s1 @ s2, t2)
 
 /// Infer the type of an ast, and return the substitutions, together with the
 /// type of the ast.
