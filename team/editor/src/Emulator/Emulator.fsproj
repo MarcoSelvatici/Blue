@@ -7,6 +7,7 @@
 <Compile Include="EEExtensions.fs" />
     <Compile Include="TestLib.fs" />
     <Compile Include="SharedTypes.fs" />
+    <Compile Include="Preprocessor/Preprocessor.fs" />
     <Compile Include="Lexer/Lexer.fs" />
     <Compile Include="Lexer/LexerTest.fs" />
     <Compile Include="Parser/Parser.fs" />

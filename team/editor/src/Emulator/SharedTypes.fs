@@ -120,6 +120,7 @@ type BetaEngineError = {
 }
 
 type ErrorT =
+    | PreprocessorError of string
     | LexerError of string
     | ParserError of ParserError
     | TypeCheckerError of string

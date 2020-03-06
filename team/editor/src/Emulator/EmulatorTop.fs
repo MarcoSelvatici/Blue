@@ -3,6 +3,7 @@ module EmulatorTop
 open System
 open Expecto
 open TestLib
+open Preprocessor
 open Lexer
 open LexerTest
 open Parser
@@ -43,7 +44,8 @@ let reduce ast =
 
 let end2end checkTypes runtime input =
     input
-    |> tokeniseT3
+    |> preprocess 
+    |> Result.bind tokeniseT3
     |> Result.bind parse
     |> Result.bind (maybeTypeCheck checkTypes)
     |> Result.bind (selectRuntime runtime)
