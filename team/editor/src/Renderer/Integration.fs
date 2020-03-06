@@ -13,6 +13,7 @@ open SharedTypes
 
 let resetEmulator() =
     showVexAlert "Resetting..."
+    (getHtml "out-text").innerHTML <- ""
     Editors.removeEditorDecorations currentFileTabId
     Editors.enableEditors()
 
@@ -32,13 +33,16 @@ let getProgram () =
     textOfTId currentFileTabId
     |> List.fold (fun r s -> r + s + "\n") ""
 
+
+
+
 /// Top-level simulation execute
 /// If current tab is TB run TB if this is possible
 let runCode () =
     let program = getProgram ()
     try 
         let res = end2end currentTypeCheck currentRuntime program
-        showVexAlert <| sprintf "%A" res
+        (getHtml "out-text").innerHTML <-  sprintf "%A" res
     with
         // Some of the impossible cases has been triggered, or there was a stack
         // overflow.

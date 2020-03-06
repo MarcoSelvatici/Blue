@@ -213,7 +213,7 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
         | Not, Ok (Literal (BoolLit n)) -> 
             Literal (BoolLit (not n)) |> Ok
         | _ ->
-            buildErrorSKI <| sprintf "Error evaluating built-in function with 1 argument: opertor \'%A\'" op
+            buildErrorSKI <| sprintf "Error evaluating built-in function with 1 argument: operator \'%A\' with argument \'%A\'" op x'
 
     // Built-in functon w/ 2 args
     | FuncApp( FuncApp( BuiltInFunc op, x), y) -> 
@@ -253,7 +253,7 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
 
         // Passthrough for partially applied functions
         // if we only wanted fully evaluated and reduced expressions this should return an error
-        | _ -> buildErrorSKI <| sprintf "Error evalauting %A op witha rguments: %A, %A" op x' y'    
+        | _ -> buildErrorSKI <| sprintf "Error evaluating %A operator with arguments: %A, %A" op x' y'    
 
     | Combinator _ | SeqExp _ | Identifier _ | FuncApp _ | BuiltInFunc _ | Null | Literal _ -> input |> Ok
 
@@ -302,7 +302,7 @@ let combinatorRuntime (input: Ast): Result<Ast,ErrorT> =
     | Ok x ->
         match evalBuiltin (combinatorReduc x) with
         | Ok x -> Ok x
-        | Error (SKIRuntimeError x) -> buildErrorSKI <| "SKI runtime error: Built-in function evaluation Error: \n" + x
+        | Error (SKIRuntimeError x) -> buildErrorSKI <| "Built-in function evaluation Error: \n" + x
         | Error x -> Error x // will never occur
-    | Error (SKIRuntimeError x) -> buildErrorSKI <| "SKI runtime error: Bracket Abstraction Error: \n" + x
+    | Error (SKIRuntimeError x) -> buildErrorSKI <| "Bracket Abstraction Error: \n" + x
     | Error x -> Error x // will never occur
