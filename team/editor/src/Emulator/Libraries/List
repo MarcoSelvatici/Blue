@@ -1,7 +1,0 @@
-1
-let listMap f lst =
-    if size lst == 0
-    then []
-    else append (f (head lst)) (listMap f (tail lst))
-    fi
-in
