@@ -4,7 +4,8 @@ open SharedTypes
 
 // List of escape sequences supported in f#.
 let escSeq = ['a';'b';'f';'n';'r';'t';'v';'\\';'\"';'\'']
-
+let breakNum = ['+';'-';'*';'/';'=';'<';'>';'(';')';'[';']';'&';'|';' ';',';';';'\n';'\t']
+let breakId = ['+';'-';'*';'/';'=';'<';'>';'&';'|';' ';'.';',';';';'\n';'\t';'(';'[';')';']']
 
 // If the current character is a number this function is called, trying to parse an int or a float.
 let rec buildNumber rowCount isFloat number input =
@@ -19,8 +20,7 @@ let rec buildNumber rowCount isFloat number input =
             buildNumber rowCount true (number + string currChar) tl
         | _ -> failwithf "lexing error, expecting decimal digit after dot on line %i" rowCount
     // If current char is a valid char that breaks the number, return the result.
-    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'(';')';'[';']';'&';'|';' ';'\n';'\t']) 
-        -> isFloat, number, input
+    | currChar::tl when List.contains currChar (breakId) -> isFloat, number, input
     // Analoguely, if string is over, return valid result.
     | [] -> isFloat, number, input
     // Else return an error, as specific as possible.
@@ -35,7 +35,7 @@ let rec buildWord rowCount word input =
     | currChar::tl when List.contains currChar (['a'..'z']@['A'..'Z']@['0'..'9']@['_';'\'']) 
         -> buildWord rowCount (word + string currChar) tl
     // If is a valid character to break the sequence, return valid result.
-    | currChar::tl when List.contains currChar (['+';'-';'*';'/';'=';'<';'>';'&';'|';' ';'.';'\n';'\t';'(';'[';')';']']) 
+    | currChar::tl when List.contains currChar (breakId) 
         -> word, input
     // Analoguely, if string is over, return valid result.
     | [] -> word, input
@@ -105,13 +105,10 @@ let tokeniseT3 (str: string) =
         | '.'::tl -> [KDot] @ tokenise rowCount tl
         | ','::tl -> [KComma] @ tokenise rowCount tl
         | ';'::tl -> [KSemiColon] @ tokenise rowCount tl
-        | '('::tl -> 
-           // If the '(' char is followed by '*' -> start of a multiline comment. 
-           match tl with 
-           | '*'::tl' -> 
-                let rowCount', rest = buildMultilineComment rowCount tl'
-                tokenise rowCount' rest
-           | _ -> [KOpenRound] @ tokenise rowCount tl
+        | '('::'*'::tl' -> 
+            let rowCount', rest = buildMultilineComment rowCount tl'
+            tokenise rowCount' rest
+        | '('::tl -> [KOpenRound] @ tokenise rowCount tl
         | ')'::tl -> [KCloseRound] @ tokenise rowCount tl
         | '['::tl -> [KOpenSquare] @ tokenise rowCount tl
         | ']'::tl -> [KCloseSquare] @ tokenise rowCount tl
@@ -120,35 +117,22 @@ let tokeniseT3 (str: string) =
         | '+'::tl -> [Plus |> TBuiltInFunc] @ tokenise rowCount tl
         | '-'::tl -> [Minus |> TBuiltInFunc] @ tokenise rowCount tl
         | '*'::tl -> [Mult |> TBuiltInFunc] @ tokenise rowCount tl
-        | '/'::tl -> 
-           // If the '/' char is followed by another '/' -> start of an inline comment. 
-           match tl with 
-           | '/'::tl' -> 
-                let rest = buildInlineComment tl'
-                tokenise rowCount rest
-           | _ -> [Div |> TBuiltInFunc] @ tokenise rowCount tl 
+        | '/'::'/'::tl -> 
+            let rest = buildInlineComment tl
+            tokenise rowCount rest
+        | '/'::tl -> [Div |> TBuiltInFunc] @ tokenise rowCount tl 
         // Logic and comparisons
         | '!'::tl -> [Not |> TBuiltInFunc] @ tokenise rowCount tl
-        | '>'::tl -> 
-           match tl with
-           | '='::tl' -> [GreaterEq |> TBuiltInFunc] @ tokenise rowCount tl'
-           | _ -> [Greater |> TBuiltInFunc] @ tokenise rowCount tl
-        | '<'::tl -> 
-           match tl with
-           | '='::tl' -> [LessEq |> TBuiltInFunc] @ tokenise rowCount tl'
-           | _ -> [Less |> TBuiltInFunc] @ tokenise rowCount tl
-        | '='::tl -> 
-           match tl with
-           | '='::tl' -> [Equal |> TBuiltInFunc] @ tokenise rowCount tl'
-           | _ -> [KEq] @ tokenise rowCount tl
-        | '&'::tl -> 
-           match tl with
-           | '&'::tl' -> [And |> TBuiltInFunc] @ tokenise rowCount tl'
-           | _ -> [BitAnd |> TBuiltInFunc] @ tokenise rowCount tl
-        | '|'::tl -> 
-           match tl with
-           | '|'::tl' -> [Or |> TBuiltInFunc] @ tokenise rowCount tl'
-           | _ -> [BitOr |> TBuiltInFunc] @ tokenise rowCount tl
+        | '>'::'='::tl -> [GreaterEq |> TBuiltInFunc] @ tokenise rowCount tl
+        | '>'::tl -> [Greater |> TBuiltInFunc] @ tokenise rowCount tl
+        | '<'::'='::tl -> [LessEq |> TBuiltInFunc] @ tokenise rowCount tl
+        | '<'::tl -> [Less |> TBuiltInFunc] @ tokenise rowCount tl
+        | '='::'='::tl -> [Equal |> TBuiltInFunc] @ tokenise rowCount tl
+        | '='::tl -> [KEq] @ tokenise rowCount tl
+        | '&'::'&'::tl -> [And |> TBuiltInFunc] @ tokenise rowCount tl
+        | '&'::tl -> [BitAnd |> TBuiltInFunc] @ tokenise rowCount tl
+        | '|'::'|'::tl -> [Or |> TBuiltInFunc] @ tokenise rowCount tl
+        | '|'::tl -> [BitOr |> TBuiltInFunc] @ tokenise rowCount tl
         // String helper function is called when a quotation mark is detected.
         | '\"'::tl -> 
             let str, rest = buildString rowCount "" tl
@@ -196,7 +180,7 @@ let tokeniseT3 (str: string) =
         | currChar::tl -> failwithf "lexing error, unrecognised character '%c' on line %i" currChar rowCount
         | _ -> failwithf "lexing error, unexpected behaviour... nothing was matched on line %i" rowCount
     try 
-        tokenise 0 (Seq.toList str)
+        tokenise 1 (Seq.toList str)
         |> Ok
     with
         Failure msg -> Error (LexerError msg)  

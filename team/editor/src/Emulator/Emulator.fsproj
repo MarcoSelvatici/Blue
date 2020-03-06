@@ -1,10 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>emulator</AssemblyName>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-<Compile Include="EEExtensions.fs" />
+    <Compile Include="EEExtensions.fs" />
     <Compile Include="TestLib.fs" />
     <Compile Include="SharedTypes.fs" />
     <Compile Include="Lexer/Lexer.fs" />
@@ -17,6 +17,7 @@
     <Compile Include="BetaReduction/TestBetaEngine.fs" />
     <Compile Include="SKIReduction/SKICombinator.fs" />
     <Compile Include="SKIReduction/TestSKI.fs" />
+    <Compile Include="E2ETest.fs" />
     <Compile Include="EmulatorTop.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

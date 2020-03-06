@@ -11,7 +11,10 @@ open BetaEngine
 open TestBetaEngine
 open SKIRuntime
 open TestSKIRuntime
+open E2ETest
+ 
 
+// Unit testing.
 [<Tests>]
 let lexerTest = createTestList "Lexer Tests" tokeniseT3 testCasesLexer
 [<Tests>]
@@ -22,6 +25,11 @@ let typeCheckerTest = createTestList "Type Checker Tests" typeCheck testCasesTyp
 let betaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngine
 [<Tests>]
 let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCasesSKIRuntime
+[<Tests>]
+let e2eTests = e2eCreateTestList "E2E Tests" combinatorRuntime parse tokeniseT3 testCasesE2E
+
+
+
 
 [<EntryPoint>]
 let main argv =

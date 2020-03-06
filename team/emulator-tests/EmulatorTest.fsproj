@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
     <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../editor/src/Emulator/TestLib.fs" />
@@ -16,6 +16,7 @@
     <Compile Include="../editor/src/Emulator/BetaReduction/TestBetaEngine.fs" />
     <Compile Include="../editor/src/Emulator/SKIReduction/SKICombinator.fs" />
     <Compile Include="../editor/src/Emulator/SKIReduction/TestSKI.fs" />
+    <Compile Include="../editor/src/Emulator/E2ETest.fs" />
     <Compile Include="EmulatorTest.fs" />
   </ItemGroup>
   <ItemGroup>
