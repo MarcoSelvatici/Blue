@@ -142,8 +142,8 @@ let tokeniseT3 (str: string) =
             let c, rest = buildChar rowCount tl
             [c |> CharLit |> TLiteral] @ tokenise rowCount rest
         // Isolate newline case just for row counting purposes.
-        | currChar::tl  when List.contains currChar (['\n']) -> 
-            tokenise (rowCount + 1) tl
+        | '\n'::tl -> tokenise (rowCount + 1) tl
+        | '\r'::'\n'::tl -> tokenise (rowCount + 1) tl
         // Discard all spaces and tabs.
         | currChar::tl  when List.contains currChar ([' ';'\t';'\v']) -> tokenise rowCount tl
         // Number matching.
