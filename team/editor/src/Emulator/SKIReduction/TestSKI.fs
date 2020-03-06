@@ -26,7 +26,7 @@ let stringTests = [
 
     "Explode error",
     FuncApp (BuiltInFunc Explode, Null),
-    buildErrorSKI "SKI runtime error: Built-in function evaluation Error: \ncannot explode argument of type which is not string";
+    buildErrorSKI "Built-in function evaluation Error: \ncannot explode argument of type which is not string";
 
     "implode",
     FuncApp (BuiltInFunc Implode, "Hello, World." |> Seq.toList |> List.map string |> buildList StringLit),
@@ -34,7 +34,7 @@ let stringTests = [
 
     "implode Error",
     FuncApp (BuiltInFunc Implode, Null),
-    buildErrorSKI "SKI runtime error: Built-in function evaluation Error: \nCannot implode argument of type which is not string list";
+    buildErrorSKI "Built-in function evaluation Error: \nCannot implode argument of type which is not string list";
 
     "implode explode",
     FuncApp ( BuiltInFunc Implode, FuncApp (BuiltInFunc Explode, Literal (StringLit "Hello, World."))),
@@ -64,7 +64,7 @@ let listTests = [
 
     "ListSize Error", 
     FuncApp( BuiltInFunc Size, Literal (StringLit "I'm a string!")), 
-    buildErrorSKI "SKI runtime error: Built-in function evaluation Error: \nError getting size of list: Invalid input: Literal (StringLit \"I'm a string!\")";
+    buildErrorSKI "Built-in function evaluation Error: \nError getting size of list: Invalid input: Literal (StringLit \"I'm a string!\")";
 
     "List Size string",
     FuncApp( BuiltInFunc Size, SeqExp ( Literal (StringLit "this is a list"), SeqExp(Null,Null))),
@@ -76,7 +76,7 @@ let listTests = [
 
     "List Head error",
     FuncApp( BuiltInFunc Head, Literal (IntLit 10)),
-    buildErrorSKI "SKI runtime error: Built-in function evaluation Error: \nError getting head of list/sequence";
+    buildErrorSKI "Built-in function evaluation Error: \nError getting head of list/sequence";
 
     "List tail",
     FuncApp( BuiltInFunc Tail, SeqExp ( Literal (IntLit 1), SeqExp ( Literal (IntLit 2),  SeqExp ( Literal (IntLit 3), SeqExp(Null,Null) )))),
@@ -84,7 +84,7 @@ let listTests = [
 
     "List Tail error",
     FuncApp( BuiltInFunc Tail, Literal (IntLit 10)),
-    buildErrorSKI "SKI runtime error: Built-in function evaluation Error: \nError getting tail of list/sequence";
+    buildErrorSKI "Built-in function evaluation Error: \nError getting tail of list/sequence";
 
 ]
 
@@ -110,7 +110,7 @@ let arithmeticTests = [
 
     "Div 0 Error",
     FuncApp( FuncApp( BuiltInFunc Div, Literal (IntLit 4)), Literal (IntLit 0)),
-    buildErrorSKI "SKI runtime error: Built-in function evaluation Error: \nDivision by 0";
+    buildErrorSKI "Built-in function evaluation Error: \nDivision by 0";
 
 ]
 
@@ -168,7 +168,7 @@ let booleanTests = [
 
     "not (error)",
     FuncApp( BuiltInFunc Not, Literal (IntLit 1)),
-    buildErrorSKI "SKI runtime error: Built-in function evaluation Error: \nError evaluating built-in function with 1 argument: opertor \'Not\'" ;
+    buildErrorSKI "Built-in function evaluation Error: \nError evaluating built-in function with 1 argument: operator 'Not' with argument 'Ok (Literal (IntLit 1))'" ;
 
 ]
 
@@ -325,7 +325,7 @@ let ifThenElseTests = [
 
     "ifThenElse invalid cond",
     IfExp ( Literal (StringLit "hello"), Literal (BoolLit true), Literal (BoolLit false)),
-    buildErrorSKI "SKI runtime error: Bracket Abstraction Error: \nUnexpected value in ifThenElse condition";
+    buildErrorSKI "Bracket Abstraction Error: \nUnexpected value in ifThenElse condition";
 ]
 
 
@@ -544,11 +544,11 @@ let generalErrorTests = [
 
     "invalid exp in input: FuncAppList",
     FuncAppList [Null],
-    buildErrorSKI "SKI runtime error: Bracket Abstraction Error: \nFuncAppList should not be returned by parser";
+    buildErrorSKI "Bracket Abstraction Error: \nFuncAppList should not be returned by parser";
 
     "invalid exp in input: IdentifierList",
     IdentifierList [""],
-    buildErrorSKI "SKI runtime error: Bracket Abstraction Error: \nIdentifierList should not be returned by parser";
+    buildErrorSKI "Bracket Abstraction Error: \nIdentifierList should not be returned by parser";
 
 ]
 
