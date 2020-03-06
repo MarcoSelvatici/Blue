@@ -253,7 +253,7 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
 
         // Passthrough for partially applied functions
         // if we only wanted fully evaluated and reduced expressions this should return an error
-        | _ -> input |> Ok
+        | _ -> buildErrorSKI <| sprintf "Error evalauting %A op witha rguments: %A, %A" op x' y'    
 
     | Combinator _ | SeqExp _ | Identifier _ | FuncApp _ | BuiltInFunc _ | Null | Literal _ -> input |> Ok
 
