@@ -39,9 +39,6 @@ let selectRuntime runtime ast =
     then runAst ast
     else combinatorRuntime ast
 
-let reduce ast =
-    combinatorRuntime ast//runAst ast//, 
-
 let end2end checkTypes runtime input =
     input
     |> preprocess 

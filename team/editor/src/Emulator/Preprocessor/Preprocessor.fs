@@ -35,7 +35,7 @@ let findLib k =
 let isEndline = (=) '\n'
 let addLine s1 s2 = s1 + "\n" + s2
 
-let charToString chrLst = chrLst |> (List.map string) |> List.reduce (+)
+let charToString chrLst = chrLst |> (List.map string) |> List.fold (+) ""
 
 let splitLines (s:string) : char list list= 
     let rec toLists l =
@@ -83,16 +83,16 @@ let bindFolder folder state el =
     | Ok s -> folder s el
     | Error _ as err -> err
 
-let print a = printf "%A" a ; a
+let print a = printf "%A\n" a ; a
 let preprocess rawInput =
     rawInput
+    |> print
     |> splitLines
     |> List.fold (bindFolder replaceImport) ( Ok ([],0) )
     |> Result.map (
         mapFirst (List.rev >> List.toSeq >> String.concat "\n" )
         >> concatNi
         )
+    |> print
     
-    
-
-    
+// TODO : test w empty lines
