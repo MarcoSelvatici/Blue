@@ -17,6 +17,19 @@ let testCasesBetaE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list 
     Ok (Literal (IntLit 20));
     "Curried Lambda", "\xy.42",
     Ok (LambdaExp { LambdaParam = "xy"
-                    LambdaBody = Literal (IntLit 42) })
+                    LambdaBody = Literal (IntLit 42) });
+    "ListMap library function", "let listMap f lst = 
+                                    if size lst == 0
+                                    then []
+                                    else append (f (head lst))
+                                         (listMap f (tail lst))
+                                    fi
+                                  in 
+                                  listMap (\x.x+1)[1, 2, 3]
+                                  ni",
+    Ok (SeqExp
+            (Literal (IntLit 2),
+            SeqExp (Literal (IntLit 3),SeqExp (Literal (IntLit 4),SeqExp (Null,Null)))))
+
 ]
   

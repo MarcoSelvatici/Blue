@@ -31,6 +31,16 @@ let testCasesSKIE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list =
          ni",
     Ok (Literal (IntLit 20));
     "Curried Lambda", "\xy.42",
+    Ok (FuncApp (Combinator K, Literal (IntLit 42)));
+    "ListMap library function", "let listMap f lst = 
+                                if size lst == 0
+                                then []
+                                else append (f (head lst))
+                                     (listMap f (tail lst))
+                                fi
+                              in 
+                              listMap (\x.x+1)[1, 2, 3]
+                              ni",
     Ok (FuncApp (Combinator K, Literal (IntLit 42)))
 ]
   
