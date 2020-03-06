@@ -25,8 +25,8 @@ let testCasesLexer = [
                        let tl = tail lst",
         Ok [KLet; TIdentifier "hd"; KEq; TBuiltInFunc Head; TIdentifier "lst"; KLet;
             TIdentifier "tl"; KEq; TBuiltInFunc Tail; TIdentifier "lst"];
-    "Row count and comments functionalities", "let hd = head lst
-                                               //dfmdsfodpmfdpfmdpfmdsfmdpmfodsfmpdsfmdsomf;;
+    "Row count and comments functionalities", "let hd = head lst#hi
+                                               #dfmdsfodpmfdpfmdpfmdsfmdpmfodsfmpdsfmdsomf;;
                                                (* 23-94\\\\\\qwlpewwewewpelq[eweeeeee
                                   
                                                fjdkfj #### sdsd### MULTILINE COMMENT ### 

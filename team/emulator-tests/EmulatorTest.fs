@@ -13,7 +13,8 @@ open BetaEngine
 open TestBetaEngine
 open SKIRuntime
 open TestSKIRuntime
-open E2ETest
+open E2EBetaTest
+open E2ESKITest
  
 
 // Unit testing.
@@ -30,7 +31,9 @@ let betaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngi
 [<Tests>]
 let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCasesSKIRuntime
 [<Tests>]
-let e2eTests = e2eCreateTestList "E2E Tests" combinatorRuntime parse tokeniseT3 testCasesE2E
+let e2eSKITests = e2eCreateTestList "E2E SKI Tests" combinatorRuntime typeCheck parse tokeniseT3 testCasesSKIE2E
+[<Tests>]
+let e2eBetaTests = e2eCreateTestList "E2E Beta Tests" runAst typeCheck parse tokeniseT3 testCasesBetaE2E
 
 
 

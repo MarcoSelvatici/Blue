@@ -19,7 +19,8 @@
     <Compile Include="BetaReduction/TestBetaEngine.fs" />
     <Compile Include="SKIReduction/SKICombinator.fs" />
     <Compile Include="SKIReduction/TestSKI.fs" />
-    <Compile Include="E2ETest.fs" />
+    <Compile Include="E2ESKITest.fs" />
+    <Compile Include="E2EBetaTest.fs" />
     <Compile Include="EmulatorTop.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

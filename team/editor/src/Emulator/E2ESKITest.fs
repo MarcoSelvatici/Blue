@@ -1,8 +1,8 @@
-module E2ETest
+module E2ESKITest
 
 open SharedTypes
 
-let testCasesE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list = [
+let testCasesSKIE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list = [
     "Small program", "\x.\y. y x",
         Ok (FuncApp (
                 FuncApp (

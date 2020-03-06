@@ -15,20 +15,23 @@ let createTestList descr f testCases =
     testList descr <| List.map (testFunction f) testCases
 
 // Helper function for e2e testing. 
-let e2eTest runtime parse lex testData =
+let e2eTest runtime typecheck parse lex testData =
     let descr, inp, expectedOut = testData
     testCase descr <| fun () ->
         match lex inp with
         | Ok toklst -> 
             match parse toklst with 
-            | Ok ast -> 
-                Expect.equal (runtime ast) expectedOut ""
+            | Ok ast ->
+                match typecheck ast with
+                | Ok _ ->  
+                    Expect.equal (runtime ast) expectedOut ""
+                | Error err -> Expect.equal (Error err) expectedOut ""
             | Error err -> Expect.equal (Error err) expectedOut ""
         | Error err -> Expect.equal (Error err) expectedOut ""
 
 /// Create an expecto testList for e2e testing.
-let e2eCreateTestList descr runtime parse lex testCases =
-    testList descr <| List.map (e2eTest runtime parse lex) testCases
+let e2eCreateTestList descr runtime typecheck parse lex testCases =
+    testList descr <| List.map (e2eTest runtime typecheck parse lex) testCases
 
 /// Run all the previously defined tests.
 let runTests () =

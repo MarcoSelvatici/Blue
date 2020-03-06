@@ -18,7 +18,8 @@
     <Compile Include="../editor/src/Emulator/BetaReduction/TestBetaEngine.fs" />
     <Compile Include="../editor/src/Emulator/SKIReduction/SKICombinator.fs" />
     <Compile Include="../editor/src/Emulator/SKIReduction/TestSKI.fs" />
-    <Compile Include="../editor/src/Emulator/E2ETest.fs" />
+    <Compile Include="../editor/src/Emulator/E2EBetaTest.fs" />
+    <Compile Include="../editor/src/Emulator/E2ESKITest.fs" />
     <Compile Include="EmulatorTest.fs" />
   </ItemGroup>
   <ItemGroup>
