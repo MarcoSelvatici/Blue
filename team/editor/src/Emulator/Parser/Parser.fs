@@ -128,6 +128,15 @@ let rec buildFuncAppTree (itemsList : Ast list): Result<Ast, string> =
             [Plus; Minus]; // Additive.
             [Mult; Div]; // Multiplicative.
         ]
+
+    let tryMatchUnaryMinus lhs rhs =
+        // If the operator is a minus with nothing on its left, it may
+        // be an unary minus.
+        match lhs, rhs with
+        | [], BuiltInFunc Minus :: Literal (IntLit n) :: rhs' ->
+            [Literal (IntLit -n)], rhs'
+        | _ -> lhs, rhs
+
     match itemsList with
     | [] -> Error "failed: buildFuncAppTree. Expected expression"
     | [item] -> Ok item
@@ -136,9 +145,13 @@ let rec buildFuncAppTree (itemsList : Ast list): Result<Ast, string> =
         | Some (idx, op) ->
             // Split at the operator and recur on both sides.
             let lhs, rhs = List.splitAt idx itemsList
-            match buildFuncAppTree lhs, buildFuncAppTree (List.tail rhs) with
-            | Error msg, _ | _, Error msg -> Error msg
-            | Ok lTree, Ok rTree -> Ok <| FuncApp (FuncApp (op, lTree), rTree)
+            let lhs, rhs = tryMatchUnaryMinus lhs rhs
+            match lhs, rhs with
+            | [Literal (IntLit neg)], [] -> Ok <| Literal (IntLit neg) // Only one negative IntLit.
+            | _ -> // Normal binary op.
+                match buildFuncAppTree lhs, buildFuncAppTree (List.tail rhs) with
+                | Error msg, _ | _, Error msg -> Error msg
+                | Ok lTree, Ok rTree -> Ok <| FuncApp (FuncApp (op, lTree), rTree)
         | None ->
             // No arithmetic operator was found, use normal funcApp associativity.
             let itemsList', lastEl = List.splitAt (itemsList.Length - 1) itemsList

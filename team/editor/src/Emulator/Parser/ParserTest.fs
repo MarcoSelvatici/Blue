@@ -21,6 +21,10 @@ let testCasesParser = [
         Ok (Identifier "a");
     "Simple literal", [TLiteral (IntLit 42)],
         Ok (Literal (IntLit 42));
+    "Negative literal", [TBuiltInFunc Minus; TLiteral (IntLit 42)],
+        Ok (Literal (IntLit -42));
+    "Negative bracketed literal", [KOpenRound; TBuiltInFunc Minus; TLiteral (IntLit 42); KCloseRound],
+        Ok (Literal (IntLit -42));
     "Double literal", [TLiteral (IntLit 42); TLiteral (IntLit 3)],
         Ok (FuncApp (Literal (IntLit 42), Literal (IntLit 3)));
     "Simple roundExp", [KOpenRound; TLiteral (IntLit 42); KCloseRound],
@@ -91,8 +95,14 @@ let testCasesParser = [
         Ok (FuncApp ( FuncApp (BuiltInFunc And, FuncApp ( FuncApp (BuiltInFunc Less, Literal (IntLit 1)), Literal (IntLit 2))), FuncApp ( FuncApp (BuiltInFunc GreaterEq, Literal (IntLit 3)), Literal (IntLit 4))));
     "Simple arithmetic 1-2+3", [TLiteral (IntLit 1); TBuiltInFunc Minus; TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3)],
         Ok (FuncApp ( FuncApp (BuiltInFunc Minus, Literal (IntLit 1)), FuncApp ( FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3))));
+    "Simple arithmetic with negative -1-2+3", [TBuiltInFunc Minus; TLiteral (IntLit 1); TBuiltInFunc Minus; TLiteral (IntLit 2); TBuiltInFunc Plus; TLiteral (IntLit 3)],
+        Ok (FuncApp ( FuncApp (BuiltInFunc Minus, Literal (IntLit -1)), FuncApp ( FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3))));
     "Simple arithmetic 1=2<=3", [TLiteral (IntLit 1); TBuiltInFunc Equal; TLiteral (IntLit 2); TBuiltInFunc LessEq; TLiteral (IntLit 3)],
         Ok (FuncApp ( FuncApp (BuiltInFunc Equal, Literal (IntLit 1)), FuncApp (FuncApp (BuiltInFunc LessEq, Literal (IntLit 2)), Literal (IntLit 3))));
+    "Simple arithmetic 1=2<=-3", [TLiteral (IntLit 1); TBuiltInFunc Equal; TLiteral (IntLit 2); TBuiltInFunc LessEq; TBuiltInFunc Minus; TLiteral (IntLit 3)],
+        Ok (FuncApp ( FuncApp (BuiltInFunc Equal, Literal (IntLit 1)), FuncApp (FuncApp (BuiltInFunc LessEq, Literal (IntLit 2)), Literal (IntLit -3))));
+    "Simple arithmetic -1=-2<=-3", [TBuiltInFunc Minus; TLiteral (IntLit 1); TBuiltInFunc Equal; TBuiltInFunc Minus; TLiteral (IntLit 2); TBuiltInFunc LessEq; TBuiltInFunc Minus; TLiteral (IntLit 3)],
+        Ok (FuncApp ( FuncApp (BuiltInFunc Equal, Literal (IntLit -1)), FuncApp (FuncApp (BuiltInFunc LessEq, Literal (IntLit -2)), Literal (IntLit -3))));
     "Incomplete arithmetic 1+", [TLiteral (IntLit 1); TBuiltInFunc Plus],
         buildErrorManually "failed: buildFuncAppTree. Expected expression" "" [] [];
     "Incomplete arithmetic /1", [TBuiltInFunc Div; TLiteral (IntLit 1)],
