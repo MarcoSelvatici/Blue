@@ -3,19 +3,26 @@ open SharedTypes
 
 let buildError s = s |> PreprocessorError |> Error
 
+// TODO: extend support to windows
+let isEndline = (=) '\n'
+let addLine s1 s2 = s1 + "\n" + s2
+
 /////////
-let libraries = 
+let libraries = //: Map<string,(string*int)>= 
     [ 
     "List",
-    ("let listMap f lst =
+    ["let listMap f lst =
     if size lst == 0
     then []
     else append (f (head lst)) (listMap f (tail lst))
-    fi in", 1);
+    fi in";
+    "let inc i = i + 1 in"
+    ];
 
     "Test",
-    ("let test = 0 in",1);
+    ["let test = 0 in"];
     ]
+    |> List.map (fun (n,l) -> (n, (List.fold addLine "" l, List.length l)))
     |> Map
 
 let findLib k = 
@@ -27,9 +34,7 @@ let findLib k =
 /////////
 
 
-// TODO: extend support to windows
-let isEndline = (=) '\n'
-let addLine s1 s2 = s1 + "\n" + s2
+
 
 let charToString chrLst = chrLst |> (List.map string) |> List.fold (+) ""
 
