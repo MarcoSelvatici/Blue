@@ -8,7 +8,7 @@ let isEndline = (=) '\n'
 let addLine s1 s2 = s1 + "\n" + s2
 
 /////////
-let libraries = //: Map<string,(string*int)>= 
+let libraries  =
     [ 
     "List",
     ["let listMap f lst =
@@ -60,9 +60,7 @@ let libraries = //: Map<string,(string*int)>=
           then rhs
           else append (head lhs) (listConcat (tail lhs) rhs)
           fi
-        in
-          listConcat [\"a\"] [\"b\", \"c\", \"d\"]
-        ni";
+        in";
         "let listReverse lst = 
           let reverser lst revlst  = 
             if size lst == 0
@@ -73,7 +71,6 @@ let libraries = //: Map<string,(string*int)>=
             reverser lst []
           ni
         in";
-      "let inc i = i + 1 in";
     ];
 
     "Test",
