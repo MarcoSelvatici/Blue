@@ -16,7 +16,64 @@ let libraries = //: Map<string,(string*int)>=
     then []
     else append (f (head lst)) (listMap f (tail lst))
     fi in";
-    "let inc i = i + 1 in"
+    "let listFold f acc lst = 
+        if size lst == 0
+        then acc
+        else listFold f (f acc (head lst)) (tail lst)
+        fi
+     in";
+    "let listSplitAt idx lst = 
+        let splitter lhs rhs idx =
+          if size lhs == idx || size rhs == 0
+          then [lhs, rhs]
+          else splitter (append (head rhs) lhs) (tail rhs) idx
+          fi
+        in 
+        splitter [] lst idx
+        ni
+     in";
+     "let listFindInt int lst = 
+        if size lst == 0
+        then false
+        else 
+          if (head lst) == int
+          then true 
+          else listFindInt int (tail lst)
+          fi
+        fi
+      in";
+      "let listFind f int lst = 
+         if size lst == 0
+         then false
+         else 
+           if f (head lst) int
+           then true 
+           else listFind f int (tail lst)
+           fi
+         fi
+      in";
+      "let StringLength str = 
+         size (explode str)
+       in";
+       "let listConcat lhs rhs = 
+          if size lhs == 0
+          then rhs
+          else append (head lhs) (listConcat (tail lhs) rhs)
+          fi
+        in
+          listConcat [\"a\"] [\"b\", \"c\", \"d\"]
+        ni";
+        "let listReverse lst = 
+          let reverser lst revlst  = 
+            if size lst == 0
+            then revlst
+            else reverser (tail lst) (append (head lst) revlst)
+            fi
+          in
+            reverser lst []
+          ni
+        in";
+      "let inc i = i + 1 in";
     ];
 
     "Test",

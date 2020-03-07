@@ -102,6 +102,158 @@ let testCasesBetaE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list 
                           listFold(\x y.x/y) 120 [4, 3, 2]
                       ni",
     Ok  (Literal (IntLit 5));
+    "ListSplitAt idx ", "let listSplitAt idx lst = 
+                          let splitter lhs rhs idx =
+                              if size lhs == idx || size rhs == 0
+                              then [lhs, rhs]
+                              else splitter (append (head rhs) lhs) (tail rhs) idx
+                              fi
+                          in 
+                          splitter [] lst idx
+                          ni
+                        in
+                        listSplitAt 1 [1,2,3]
+                        ni",
+    Ok (SeqExp
+       (SeqExp (Literal (IntLit 1),SeqExp (Null,Null)),
+        SeqExp
+          (SeqExp
+            (Literal (IntLit 2),SeqExp (Literal (IntLit 3),SeqExp (Null,Null))),
+          SeqExp (Null,Null))));
+    "ListSplitAt idx2", "let listSplitAt idx lst = 
+                          let splitter lhs rhs idx =
+                              if size lhs == idx || size rhs == 0
+                              then [lhs, rhs]
+                              else splitter (append (head rhs) lhs) (tail rhs) idx
+                              fi
+                          in 
+                          splitter [] lst idx
+                          ni
+                        in
+                        listSplitAt -2 [1,2,3,-2,14,11,47]
+                        ni",
+    Ok (SeqExp
+       (SeqExp (Literal (IntLit 1),SeqExp (Null,Null)),
+        SeqExp
+          (SeqExp
+            (Literal (IntLit 2),SeqExp (Literal (IntLit 3),SeqExp (Null,Null))),
+          SeqExp (Null,Null))));
+    "ListFind Int true", "let equalTo int1 int2 =
+                            int1==int2
+                          in
+                            let listFind f int lst = 
+                                if size lst == 0
+                                then false
+                                else 
+                                  if f (head lst) int
+                                  then true 
+                                  else listFind f int (tail lst)
+                                  fi
+                                fi
+                            in
+                              listFind equalTo 2 [1, 2, 3, 4]
+                            ni
+                          ni",
+    Ok (Literal (BoolLit true));
+    "ListFind Int false", "let equalTo int1 int2 =
+                             int1==int2
+                           in
+                             let listFind f int lst = 
+                                 if size lst == 0
+                                 then false
+                                 else 
+                                   if f (head lst) int
+                                   then true 
+                                   else listFind f int (tail lst)
+                                   fi
+                                 fi
+                             in
+                               listFind equalTo 5 [1, 2, 3, 4]
+                             ni
+                           ni",
+    Ok (Literal (BoolLit false));
+    "ListFind Str true", "let listFind f int lst = 
+                            if size lst == 0
+                            then false
+                            else 
+                              if f (head lst) int
+                              then true 
+                              else listFind f int (tail lst)
+                              fi
+                            fi
+                          in
+                            listFind strEq \"Fabio\" [\"Fabio\", \"Marco\", \"Oliver\", \"Szymon\"]
+                          ni",
+    Ok (Literal (BoolLit true));
+    "ListFind Str false", "let listFind f int lst = 
+                             if size lst == 0
+                             then false
+                             else 
+                               if f (head lst) int
+                               then true 
+                               else listFind f int (tail lst)
+                               fi
+                             fi
+                           in
+                             listFind strEq \"John\" [\"Fabio\", \"Marco\", \"Oliver\", \"Szymon\"]
+                           ni",
+    Ok (Literal (BoolLit false));
+    "StringLength1", "let StringLength str = 
+                        size (explode str)
+                      in
+                        StringLength \"1sdsadsvfe\"
+                      ni",
+    Ok (Literal (IntLit 10));
+    "ListConcat ", "let listConcat lhs rhs = 
+                      if size lhs == 0
+                      then rhs
+                      else append (head lhs) (listConcat (tail lhs) rhs)
+                      fi
+                    in
+                      listConcat [\"a\"] [\"b\", \"c\", \"d\"]
+                    ni",
+    Ok
+      (SeqExp
+         (Literal (StringLit "a"),
+          SeqExp
+            (Literal (StringLit "b"),
+             SeqExp
+               (Literal (StringLit "c"),
+                SeqExp (Literal (StringLit "d"),SeqExp (Null,Null))))));
+    "StringConcat ", "let listConcat lhs rhs = 
+                        if size lhs == 0
+                        then rhs
+                        else append (head lhs) (listConcat (tail lhs) rhs)
+                        fi
+                      in
+                        let stringConcat lhs rhs = 
+                            if size (explode lhs) == 0
+                            then rhs
+                            else implode (listConcat (explode lhs) (explode rhs))
+                            fi
+                        in 
+                            stringConcat \"abc\" \"def\"
+                        ni
+                      ni",
+    Ok (Literal (StringLit "abcdef"));
+    "ListReverse ", "let listReverse lst = 
+                        let reverser lst revlst  = 
+                          if size lst == 0
+                          then revlst
+                          else reverser (tail lst) (append (head lst) revlst)
+                          fi
+                        in
+                          reverser lst []
+                        ni
+                      in
+                        listReverse [\"a\", \"bcd\", \"e\"]
+                      ni",
+    Ok
+      (SeqExp
+         (Literal (StringLit "e"),
+          SeqExp
+            (Literal (StringLit "bcd"),
+                SeqExp (Literal (StringLit "a"),SeqExp (Null,Null)))));
 
 ]
   
