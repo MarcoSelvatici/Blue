@@ -3,6 +3,8 @@
 module SharedTypes
 
 type BuiltInFunc =
+    // side-effects
+    | Print
     // Builtin with no special treatment.
     | Not
     | Head

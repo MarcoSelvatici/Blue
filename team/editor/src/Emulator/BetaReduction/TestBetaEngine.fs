@@ -188,6 +188,9 @@ let testOk : TestInfo=
     "Explode -> Append -> Implode", "Explode \"ongoozle\" |> Append \"g\" |> Implode",
     FbuiltIn Explode (stringL "ongoozle") |> F2builtIn Append (stringL "g") |> FbuiltIn Implode , stringL "gongoozle";
 
+    // print
+    "print","print \"testing print function\"", FbuiltIn Print (stringL "testing print function"), (stringL "testing print function");
+
     // lists
     "Head", "Head [1 2 3] -> 1", FbuiltIn Head (buildList [intL 1;intL 2;intL 3]), intL(1);
     "Head with idns", "Head [c c] -> c",

@@ -227,9 +227,14 @@ let BuiltIn =
          ];
 
          mapInputOutputUnary (|STRLIST|_|) (StringLit>>Literal)
-          [ // [String] -> String 
+         [ // [String] -> String 
             Implode, Seq.fold (+) ""
-          ];
+         ];
+
+        mapInputOutputUnary (fun x -> Some x) id
+         [
+            Print, (fun x -> printfn "%A" x; x);
+         ];
 
     ] |> List.concat |> Map
 
