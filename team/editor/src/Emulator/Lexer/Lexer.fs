@@ -144,6 +144,7 @@ let tokeniseT3 (str: string) =
         // Isolate newline case just for row counting purposes.
         | '\n'::tl -> tokenise (rowCount + 1) tl
         | '\r'::'\n'::tl -> tokenise (rowCount + 1) tl
+        | '\r'::tl -> tokenise (rowCount + 1) tl
         // Discard all spaces and tabs.
         | currChar::tl  when List.contains currChar ([' ';'\t';'\v']) -> tokenise rowCount tl
         // Number matching.

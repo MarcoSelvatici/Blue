@@ -12,6 +12,7 @@ let testCasesPreprocessor =
         "Import test multiline", "import Test\na+3", Ok "let test = 0 in\na+3\nni ";
         "Import test emptyline", "\n\nimport Test\nNull\n", Ok "\n\nlet test = 0 in\nNull\n\nni ";
 
+(*
         "Import list", "import List", 
         Ok "let listMap f lst =
     if size lst == 0
@@ -20,4 +21,5 @@ let testCasesPreprocessor =
     fi in\nni ";
 
         "Import error", "import test", "\'import test\' error\nno such library\ndid you mean [\"List\"; \"Test\"]" |> PreprocessorError |> Error;
+*)  
     ]
