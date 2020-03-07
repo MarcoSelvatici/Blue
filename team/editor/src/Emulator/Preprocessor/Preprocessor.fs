@@ -22,16 +22,6 @@ let libraries  =
         else listFold f (f acc (head lst)) (tail lst)
         fi
      in";
-    "let listSplitAt idx lst = 
-        let splitter lhs rhs idx =
-          if size lhs == idx || size rhs == 0
-          then [lhs, rhs]
-          else splitter (append (head rhs) lhs) (tail rhs) idx
-          fi
-        in 
-        splitter [] lst idx
-        ni
-     in";
      "let listFindInt int lst = 
         if size lst == 0
         then false
@@ -71,6 +61,36 @@ let libraries  =
             reverser lst []
           ni
         in";
+        "let listSplitAt idx lst = 
+        let splitter lhs rhs idx =
+          if size lhs == idx || size rhs == 0
+          then [lhs, rhs]
+          else splitter (append (head rhs) lhs) (tail rhs) idx
+          fi
+        in 
+        let halfReversed = splitter [] lst idx in
+        (\\ a b. [a , b] ) (listReverse (head halfReversed)) (head (tail halfReversed))
+        ni
+        ni
+     in";
+     "let listSort f l = 
+      let half l = listSplitAt (size l / 2) l in
+      let merge la lb = 
+      if size la == 0 then lb else
+      if size lb == 0 then la else
+      if f (head la)  (head lb)
+      then append (head la) (merge (tail la) lb)
+      else append (head lb) (merge la (tail lb))
+      fi fi fi
+      in
+      if size l <= 1 then l else 
+      let halfed = half l in 
+      let left = head halfed in
+      let right = head (tail halfed) in 
+      merge (listSort f left) (listSort f right)
+      ni ni ni fi ni ni
+      in
+     "
     ];
 
     "Test",
