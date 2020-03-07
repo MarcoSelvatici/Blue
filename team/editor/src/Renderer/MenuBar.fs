@@ -59,8 +59,8 @@ let makePrefsWindow() =
 
 /// Load the node Buffer into the specified tab
 let loadFileIntoTab tId (fileData : Node.Buffer.Buffer) =
-    if currentFileTabId = tId then
-        Integration.resetEmulator()
+    //if currentFileTabId = tId then
+    //    Integration.resetEmulator()
     let editor = editors.[tId]
     editor?setValue (fileData.toString ("utf8")) |> ignore
     setTabSaved tId
