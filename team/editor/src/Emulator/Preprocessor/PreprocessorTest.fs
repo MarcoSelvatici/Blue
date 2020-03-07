@@ -8,9 +8,9 @@ let testCasesPreprocessor =
         "No import multiline", "a\nb\nc\nd", Ok "a\nb\nc\nd\n";
         "No import emptyline", "l1\n\nl3", Ok "l1\n\nl3\n";
         
-        "Import test", "import Test", Ok "let test = 0 in\nni ";
-        "Import test multiline", "import Test\na+3", Ok "let test = 0 in\na+3\nni ";
-        "Import test emptyline", "\n\nimport Test\nNull\n", Ok "\n\nlet test = 0 in\nNull\n\nni ";
+        "Import test", "import Test", Ok "\nlet test = 0 in\nni ";
+        "Import test multiline", "import Test\na+3", Ok "\nlet test = 0 in\na+3\nni ";
+        "Import test emptyline", "\n\nimport Test\nNull\n", Ok "\n\n\nlet test = 0 in\nNull\n\nni ";
 
 (*
         "Import list", "import List", 
