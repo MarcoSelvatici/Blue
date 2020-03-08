@@ -16,27 +16,27 @@ let testCasesTypeChecker = [
     "Simple if", IfExp (Literal (BoolLit true), Literal (IntLit 1), Literal (IntLit 2)),
         Ok (Base Int);
     "Simple if mismatch", IfExp (Literal (BoolLit true), Literal (StringLit "a"), Literal (IntLit 2)),
-        buildTypeCheckerError "Types Base String and Base Int are not compatable";
+        buildTypeCheckerError "Types String and Int are not compatable";
     "Simple if non-bool", IfExp (Literal (IntLit 1), Literal (StringLit "a"), Literal (StringLit "b")),
-        buildTypeCheckerError "Types Base Int and Base Bool are not compatable";
+        buildTypeCheckerError "Types Int and Bool are not compatable";
     "Nested if", IfExp (Literal (BoolLit false), IfExp (Literal (BoolLit true), Literal (StringLit "x"), Literal (StringLit "y")), Literal (StringLit "a")),
         Ok (Base String);
     "Nested if mismatch", IfExp (Literal (BoolLit false), IfExp (Literal (BoolLit true), Literal (IntLit 3), Literal (IntLit 4)), Literal (StringLit "a")),
-        buildTypeCheckerError "Types Base Int and Base String are not compatable";
+        buildTypeCheckerError "Types Int and String are not compatable";
     "Plus", FuncApp (FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (IntLit 3)),
         Ok (Base Int);
     "Plus mismatch", FuncApp (FuncApp (BuiltInFunc Plus, Literal (IntLit 2)), Literal (BoolLit true)),
-        buildTypeCheckerError "Types Base Int and Base Bool are not compatable";
+        buildTypeCheckerError "Types Int and Bool are not compatable";
     "Plus bools", FuncApp (FuncApp (BuiltInFunc Plus, Literal (BoolLit false)), Literal (BoolLit true)),
-        buildTypeCheckerError "Types Base Int and Base Bool are not compatable";
+        buildTypeCheckerError "Types Int and Bool are not compatable";
     "Greater than", FuncApp (FuncApp (BuiltInFunc Greater, Literal (IntLit 2)), Literal (IntLit 3)),
         Ok (Base Bool);
     "Less than mismatch", FuncApp (FuncApp (BuiltInFunc Less, Literal (BoolLit false)), Literal (IntLit 3)),
-        buildTypeCheckerError "Types Base Int and Base Bool are not compatable";
+        buildTypeCheckerError "Types Int and Bool are not compatable";
     "Logical and", FuncApp (FuncApp (BuiltInFunc And, Literal (BoolLit false)), Literal (BoolLit true)),
         Ok (Base Bool);
     "Logical or mismatch", FuncApp (FuncApp (BuiltInFunc Or, Literal (BoolLit false)), Literal (IntLit 3)),
-        buildTypeCheckerError "Types Base Bool and Base Int are not compatable";
+        buildTypeCheckerError "Types Bool and Int are not compatable";
     "Complex if exp `if 2<3 then 2-3 else 2/3`", IfExp (FuncApp (FuncApp (BuiltInFunc Less, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Minus, Literal (IntLit 2)), Literal (IntLit 3)), FuncApp (FuncApp (BuiltInFunc Div, Literal (IntLit 2)), Literal (IntLit 3))),
         Ok (Base Int);
     "Simple lambda", buildLambda "x" (Identifier "x"),
@@ -56,7 +56,7 @@ let testCasesTypeChecker = [
     "Simple partial application bool (\x. \y. y<x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Less, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
         Ok (Fun(Base Int, Base Bool));
     "Simple partial application mismatch (\x. \y. y && x) 2", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc And, Identifier "y"), Identifier "x"))), Literal(IntLit 2)),
-        buildTypeCheckerError "Types Base Bool and Base Int are not compatable";
+        buildTypeCheckerError "Types Bool and Int are not compatable";
     "Simple partial application not bound (\x. \y. y*x) x", FuncApp (buildLambda "x" (buildLambda "y" (FuncApp (FuncApp (BuiltInFunc Mult, Identifier "y"), Identifier "x"))), Identifier "x"),
         buildTypeCheckerError "Identifier x is not bound";
     "Simple `let x = 1 in x`", FuncDefExp {FuncName="x"; FuncBody=Literal (IntLit 1); Rest=Identifier "x"},
@@ -120,13 +120,13 @@ let testCasesTypeChecker = [
     "Applied Append `append true [1]`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), SeqExp (Literal (IntLit 4), EmptySeq)), 
         Ok (Pair (Base Bool, Pair (Base Int, Pair (Gen 5, Gen 6))));
     "Head not list `head 1`", FuncApp (BuiltInFunc Head, Literal (IntLit 1)),
-        buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Base Int));
+        buildTypeCheckerError "Types [] and Int are not compatable";
     "Tail not list `tail \x.x`", FuncApp (BuiltInFunc Tail, buildLambda "x" (Identifier "x")),
-        buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Fun (Gen 3, Gen 3)));
+        buildTypeCheckerError "Types [] and 'a -> 'a are not compatable";
     "Size not list `size 4`", FuncApp (BuiltInFunc Head, Literal (IntLit 2)),
-        buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 1, Gen 2)) (Base Int));
+        buildTypeCheckerError "Types [] and Int are not compatable";
     "Append not list `append true 1`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), Literal (IntLit 4)),
-        buildTypeCheckerError (sprintf "Types %A and %A are not compatable" (Pair (Gen 2, Gen 3)) (Base Int));
+        buildTypeCheckerError "Types [] and Int are not compatable";
     "Head of empty `head []`", FuncApp (BuiltInFunc Head, EmptySeq),
         Ok (Gen 1);
     "Tail of empty `tail []`", FuncApp (BuiltInFunc Tail, EmptySeq),
@@ -156,7 +156,9 @@ let testCasesTypeChecker = [
     "If then else empty list", IfExp(Literal (BoolLit true), EmptySeq, EmptySeq),
         Ok (Pair(Gen 0, Gen 1));
     "Recursion `let x i = x (tail i) in x ni", FuncDefExp {FuncName = "x"; FuncBody = LambdaExp {LambdaParam = "i"; LambdaBody = FuncApp (Identifier "x",FuncApp (BuiltInFunc Tail, Identifier "i"))}; Rest = (Identifier "x")},
-       Ok (Fun (Pair (Gen 4,Gen 5),Gen 2))
+       Ok (Fun (Pair (Gen 4,Gen 5),Gen 2));
+    "Head in function `let a lst = (head lst) + 1 in a ni`", buildCarriedFunc ["a"; "lst"] (FuncApp (FuncApp (BuiltInFunc Plus, FuncApp (BuiltInFunc Head, Identifier "lst")), Literal (IntLit 1))) (Identifier "a"),
+        Ok (Fun (Pair (Base Int, Gen 6), Base Int));
 ]
 
 let testCasesPrettyPrintType = [
@@ -184,4 +186,6 @@ let testCasesPrettyPrintType = [
         "[[]]";
     "Simple Gen", Gen 0,
         "'a";
+    "Complex Gen `let a lst = (head lst) + 1 in a ni`", Fun (Pair (Base Int, Gen 6), Base Int),
+        "[Int, 'a] -> Int";
 ]

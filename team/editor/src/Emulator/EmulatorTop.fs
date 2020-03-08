@@ -14,17 +14,7 @@ open BetaEngine
 open TestBetaEngine
 open SKIRuntime
 open TestSKIRuntime
-
-//[<Tests>]
-//let lexerTest = createTestList "Lexer Tests" tokeniseT3 testCasesLexer
-//[<Tests>]
-//let parserTest = createTestList "Parser Tests" parse testCasesParser
-//[<Tests>]
-//let typeCheckerTest = createTestList "Type Checker Tests" typeCheck testCasesTypeChecker
-//[<Tests>]
-//let betaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngine
-//[<Tests>]
-//let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCasesSKIRuntime
+open SharedTypes
 
 let maybeTypeCheck checkTypes ast =
     let printAndReturnUnchanged t =
@@ -53,15 +43,12 @@ let getAst input =
     |> tokeniseT3
     |> Result.bind parse
 
-let getType input =
+let getType input : string =
     input
     |> tokeniseT3
     |> Result.bind parse
     |> Result.bind typeCheck
-
-//[<EntryPoint>]
-//let main argv =
-//    runTests()
-//    //end2end true "(\x.x+10) 12"
-//    Console.ReadKey() |> ignore
-//    0
+    |> function
+       | Ok t -> type2String t
+       | Error (TypeCheckerError e) -> sprintf "%A" e
+       | Error e -> "Build failed before type checker."

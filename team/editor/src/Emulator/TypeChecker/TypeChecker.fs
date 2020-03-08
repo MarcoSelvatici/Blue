@@ -57,7 +57,10 @@ let type2String t =
                 let lhs, genCtx = print head genCtx
                 let rhs, genCtx = printPair tail genCtx
                 (lhs + ", " + rhs), genCtx
-            | _ ->  impossible "type2String"
+            | Gen g ->
+                let chr, genCtx = addIfNew g genCtx
+                (sprintf "'%s" chr), genCtx
+            | _ ->  impossible <| sprintf "type2String %A" t
         match t with
         | Base baseT -> (sprintf "%A" baseT), genCtx
         | Gen g ->
@@ -127,7 +130,7 @@ let rec unify t1 t2 : Result<Subst list, string> =
     | t, Gen g | Gen g, t ->
         // Can specialise the generic type g into the type t.
         Ok <| [{wildcard = g; newType = t}]
-    | _ -> Error <| sprintf "Types:\n%s\nand\n%s\nare not compatable" (type2String t1) (type2String t2)
+    | _ -> Error <| sprintf "Types %s and %s are not compatable" (type2String t1) (type2String t2)
 
 /// Apply a given substitution list to a type, and return the resulting type.
 let rec apply subs t =
