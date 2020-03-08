@@ -37,6 +37,47 @@ type Subst = {
 // Helper functions //
 //==================//
 
+/// Pretty print the type.
+let type2String t =
+    let addIfNew (genId : int) genCtx =
+        let genMap, newChar = genCtx
+        match Map.tryFind genId genMap with
+        | Some chr -> string chr, genCtx
+        | None -> // Create new.
+            let genMap = Map.add genId newChar genMap
+            let newChar' = char ((int newChar) + 1)
+            string newChar, (genMap, newChar')
+
+    let rec print t genCtx =
+        let rec printPair t (genCtx : Map<int, char> * char) =
+            match t with
+            | Pair (Gen _, Gen _) -> "", genCtx
+            | Pair (head, Pair (Gen _, Gen _)) -> print head genCtx
+            | Pair (head, tail) ->
+                let lhs, genCtx = print head genCtx
+                let rhs, genCtx = printPair tail genCtx
+                (lhs + ", " + rhs), genCtx
+            | _ ->  impossible "type2String"
+        match t with
+        | Base baseT -> (sprintf "%A" baseT), genCtx
+        | Gen g ->
+            let chr, genCtx = addIfNew g genCtx
+            (sprintf "'%s" chr), genCtx
+        | Fun (t1, t2) ->
+            let lhs, genCtx =
+                match t1 with
+                | Base _ | Gen _ | Pair _ -> print t1 genCtx
+                | _ ->
+                     let str, genCtx = print t1 genCtx
+                     sprintf "(%s)" str, genCtx
+            let rhs, genCtx = print t2 genCtx
+            lhs + " -> " + rhs, genCtx
+        | Pair _ ->
+            let str, genCtx = printPair t genCtx
+            sprintf "[" + str + "]", genCtx
+    let str, _ = print t (Map.empty, 'a')
+    str
+
 /// Return a new Generic identifier, and the updated uid.
 let newGen uid = Gen uid, uid + 1
 
@@ -86,7 +127,7 @@ let rec unify t1 t2 : Result<Subst list, string> =
     | t, Gen g | Gen g, t ->
         // Can specialise the generic type g into the type t.
         Ok <| [{wildcard = g; newType = t}]
-    | _ -> Error <| sprintf "Types %A and %A are not compatable" t1 t2
+    | _ -> Error <| sprintf "Types:\n%s\nand\n%s\nare not compatable" (type2String t1) (type2String t2)
 
 /// Apply a given substitution list to a type, and return the resulting type.
 let rec apply subs t =

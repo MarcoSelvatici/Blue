@@ -27,6 +27,8 @@ let parserTest = createTestList "Parser Tests" parse testCasesParser
 [<Tests>]
 let typeCheckerTest = createTestList "Type Checker Tests" typeCheck testCasesTypeChecker
 [<Tests>]
+let prettyPrintTypeTest = createTestList "Pretty Print Type" type2String testCasesPrettyPrintType
+[<Tests>]
 let betaEngineTest = createTestList "Beta Engine Tests" runAst testCasesBetaEngine
 [<Tests>]
 let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCasesSKIRuntime
@@ -34,11 +36,6 @@ let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCa
 let e2eSKITests = e2eCreateTestList "E2E SKI Tests" combinatorRuntime typeCheck parse tokeniseT3 testCasesSKIE2E
 [<Tests>]
 let e2eBetaTests = e2eCreateTestList "E2E Beta Tests" runAst typeCheck parse tokeniseT3 testCasesBetaE2E
-
-
-
-
-
 
 let print x =
     printfn "%A" x
@@ -53,5 +50,5 @@ let printParsedAst input =
 
 [<EntryPoint>]
 let main argv =
-    runTests()    
+    runTests()
     0

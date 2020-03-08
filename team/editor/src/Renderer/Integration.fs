@@ -9,6 +9,7 @@ open Fable.Core.JsInterop
 open Fable.Import
 
 open EmulatorTop
+open TypeChecker
 open SharedTypes
 
 let resetEmulator() =
@@ -33,16 +34,18 @@ let getProgram () =
     textOfTId currentFileTabId
     |> List.fold (fun r s -> r + s + "\n") ""
 
-
-
-
 /// Top-level simulation execute
 /// If current tab is TB run TB if this is possible
 let runCode () =
     let program = getProgram ()
-    try 
+    try
         let res = end2end currentTypeCheck currentRuntime program
         (getHtml "out-text").innerHTML <-  sprintf "%A" res
+        // TODO (oliver): put this in a window like output
+        match getType program with
+        | Ok t -> showVexAlert <| type2String t
+        | Error e -> showVexAlert <| sprintf "%A" e
+
     with
         // Some of the impossible cases has been triggered, or there was a stack
         // overflow.

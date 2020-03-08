@@ -158,3 +158,30 @@ let testCasesTypeChecker = [
     "Recursion `let x i = x (tail i) in x ni", FuncDefExp {FuncName = "x"; FuncBody = LambdaExp {LambdaParam = "i"; LambdaBody = FuncApp (Identifier "x",FuncApp (BuiltInFunc Tail, Identifier "i"))}; Rest = (Identifier "x")},
        Ok (Fun (Pair (Gen 4,Gen 5),Gen 2))
 ]
+
+let testCasesPrettyPrintType = [
+    "Base type int", Base Int,
+        "Int";
+    "Base type bool", Base Bool,
+        "Bool";
+    "Base type string", Base String,
+        "String";
+    "Simple Fun", Fun (Base Int, Base Int),
+        "Int -> Int";
+    "Double Fun", Fun (Base Int, Fun (Base Bool, Base String)),
+        "Int -> Bool -> String";
+    "Double Fun Left", Fun (Fun (Base Int, Base Bool), Base String),
+        "(Int -> Bool) -> String";
+    "Empty pair", Pair (Gen 0, Gen 1),
+        "[]";
+    "Int List", Pair (Base Int, Pair (Base Int, Pair (Gen 0, Gen 1))),
+        "[Int, Int]";
+    "Mixed List", Pair (Fun (Base Int, Fun (Base Bool, Base String)), Pair (Base String, Pair (Gen 0, Gen 1))),
+        "[Int -> Bool -> String, String]";
+    "Nested List", Pair (Pair (Base Int, Pair (Base Bool, Pair (Gen 0, Gen 1))), Pair (Pair (Base String, Pair (Base String, Pair (Gen 0, Gen 1))), Pair (Gen 0, Gen 1))),
+        "[[Int, Bool], [String, String]]";
+    "Nested Empty", Pair (Pair (Gen 0, Gen 1), Pair (Gen 0, Gen 1)),
+        "[[]]";
+    "Simple Gen", Gen 0,
+        "'a";
+]
