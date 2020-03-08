@@ -130,14 +130,23 @@ let testCasesBetaE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list 
                           splitter [] lst idx
                           ni
                         in
-                        listSplitAt -2 [1,2,3,-2,14,11,47]
+                        listSplitAt (-2) [1,2,3,-2,14,11,47]
                         ni",
     Ok (SeqExp
-       (SeqExp (Literal (IntLit 1),SeqExp (Null,Null)),
-        SeqExp
-          (SeqExp
-            (Literal (IntLit 2),SeqExp (Literal (IntLit 3),SeqExp (Null,Null))),
-          SeqExp (Null,Null))));
+         (SeqExp
+            (Literal (IntLit 1),
+             SeqExp
+               (Literal (IntLit 2),
+                SeqExp
+                  (Literal (IntLit 3),
+                   SeqExp
+                     (Literal (IntLit -2),
+                      SeqExp
+                        (Literal (IntLit 14),
+                         SeqExp
+                           (Literal (IntLit 11),
+                            SeqExp (Literal (IntLit 47),SeqExp (Null,Null)))))))),
+          SeqExp (SeqExp (Null,Null),SeqExp (Null,Null))))
     "ListFind Int true", "let equalTo int1 int2 =
                             int1==int2
                           in

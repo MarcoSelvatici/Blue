@@ -131,4 +131,6 @@ let testCasesParser = [
         Ok (IfExp(Literal (BoolLit true), SeqExp(Identifier "x", EmptySeq), EmptySeq));
     "IfExp with non empty seq 1", [KIf; TLiteral (BoolLit true); KThen; KOpenSquare; TIdentifier "x"; KCloseSquare; KElse; KOpenSquare;  TIdentifier "y"; KCloseSquare; KFi],
         Ok (IfExp(Literal (BoolLit true), SeqExp(Identifier "x", EmptySeq), SeqExp(Identifier "y", EmptySeq)));
+    "Unary minus `listSplitAt (-2) [3,-2,14]`", [TIdentifier "listSplitAt"; KOpenRound; TBuiltInFunc Minus; TLiteral (IntLit 2); KCloseRound; KOpenSquare; TLiteral (IntLit 3); KComma; TBuiltInFunc Minus; TLiteral (IntLit 2); KComma; TLiteral (IntLit 14); KCloseSquare],
+        Ok (FuncApp (FuncApp (Identifier "listSplitAt", Literal (IntLit -2)), SeqExp(Literal (IntLit 3), SeqExp(Literal (IntLit -2), SeqExp(Literal (IntLit 14), EmptySeq)))));
 ]
