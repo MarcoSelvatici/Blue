@@ -66,6 +66,86 @@ let testCasesBetaE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list 
     Ok (SeqExp
             (Literal (IntLit 0),
             SeqExp (Literal (IntLit -1),SeqExp (Literal (IntLit 9),SeqExp (Null,Null)))));
+    "ListReduce add ", "let listReduce f lst =
+                          let reducer f acc lst =
+                              if size lst == 0
+                              then acc
+                              else reducer f (f acc (head lst)) (tail lst)
+                              fi
+                          in
+                              if size lst == 0
+                              then 0 
+                              else reducer f (head lst) (tail lst) 
+                              fi
+                          ni
+                        in
+                          let sum a b = 
+                              a + b
+                          in 
+                              listReduce sum [120, 2, 3, 4]
+                          ni
+                        ni",
+    Ok  (Literal (IntLit 129));
+    "ListReduce sub ", "let listReduce f lst =
+                          let reducer f acc lst =
+                              if size lst == 0
+                              then acc
+                              else reducer f (f acc (head lst)) (tail lst)
+                              fi
+                          in
+                              if size lst == 0
+                              then 0 
+                              else reducer f (head lst) (tail lst) 
+                              fi
+                          ni
+                        in
+                          let sub a b = 
+                              a - b
+                          in 
+                              listReduce sub [120, 2, 3, 4]
+                          ni
+                        ni",
+    Ok  (Literal (IntLit 111));
+    "ListReduce mul ", "let listReduce f lst =
+                          let reducer f acc lst =
+                              if size lst == 0
+                              then acc
+                              else reducer f (f acc (head lst)) (tail lst)
+                              fi
+                          in
+                              if size lst == 0
+                              then 0 
+                              else reducer f (head lst) (tail lst) 
+                              fi
+                          ni
+                        in
+                          let mul a b = 
+                              a * b
+                          in 
+                              listReduce mul [120, 2, 3, 4]
+                          ni
+                        ni",
+    Ok  (Literal (IntLit 2880));
+    "ListReduce div ", "let listReduce f lst =
+                          let reducer f acc lst =
+                              if size lst == 0
+                              then acc
+                              else reducer f (f acc (head lst)) (tail lst)
+                              fi
+                          in
+                              if size lst == 0
+                              then 0 
+                              else reducer f (head lst) (tail lst) 
+                              fi
+                          ni
+                        in
+                          let div a b = 
+                              a / b
+                          in 
+                              listReduce div [120, 2, 3, 4]
+                          ni
+                        ni",
+    Ok  (Literal (IntLit 5));
     "ListFold add ", "let listFold f acc lst = 
                         if size lst == 0
                         then acc
@@ -120,18 +200,31 @@ let testCasesBetaE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list 
           (SeqExp
             (Literal (IntLit 2),SeqExp (Literal (IntLit 3),SeqExp (Null,Null))),
           SeqExp (Null,Null))));
-    "ListSplitAt idx2", "let listSplitAt idx lst = 
-                          let splitter lhs rhs idx =
-                              if size lhs == idx || size rhs == 0
-                              then [lhs, rhs]
-                              else splitter (append (head rhs) lhs) (tail rhs) idx
-                              fi
-                          in 
-                          splitter [] lst idx
-                          ni
-                        in
-                        listSplitAt (-2) [1,2,3,-2,14,11,47]
-                        ni",
+    "ListSplitAt idx2", "let listReverse lst = 
+                           let reverser lst revlst  = 
+                             if size lst == 0
+                             then revlst
+                             else reverser (tail lst) (append (head lst) revlst)
+                             fi
+                           in
+                             reverser lst []
+                           ni
+                         in
+                           let listSplitAt idx lst = 
+                              let splitter lhs rhs idx =
+                                if size lhs == idx || size rhs == 0
+                                then [lhs, rhs]
+                                else splitter (append (head rhs) lhs) (tail rhs) idx
+                                fi
+                              in 
+                                let halfReversed = splitter [] lst idx in
+                                  (\\ a b. [a , b] ) (listReverse (head halfReversed)) (head (tail halfReversed))
+                                ni
+                              ni
+                            in
+                              listSplitAt (-2) [1,2,3,-2,14,11,47]
+                            ni
+                          ni",
     Ok (SeqExp
          (SeqExp
             (Literal (IntLit 1),
@@ -263,6 +356,40 @@ let testCasesBetaE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list 
           SeqExp
             (Literal (StringLit "bcd"),
                 SeqExp (Literal (StringLit "a"),SeqExp (Null,Null)))));
+    "ListItem inbound", "let listItem idx lst =    
+                            let looper step idx lst =  
+                              if size lst == 0
+                              then 0 # undefined behaviour
+                              else
+                                if step == idx
+                                then head lst
+                                else looper (step + 1) idx (tail lst)
+                                fi
+                              fi
+                            in
+                              looper 0 idx lst
+                            ni
+                          in
+                            listItem 1 [\"a\", \"b\", \"c\", \"d\"]
+                          ni",
+    Ok  (Literal (StringLit "b"));
+    "ListItem out of bound", "let listItem idx lst =    
+                                let looper step idx lst =  
+                                  if size lst == 0
+                                  then 0 # undefined behaviour
+                                  else
+                                    if step == idx
+                                    then head lst
+                                    else looper (step + 1) idx (tail lst)
+                                    fi
+                                  fi
+                                in
+                                  looper 0 idx lst
+                                ni
+                              in
+                                listItem 7 [\"a\", \"b\", \"c\", \"d\"]
+                              ni",
+    Ok  (Literal (IntLit 0));
 
 ]
   
