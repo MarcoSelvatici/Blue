@@ -319,7 +319,7 @@ let prettyPrint (inp: Result<Ast,ErrorT>): string =
             sprintf "(\\%A.%A)" name (printFormat exp)
         | SeqExp _ -> "[" + printList inp + "]"
         | FuncApp (x , y) -> "(" + (printFormat  <| x |> sprintf "%A") + " " + (printFormat <| y |> sprintf "%A") + ")" // should this be an error ?
-        | FuncDefExp _ | FuncAppList _ | IdentifierList _ | Token _ | IfExp _ | BuiltInFunc _ -> sprintf "Error: \'%A\' should not be returned by runtime" inp
+        | FuncDefExp _ | FuncAppList _ | IdentifierList _ | Token _ | IfExp _ | BuiltInFunc _ -> toString inp
     match inp with
     | Error x -> toString x
     | Ok x -> printFormat x

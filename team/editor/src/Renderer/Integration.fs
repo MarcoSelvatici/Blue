@@ -15,6 +15,7 @@ open SharedTypes
 let resetEmulator() =
     showVexAlert "Resetting..."
     (getHtml "out-text").innerHTML <- ""
+    (getHtml "out-type").innerHTML <- ""   
     Editors.removeEditorDecorations currentFileTabId
     Editors.enableEditors()
 
@@ -42,7 +43,8 @@ let runCode () =
         let res = end2end currentTypeCheck currentRuntime program
         (getHtml "out-text").innerHTML <-  sprintf "%A" res
         // TODO (oliver): put this in a window like output
-        showVexAlert <| getType program
+        (getHtml "out-type").innerHTML <- getType program
+        
     with
         // Some of the impossible cases has been triggered, or there was a stack
         // overflow.

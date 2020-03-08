@@ -153,11 +153,18 @@
     top: calc(25px + var(--header-height));
     padding-top: 5px;
     left: calc( 100vw - var(--dashboard-width) );
-    overflow-y: auto;
-    height: calc( 100vh - (44px + var(--header-height)));
+    height: calc( 100vh - ( var(--header-height)));
     width: var(--dashboard-width);
     background-color: lightgrey;
-    padding-bottom: 30px; /* Allow scrolling slightly beyond the end */
+    padding-bottom: 1px; /* Allow scrolling slightly beyond the end */
+}
+
+.top {
+    height: 60%;
+}
+
+.bottom {
+    height: 40%;
 }
 
 .invisible {
