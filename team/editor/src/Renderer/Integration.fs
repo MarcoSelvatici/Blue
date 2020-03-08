@@ -13,7 +13,7 @@ open TypeChecker
 open SharedTypes
 
 let resetEmulator() =
-    showVexAlert "Resetting..."
+    //showVexAlert "Resetting..."
     (getHtml "out-text").innerHTML <- ""
     (getHtml "out-type").innerHTML <- ""   
     Editors.removeEditorDecorations currentFileTabId

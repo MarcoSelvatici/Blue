@@ -128,7 +128,7 @@ type ErrorT =
 type Printer() =
     static let mutable outBuffer = ""
     static member Print s =
-        outBuffer <- outBuffer + s
+        outBuffer <- outBuffer + "\n" + s
     static member ReturnClear =
         let ret = outBuffer
         outBuffer <- ""
