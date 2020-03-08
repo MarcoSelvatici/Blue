@@ -49,18 +49,6 @@ let type2String t =
             string newChar, (genMap, newChar')
 
     let rec print t genCtx =
-        let rec printPair t (genCtx : Map<int, char> * char) =
-            match t with
-            | Pair (Gen _, Gen _) -> "", genCtx
-            | Pair (head, Pair (Gen _, Gen _)) -> print head genCtx
-            | Pair (head, tail) ->
-                let lhs, genCtx = print head genCtx
-                let rhs, genCtx = printPair tail genCtx
-                (lhs + ", " + rhs), genCtx
-            | Gen g ->
-                let chr, genCtx = addIfNew g genCtx
-                (sprintf "'%s" chr), genCtx
-            | _ ->  impossible <| sprintf "type2String %A" t
         match t with
         | Base baseT -> (sprintf "%A" baseT), genCtx
         | Gen g ->
@@ -75,9 +63,7 @@ let type2String t =
                      sprintf "(%s)" str, genCtx
             let rhs, genCtx = print t2 genCtx
             lhs + " -> " + rhs, genCtx
-        | Pair _ ->
-            let str, genCtx = printPair t genCtx
-            sprintf "[" + str + "]", genCtx
+        | Pair _ -> "seq", genCtx
     let str, _ = print t (Map.empty, 'a')
     str
 

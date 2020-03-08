@@ -120,13 +120,13 @@ let testCasesTypeChecker = [
     "Applied Append `append true [1]`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), SeqExp (Literal (IntLit 4), EmptySeq)), 
         Ok (Pair (Base Bool, Pair (Base Int, Pair (Gen 5, Gen 6))));
     "Head not list `head 1`", FuncApp (BuiltInFunc Head, Literal (IntLit 1)),
-        buildTypeCheckerError "Types [] and Int are not compatable";
+        buildTypeCheckerError "Types seq and Int are not compatable";
     "Tail not list `tail \x.x`", FuncApp (BuiltInFunc Tail, buildLambda "x" (Identifier "x")),
-        buildTypeCheckerError "Types [] and 'a -> 'a are not compatable";
+        buildTypeCheckerError "Types seq and 'a -> 'a are not compatable";
     "Size not list `size 4`", FuncApp (BuiltInFunc Head, Literal (IntLit 2)),
-        buildTypeCheckerError "Types [] and Int are not compatable";
+        buildTypeCheckerError "Types seq and Int are not compatable";
     "Append not list `append true 1`", FuncApp (FuncApp (BuiltInFunc Append, Literal (BoolLit true)), Literal (IntLit 4)),
-        buildTypeCheckerError "Types [] and Int are not compatable";
+        buildTypeCheckerError "Types seq and Int are not compatable";
     "Head of empty `head []`", FuncApp (BuiltInFunc Head, EmptySeq),
         Ok (Gen 1);
     "Tail of empty `tail []`", FuncApp (BuiltInFunc Tail, EmptySeq),
@@ -175,17 +175,17 @@ let testCasesPrettyPrintType = [
     "Double Fun Left", Fun (Fun (Base Int, Base Bool), Base String),
         "(Int -> Bool) -> String";
     "Empty pair", Pair (Gen 0, Gen 1),
-        "[]";
+        "seq";
     "Int List", Pair (Base Int, Pair (Base Int, Pair (Gen 0, Gen 1))),
-        "[Int, Int]";
+        "seq";
     "Mixed List", Pair (Fun (Base Int, Fun (Base Bool, Base String)), Pair (Base String, Pair (Gen 0, Gen 1))),
-        "[Int -> Bool -> String, String]";
+        "seq";
     "Nested List", Pair (Pair (Base Int, Pair (Base Bool, Pair (Gen 0, Gen 1))), Pair (Pair (Base String, Pair (Base String, Pair (Gen 0, Gen 1))), Pair (Gen 0, Gen 1))),
-        "[[Int, Bool], [String, String]]";
+        "seq";
     "Nested Empty", Pair (Pair (Gen 0, Gen 1), Pair (Gen 0, Gen 1)),
-        "[[]]";
+        "seq";
     "Simple Gen", Gen 0,
         "'a";
     "Complex Gen `let a lst = (head lst) + 1 in a ni`", Fun (Pair (Base Int, Gen 6), Base Int),
-        "[Int, 'a] -> Int";
+        "seq -> Int";
 ]
