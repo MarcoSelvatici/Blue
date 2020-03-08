@@ -8,23 +8,17 @@ let breakNum = ['+';'-';'*';'/';'=';'<';'>';'(';')';'[';']';'&';'|';' ';',';';';
 let breakId = ['+';'-';'*';'/';'=';'<';'>';'&';'|';' ';'.';',';';';'\n';'\t';'(';'[';')';']';'#']
 
 // If the current character is a number this function is called, trying to parse an int or a float.
-let rec buildNumber rowCount isFloat number input =
+let rec buildNumber rowCount number input =
     match input with 
     // While the current char is a number, keep adding it to the result.
     | currChar::tl when List.contains currChar (['0'..'9']) -> 
-        buildNumber rowCount isFloat (number + string currChar) tl
-    // If char = '.' either is a Float (if it is the first dot encountered) or throw an error.
-    | currChar::tl when (List.contains currChar ['.'] && (not isFloat)) ->  
-        match tl with 
-        | num::tl' when List.contains num (['0'..'9']) ->
-            buildNumber rowCount true (number + string currChar) tl
-        | _ -> failwithf "lexing error, expecting decimal digit after dot on line %i" rowCount
+        buildNumber rowCount (number + string currChar) tl
     // If current char is a valid char that breaks the number, return the result.
-    | currChar::tl when List.contains currChar (breakId) -> isFloat, number, input
+    | currChar::_ when List.contains currChar (breakNum) -> number, input
     // Analoguely, if string is over, return valid result.
-    | [] -> isFloat, number, input
+    | [] -> number, input
     // Else return an error, as specific as possible.
-    | currChar::tl -> failwithf "lexing error, number contains non numeric char: '%c' on line %i" currChar rowCount
+    | currChar::_ -> failwithf "lexing error, number contains non numeric char: '%c' on line %i" currChar rowCount
     | _ -> failwithf "lexing error, unexpected behaviour in building the number token on line %i" rowCount
 
 
@@ -35,12 +29,12 @@ let rec buildWord rowCount word input =
     | currChar::tl when List.contains currChar (['a'..'z']@['A'..'Z']@['0'..'9']@['_';'\'']) 
         -> buildWord rowCount (word + string currChar) tl
     // If is a valid character to break the sequence, return valid result.
-    | currChar::tl when List.contains currChar (breakId) 
+    | currChar::_ when List.contains currChar (breakId) 
         -> word, input
     // Analoguely, if string is over, return valid result.
     | [] -> word, input
     // Else return an error, as specific as possible.
-    | currChar::tl -> failwithf "lexing error, unrecognised non-alphabetic character: '%c' on line: %i" currChar rowCount
+    | currChar::_ -> failwithf "lexing error, unrecognised non-alphabetic character: '%c' on line: %i" currChar rowCount
     | _ -> failwithf "lexing error, unexpected behaviour on line %i." rowCount 
 
 // Function called when inline comment "//" is encountered. 
@@ -130,30 +124,23 @@ let tokeniseT3 (str: string) =
         | '='::'='::tl -> [Equal |> TBuiltInFunc] @ tokenise rowCount tl
         | '='::tl -> [KEq] @ tokenise rowCount tl
         | '&'::'&'::tl -> [And |> TBuiltInFunc] @ tokenise rowCount tl
-        | '&'::tl -> [BitAnd |> TBuiltInFunc] @ tokenise rowCount tl
         | '|'::'|'::tl -> [Or |> TBuiltInFunc] @ tokenise rowCount tl
-        | '|'::tl -> [BitOr |> TBuiltInFunc] @ tokenise rowCount tl
         // String helper function is called when a quotation mark is detected.
         | '\"'::tl -> 
             let str, rest = buildString rowCount "" tl
             [str |> StringLit |> TLiteral] @ tokenise rowCount rest
-        // Similarly for chars with apostrophe.
-        | '\''::tl -> 
-            let c, rest = buildChar rowCount tl
-            [c |> CharLit |> TLiteral] @ tokenise rowCount rest
         // Isolate newline case just for row counting purposes.
         | '\n'::tl -> tokenise (rowCount + 1) tl
-        | '\r'::'\n'::tl -> tokenise (rowCount + 1) tl
         | '\r'::tl -> tokenise (rowCount + 1) tl
+        | '\r'::'\n'::tl -> tokenise (rowCount + 1) tl
         // Discard all spaces and tabs.
         | currChar::tl  when List.contains currChar ([' ';'\t';'\v']) -> tokenise rowCount tl
         // Number matching.
         | currChar::_ when List.contains currChar (['0'..'9']) ->
-            let isFloat, number, rest = buildNumber rowCount false "" input
-            if isFloat then [float number |> FloatLit |> TLiteral] @ tokenise rowCount rest
-            else [int number |> IntLit |> TLiteral] @ tokenise rowCount rest
+            let number, rest = buildNumber rowCount "" input
+            [int number |> IntLit |> TLiteral] @ tokenise rowCount rest
         // Identifier/Keyword - Builtin Function matching.
-        | currChar::tl when List.contains currChar (['a'..'z']@['A'..'Z']@['_']) -> 
+        | currChar::_ when List.contains currChar (['a'..'z']@['A'..'Z']@['_']) -> 
             let word, rest = buildWord rowCount "" input
             match (string word) with 
             | "true" -> [true |> BoolLit |> TLiteral] @ tokenise rowCount rest
@@ -166,7 +153,6 @@ let tokeniseT3 (str: string) =
             | "append" -> [Append |> TBuiltInFunc] @ tokenise rowCount rest
             | "strEq" -> [StrEq |> TBuiltInFunc] @ tokenise rowCount rest 
             | "let" -> [KLet] @ tokenise rowCount rest
-            | "rec" -> [KRec] @ tokenise rowCount rest
             | "in" -> [KIn] @ tokenise rowCount rest
             | "ni" -> [KNi] @ tokenise rowCount rest
             | "if" -> [KIf] @ tokenise rowCount rest

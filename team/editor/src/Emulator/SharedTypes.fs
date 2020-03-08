@@ -23,9 +23,6 @@ type BuiltInFunc =
     // LogicalOp.
     | And
     | Or
-    // TODO (fabio) REMOVE THESE TWO
-    | BitAnd
-    | BitOr
     // AdditiveOp.
     | Plus
     | Minus
@@ -35,9 +32,7 @@ type BuiltInFunc =
 
 type Literal =
     | IntLit of int
-    | FloatLit of float
     | BoolLit of bool
-    | CharLit of char
     | StringLit of string
 
 type Token =
@@ -47,7 +42,6 @@ type Token =
     // Keywords. 
     | KLet
     | KEq
-    | KRec
     | KIn
     | KNi
     | KComma
