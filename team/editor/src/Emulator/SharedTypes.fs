@@ -13,6 +13,7 @@ type BuiltInFunc =
     | Append
     | StrEq
     | Test
+    | Print
     // ComparisonOp.
     | Greater
     | GreaterEq

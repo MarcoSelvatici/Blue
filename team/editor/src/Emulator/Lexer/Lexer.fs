@@ -148,7 +148,7 @@ let tokeniseT3 (str: string) =
         // Discard all spaces and tabs.
         | currChar::tl  when List.contains currChar ([' ';'\t';'\v']) -> tokenise rowCount tl
         // Number matching.
-        | currChar::tl when List.contains currChar (['0'..'9']) ->
+        | currChar::_ when List.contains currChar (['0'..'9']) ->
             let isFloat, number, rest = buildNumber rowCount false "" input
             if isFloat then [float number |> FloatLit |> TLiteral] @ tokenise rowCount rest
             else [int number |> IntLit |> TLiteral] @ tokenise rowCount rest
@@ -173,11 +173,13 @@ let tokeniseT3 (str: string) =
             | "then" -> [KThen] @ tokenise rowCount rest
             | "else" -> [KElse] @ tokenise rowCount rest
             | "fi" -> [KFi] @ tokenise rowCount rest
+            | "test" -> [Test |> TBuiltInFunc] @ tokenise rowCount rest
+            | "print" -> [Print |> TBuiltInFunc] @ tokenise rowCount rest
             | _ -> [word |> TIdentifier] @ tokenise rowCount rest
         // End case, the whole string has been succesfully matched.
         | [] -> []
         // Error throwing due to unrecognised character.
-        | currChar::tl -> failwithf "lexing error, unrecognised character '%c' on line %i" currChar rowCount
+        | currChar::_ -> failwithf "lexing error, unrecognised character '%c' on line %i" currChar rowCount
         | _ -> failwithf "lexing error, unexpected behaviour... nothing was matched on line %i" rowCount
     try 
         tokenise 1 (Seq.toList str)
