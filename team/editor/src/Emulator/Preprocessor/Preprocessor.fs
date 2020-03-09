@@ -46,13 +46,13 @@ let libraries  =
           fi
         fi
       in";
-      "let listFind f int lst = 
+      "let listFind f key lst = 
          if size lst == 0
          then false
          else 
-           if f (head lst) int
+           if f (head lst) key
            then true 
-           else listFind f int (tail lst)
+           else listFind f key (tail lst)
            fi
          fi
       in";
@@ -131,6 +131,19 @@ let libraries  =
            looper 0 idx lst
          ni
        in";
+       "let stringItem idx str = 
+          listItem idx (explode str) 
+        in";
+        "let listContain f keys lst =
+            if size keys == 0 || size lst == 0
+            then false 
+            else 
+                if (listFind f (head keys) lst)
+                then true
+                else  listContain f (tail keys) lst
+                fi
+            fi
+        in";
     ];
 
     "Test",

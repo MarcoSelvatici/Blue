@@ -72,23 +72,6 @@ let rec buildString rowCount str input =
     | currChar::tl when List.contains currChar ['\"'] -> str, tl
     | _ -> failwithf "lexing error, expecting closing quotation mark: '\"' on line %i" rowCount
 
-// Function called when open apostrophe is met "'".
-let rec buildChar rowCount input =
-    // Match everything that is not a closing apostrophe or an escape character.
-    match input with 
-    | currChar::tl when not <| List.contains currChar ['\\';'\''] -> 
-        // If closing apostrophe is then met, char is valid. Else throw error.
-        match tl with 
-        |'\''::tl' -> currChar, tl'
-        | _ -> failwithf "lexing error, expecting closing apostrophe: '\'' on line %i" rowCount
-    // If escape character is met, try to match valid escape sequence or throw an error.
-    | currChar::tl when List.contains currChar ['\\'] ->      
-        match tl with
-        | esc::tl' when List.contains esc escSeq
-            -> ('\\' + esc), tl'
-        | esc::_ -> failwithf "lexing error, expected valid ESC sequence on line %i: \\%c is not valid" rowCount esc 
-        | _ -> failwithf "lexing error, expected valid ESC sequence on line %i" rowCount 
-    | _ -> failwithf "lexing error, char definition cannot be empty on line %i" rowCount
 
 // Tokenise function: takes the program in string form and returns a list of Tokens or a lexing error.
 let tokeniseT3 (str: string) =
