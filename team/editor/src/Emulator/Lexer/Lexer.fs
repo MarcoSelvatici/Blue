@@ -4,8 +4,8 @@ open SharedTypes
 
 // List of escape sequences supported in f#.
 let escSeq = ['a';'b';'f';'n';'r';'t';'v';'\\';'\"';'\'']
-let breakNum = ['+';'-';'*';'/';'=';'<';'>';'(';')';'[';']';'&';'|';' ';',';';';'\n';'\t';'#']
-let breakId = ['+';'-';'*';'/';'=';'<';'>';'&';'|';' ';'.';',';';';'\n';'\t';'(';'[';')';']';'#']
+let breakNum = ['+';'-';'*';'/';'=';'<';'>';'(';')';'[';']';'&';'|';' ';',';';';'\n';'\t';'#';'\r']
+let breakId = ['+';'-';'*';'/';'=';'<';'>';'&';'|';' ';'.';',';';';'\n';'\t';'(';'[';')';']';'#';'\r']
 
 // If the current character is a number this function is called, trying to parse an int or a float.
 let rec buildNumber rowCount number input =

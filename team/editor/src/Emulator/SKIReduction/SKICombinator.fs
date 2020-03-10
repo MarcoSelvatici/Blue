@@ -12,7 +12,7 @@ let print x =
 
  /// Print and return (used in pipeline)
 let pipePrint x =
-    print x; x 
+    print <| x ; x 
 
 
 /// build error msg
@@ -38,25 +38,31 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,ErrorT
         //else Error <| sprintf "Undefined identifier: \'%s\'" x
 
 
-    // The following two matches fix an issue with ifThenElse evaluation 
-    // order when it contains variables when in a lambda.
-    // This in turn allows for recursion to work without knowing if
-    // the function is recursive in advance (current parser does not indicate if a fn is recursive).
+    // The following few matches allow recursion w/ 1 or 2 args to work (not SKI and very messy) 
+    // rec w/ 2 args
+    //| FuncApp (FuncApp (Identifier exp1, exp2),exp3) ->
+    //    if bindings.ContainsKey exp1
+    //    then bracketAbstract (FuncApp (FuncApp ( bindings.[exp1], exp2),exp3)) bindings
+    //    else buildErrorSKI <| sprintf "Undefined identifier: \'%s\'" exp1 
+    //| FuncApp (FuncApp (LambdaExp { LambdaParam = name1; LambdaBody = LambdaExp { LambdaParam = name2; LambdaBody = body}}, arg1),arg2) ->
+    //    match bracketAbstract arg1 bindings,bracketAbstract arg2 bindings with
+    //    | Ok x, Ok y ->
+    //        bracketAbstract body (bindings.Add(name1, x).Add(name2, y))
+    //    | _ -> buildErrorSKI <| "error in in lamda w/ 2 args"
+        
+    //rec w/ 1 arg
+    | FuncApp ( LambdaExp { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
+        match bracketAbstract exp2 bindings with
+        | Ok x ->
+            bracketAbstract exp1 (bindings.Add(name, x))
+        | Error x -> Error x
     | FuncApp (Identifier exp1, exp2) ->
         if bindings.ContainsKey exp1
         then bracketAbstract (FuncApp (bindings.[exp1], exp2)) bindings
         else buildErrorSKI <| sprintf "Undefined identifier: \'%s\'" exp1 
 
     | FuncDefExp { FuncName = name; FuncBody = LambdaExp lam; Rest = exp } ->
-        bracketAbstract exp (bindings.Add(name, LambdaExp lam))
-
-    //substitute expressions into lambdas
-    | FuncApp ( LambdaExp { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
-        match bracketAbstract exp2 bindings with
-        | Ok x ->
-            bracketAbstract exp1 (bindings.Add(name, x))
-        | Error x -> Error x
-        
+           bracketAbstract exp (bindings.Add(name, LambdaExp lam))
     //    2.  T[(E₁ E₂)] => (T[E₁] T[E₂])
     | FuncApp (exp1, exp2) -> 
         match bracketAbstract exp1 bindings, bracketAbstract exp2 bindings with
@@ -138,6 +144,22 @@ let isFree (var:string) (exp: Ast): bool =
 let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
     match input with
     
+    //print
+    | FuncApp (BuiltInFunc Print, x) ->
+        let x' = evalBuiltin x
+        print <| prettyPrint x' ; x'                 //change print to be function which can output to Visual2
+
+    //append
+    | FuncApp( FuncApp( BuiltInFunc Append, x), y) -> 
+        let x' = evalBuiltin x
+        let y' = evalBuiltin y
+        match x', y' with
+        | Ok x, Ok (SeqExp (exp1,exp2)) -> SeqExp (x,SeqExp (exp1,exp2)) |> Ok
+        | Error (SKIRuntimeError x), Error (SKIRuntimeError y) -> buildErrorSKI <| x + ", " + y
+        | Error x, _ -> Error x
+        | _, Error y -> Error y
+        | _, _       -> buildErrorSKI <| sprintf "Error evaluating built-in funciton 'Append' with arguments: %A, %A" x' y'           
+
     // implode string list
     | FuncApp( BuiltInFunc Implode, exp) -> 
         let rec imp lst =
@@ -314,7 +336,7 @@ let prettyPrint (inp: Result<Ast,ErrorT>): string =
         | Literal (StringLit x) -> toString x 
         | Null -> "Null" // should this be an error ?
         | LambdaExp { LambdaParam = name; LambdaBody = exp } -> 
-            sprintf "(\\%A.%A)" name (printFormat exp)
+            sprintf "\\%A.%A" name (printFormat exp)
         | SeqExp _ -> "[" + printList inp + "]"
         | FuncApp (x , y) -> "(" + (printFormat  <| x |> sprintf "%A") + " " + (printFormat <| y |> sprintf "%A") + ")" // should this be an error ?
         | FuncDefExp _ | FuncAppList _ | IdentifierList _ | Token _ | IfExp _ | BuiltInFunc _ -> toString inp
