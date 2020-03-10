@@ -160,12 +160,31 @@
 }
 
 .top {
-    height: 60%;
+    height: 35%;
+    overflow-y: auto;
+    word-break: normal;
+}
+
+.middle {
+    height: 35%;
+    overflow-y: auto;
+    word-break: normal;
 }
 
 .bottom {
-    height: 40%;
+    height: 20%;
+    overflow-y: auto;
+    word-break: normal;
 }
+
+
+.view-heading {
+    margin-top: 0;
+    padding-top: 0%;
+}
+
+
+
 
 .invisible {
     display: none !important; 

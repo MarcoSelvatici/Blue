@@ -147,7 +147,7 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
     //print
     | FuncApp (BuiltInFunc Print, x) ->
         let x' = evalBuiltin x
-        print <| prettyPrint x' ; x'                 //change print to be function which can output to Visual2
+        Printer.Print <| prettyPrint x' ; x'                 //change print to be function which can output to Visual2
 
     //append
     | FuncApp( FuncApp( BuiltInFunc Append, x), y) -> 

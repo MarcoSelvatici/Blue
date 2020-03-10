@@ -87,14 +87,21 @@ amdRequire(['vs/editor/editor.main'], function () {
     ],
 
     // we include these common regular expressions
-    symbols: /[=!~?:&|+\-*\/\^%]+/,
+    symbols: /[<>=!~?:&|+\-*\/\^%]+/,
 
     // C# style strings
     escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
 
     // The main tokenizer for our languages
     tokenizer: {
-      root: [
+        root: [
+
+        //  comments
+        [/#(.)*|\(\*(.|\r\n)*\*\)/, 'comment'],
+        [/>>;(.*)/, 'comment.testpass'],
+        [/>>-(.*)/, 'comment.testerror'],
+
+
         // identifiers and keywords
         [/[a-z_$][\w$]*/, {
           cases: {
@@ -139,10 +146,7 @@ amdRequire(['vs/editor/editor.main'], function () {
         [/(')(@escapes)(')/, ['string', 'string.escape', 'string']],
         [/'/, 'string.invalid'],
 
-        // ARM comments
-        [/#(.*)/, 'comment'],
-        [/>>;(.*)/, 'comment.testpass'],
-        [/>>-(.*)/, 'comment.testerror'],
+
 
       ],
 

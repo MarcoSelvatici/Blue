@@ -15,7 +15,8 @@ open SharedTypes
 let resetEmulator() =
     //showVexAlert "Resetting..."
     (getHtml "out-text").innerHTML <- ""
-    (getHtml "out-type").innerHTML <- ""   
+    (getHtml "out-type").innerHTML <- "" 
+    (getHtml "out-print").innerHTML <- ""
     Editors.removeEditorDecorations currentFileTabId
     Editors.enableEditors()
 
