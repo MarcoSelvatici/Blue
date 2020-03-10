@@ -159,6 +159,10 @@ let testCasesTypeChecker = [
        Ok (Fun (Pair (Gen 4,Gen 5),Gen 2));
     "Head in function `let a lst = (head lst) + 1 in a ni`", buildCarriedFunc ["a"; "lst"] (FuncApp (FuncApp (BuiltInFunc Plus, FuncApp (BuiltInFunc Head, Identifier "lst")), Literal (IntLit 1))) (Identifier "a"),
         Ok (Fun (Pair (Base Int, Gen 6), Base Int));
+    "Unary Not", BuiltInFunc Not,
+        Ok (Fun (Base Bool, Base Bool));
+    "Applied Unary Not", FuncApp (BuiltInFunc Not, Literal (BoolLit true)),
+        Ok (Base Bool);
 ]
 
 let testCasesPrettyPrintType = [
