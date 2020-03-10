@@ -110,7 +110,7 @@ let matchString chars input =
     then chars
     else 
         if ! (strEq (head input) "'")
-        then matchId (chars+1) (tail input)
+        then matchString (chars+1) (tail input)
         else chars
         fi
     fi
