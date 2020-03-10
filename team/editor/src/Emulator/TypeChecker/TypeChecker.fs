@@ -189,6 +189,7 @@ let inferBuiltInFunc uid f =
     match f with
     | op when isBinaryOp op -> uid, inferBinOp op
     | op when isListOp op -> inferListOp uid op
+    | Not -> uid, Ok ([], Fun(Base Bool, Base Bool))
     | Implode | Explode -> inferImplodeExplode uid f
     | StrEq -> uid, Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
     | Test ->
