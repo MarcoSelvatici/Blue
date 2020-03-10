@@ -29,13 +29,12 @@ Enter the editor directory and follow the instructions in the README.
 
 We implemented a weakly typed language with two runtimes (beta reduction and combinators reduction). It also allows comments, builtin types and operators/functions.
 #### Comments:
-- inline: // --> \n
+- inline: # --> \n
 - multiline: (* --> *)
   
 #### builtin types
 The language supports all main built-in types, as listed below:
 - int
-- float
 - bool
 - string
 - pair 
@@ -58,8 +57,6 @@ As for the builtin functions, the language is able to perform the following:
 | logical and | && | (bool -> bool -> bool) |
 | logical or | \|\| | (bool -> bool -> bool) |
 | logical not | ! | (bool -> bool) |
-| birwise and | & | (int -> int -> int) |
-| bitwise or | | | (int -> int -> int) |
 | head | | ('a pair -> 'a)
 | tail | | ('a pair -> 'a pair)
 | size | | ('a list -> int)
@@ -69,7 +66,7 @@ As for the builtin functions, the language is able to perform the following:
 | implode | | (string list -> string)
 | explode | | (string -> string list)
 | test | | ('a -> bool)
-| print| | ?
+| print| | 
 
 #### Functions
 The language supports recursion and both anonymous and named functions, here are some practicle examples for both classes.
@@ -81,9 +78,35 @@ The language supports recursion and both anonymous and named functions, here are
 - Named functions:
 ```
 let name = \x. x in # Assign a name to the lambda function.
-let name x = x in   # Syntactic sugar for the above named expression.
+let name x = x in   # Syntactic sugar for the named expression above.
 ```
- 
+
+#### Additional Features
+We developed two runtime systems:
+  - Beta Reduction
+  - SKI Combinator
+
+The engines support all the above features, and have been tested on ~400 tests for both :
+  - Unit Testing
+  - End To End Testing
+This process has been made particularly frictionless by developing a Test library, that massively eased the job of adding new tests and allowed us to do Regression Testing. <br>
+Moreover, an editor in a VisUAL2 environment has been setup, that makes writing in our language very easy and intuitive. <br>
+For Demo purposes, a library of functions has been developed and added to a Preprocessor, such that is imported before the test code is ran. The library contains the following functions to massively facilitate lists and string processing for the end user:
+  - listMap
+  - listReduce
+  - listFold
+  - listFindInt
+  - listFind
+  - stringLength
+  - listConcat
+  - listReverse
+  - listSort
+  - listItem
+  - TODO WHEN MERGING ADD THE FUNCTIONS THAT ARE IN THE PRINT BRANCH
+
+Some of these functions have also been used in a further demo project, which is a Lexer for a simple language. <br>
+The lexer, contained in the demo-code folder under the name lexngram.s, correctly lexes strings, bools and ints, as well as all the builtin functions and list and string functions we included in our language. <br>
+
 ## Implementation details
 The code is divided in a series of modules.
 
@@ -120,7 +143,6 @@ It is also specified a (non exahustive in any way) list of cases in which the pr
 | Token | Regex |
 | --- | ----- |
 | Bool | ['true', 'false'] |
-| Floats | [0 - 9]+ [ . ] [0 - 9]+ |
 | String| [ " ][anychar, escape sequence]*[ " ] |
 | Identifier |  [ _ ]* [a - z A - Z ] [a - z A - Z _ ']* |
 
@@ -150,8 +172,6 @@ It is also specified a (non exahustive in any way) list of cases in which the pr
    in
    a 5
    -> [KLet; TIdentifier "a"; KEq; KLet; TIdentifier "b"; KEq; KLambda;         TIdentifier "x"; KDot; TIdentifier "x"; TBuiltInFunc BMult; TLiteral     (IntLit 2); KIn; KLambda; TIdentifier "c"; KDot; TIdentifier "b";        KOpenRound; TIdentifier "b"; TIdentifier "c"; KCloseRound; KIn;          TIdentifier "a"; TLiteral (IntLit 5)]
-
-   TODO: ADD SOME FROM TESTS
 ```
 
 ### Parser
