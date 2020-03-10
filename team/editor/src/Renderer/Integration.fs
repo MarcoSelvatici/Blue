@@ -13,7 +13,7 @@ open TypeChecker
 open SharedTypes
 
 let resetEmulator() =
-    showVexAlert "Resetting..."
+    //showVexAlert "Resetting..."
     (getHtml "out-text").innerHTML <- ""
     (getHtml "out-type").innerHTML <- ""   
     Editors.removeEditorDecorations currentFileTabId
@@ -42,9 +42,8 @@ let runCode () =
     try
         let res = end2end currentTypeCheck currentRuntime program
         (getHtml "out-text").innerHTML <-  sprintf "%A" res
-        // TODO (oliver): put this in a window like output
-        (getHtml "out-type").innerHTML <- getType program
-        
+        (getHtml "out-type").innerHTML <- getType res
+        (getHtml "out-print").innerHTML <- Printer.ReturnClear
     with
         // Some of the impossible cases has been triggered, or there was a stack
         // overflow.

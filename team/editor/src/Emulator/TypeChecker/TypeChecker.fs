@@ -192,6 +192,9 @@ let inferBuiltInFunc uid f =
     | Not -> uid, Ok ([], Fun(Base Bool, Base Bool))
     | Implode | Explode -> inferImplodeExplode uid f
     | StrEq -> uid, Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
+    | Print ->
+        let t, uid = newGen uid
+        uid, Ok ([], Fun (t, t))
     | Test ->
         let t, uid = newGen uid
         uid, Ok ([], Fun(t, Base Bool))

@@ -156,7 +156,11 @@ let testCasesTypeChecker = [
     "If then else empty list", IfExp(Literal (BoolLit true), EmptySeq, EmptySeq),
         Ok (Pair(Gen 0, Gen 1));
     "Recursion `let x i = x (tail i) in x ni", FuncDefExp {FuncName = "x"; FuncBody = LambdaExp {LambdaParam = "i"; LambdaBody = FuncApp (Identifier "x",FuncApp (BuiltInFunc Tail, Identifier "i"))}; Rest = (Identifier "x")},
-       Ok (Fun (Pair (Gen 4,Gen 5),Gen 2));
+        Ok (Fun (Pair (Gen 4,Gen 5),Gen 2))
+    "Simple Print", BuiltInFunc Print,
+        Ok (Fun (Gen 0, Gen 0));
+    "Complex program with prints everywhere `let x y = print ((print y) (print 1)) in x \x.(print x)+(print 1)`", buildCarriedFunc ["x"; "y"] (FuncApp (BuiltInFunc Print, (FuncApp (FuncApp (BuiltInFunc Print, Identifier "y"), FuncApp (BuiltInFunc Print, Literal (IntLit 1)))))) (FuncApp (FuncApp (BuiltInFunc Print, Identifier "x"), buildLambda "x" (FuncApp (FuncApp (BuiltInFunc Plus, FuncApp (BuiltInFunc Print, Identifier "x")), FuncApp (BuiltInFunc Print, Literal (IntLit 1)))))),
+        Ok (Base Int);
     "Head in function `let a lst = (head lst) + 1 in a ni`", buildCarriedFunc ["a"; "lst"] (FuncApp (FuncApp (BuiltInFunc Plus, FuncApp (BuiltInFunc Head, Identifier "lst")), Literal (IntLit 1))) (Identifier "a"),
         Ok (Fun (Pair (Base Int, Gen 6), Base Int));
     "Unary Not", BuiltInFunc Not,
