@@ -1,9 +1,30 @@
 ### ATTEMPT TO LEX A SIMPLE LANGUAGE ###
+### LANGUAGE SPECIFICATION:          ###
+(*                                             
+LITERALS:
+    INTEGERS [0-9]+
+    STRINGS: ['][^']*[']
+    BOOLS: [true,false]
+
+BUILTINS:
+    +   -   /   *   !    >   >=  <    <=    ==
+  Plus Min Div Mul Not  Gr  GEq  Le   LEq  EqTo
+
+LISTS-STRINGS
+- size 
+- head
+- tail
+- explode 
+- strEq
+
+IDENTIFIER: 
+    any sequence of chars
+*)
+
 ### LEXER (STRING -> STRING LIST)    ###
 ### MISSING:                         ###
 ### 1. Match string                  ###
-### 2. Match identifier              ###
-### 3. Match lambda                  ###
+### 2. Match lambda                  ###
 
 # Library
 let listFind f key lst = 
@@ -71,6 +92,7 @@ let listSplitAt idx lst =
         ni
     ni
 in
+
 # Helper functions
 let matchNum digits input =
     if size input == 0 
@@ -83,8 +105,17 @@ let matchNum digits input =
     fi
 in
 
-(*
-    Doesnt work, no idea why... seems an infinite loop *)
+let matchString chars input =
+    if size input == 0 
+    then chars
+    else 
+        if ! (strEq (head input) "'")
+        then matchId (chars+1) (tail input)
+        else chars
+        fi
+    fi
+in 
+
 let matchId chars input =
     if size input == 0 
     then chars
@@ -96,101 +127,6 @@ let matchId chars input =
     fi
 in 
 
-
-let matchLet input = 
-    if strEq (head input) "l"
-    then    if strEq (head (tail input)) "e"
-            then    if strEq (head (tail (tail input))) "t"
-                    then    if listFind strEq (head (tail(tail(tail input)))) [" "]
-                            then true
-                            else false
-                            fi
-                    else false
-                    fi
-            else false
-            fi
-    else false
-    fi
-in
-
-let matchIn input = 
-    if strEq (head input) "i"
-    then    if strEq (head (tail input)) "n"
-            then    if listFind strEq (head (tail(tail input))) [" ","("]
-                    then true
-                    else false
-                    fi
-            else false
-            fi
-    else false
-    fi
-in
-
-let matchNi input = 
-    if strEq (head input) "n"
-    then    if strEq (head (tail input)) "i"
-            then    if listFind strEq (head (tail(tail input))) [" ",")"]
-                    then true
-                    else false
-                    fi
-            else false
-            fi
-    else false
-    fi
-in
-
-let matchIf input = 
-    if strEq (head input) "i"
-    then    if strEq (head (tail input)) "f"
-            then    if listFind strEq (head (tail(tail input))) [" ","("]
-                    then true
-                    else false
-                    fi
-            else false
-            fi
-    else false
-    fi
-in
-
-(*
-let matchThen input = 
-    if strEq (head input) "t"
-    then    if strEq (head (tail input)) "h"
-            then    if strEq (head (tail (tail input))) "e"
-                    then    if strEq (head (tail (tail (tail input)))) "n"
-                            then    if listFind strEq (head (tail(tail(tail(tail input))))) [" ","("]
-                                    then true
-                                    else false
-                                    fi
-                            else false
-                            fi
-                    else false
-                    fi
-            else false
-            fi
-    else false
-    fi
-in
-
-let matchElse input = 
-    if strEq (head input) "e"
-    then    if strEq (head (tail input)) "l"
-            then    if strEq (head (tail (tail input))) "s"
-                    then    if strEq (head (tail (tail (tail input)))) "e"
-                            then    if listFind strEq (head (tail(tail(tail(tail input))))) [" ","("]
-                                    then true
-                                    else false
-                                    fi
-                            else false
-                            fi
-                    else false
-                    fi
-            else false
-            fi
-    else false
-    fi
-in
-*)
 
 # LEXER
 let lexer program lst = 
@@ -268,46 +204,67 @@ let lexer program lst =
                     (lexNgram (head (tail (listSplitAt digits input))) lst)
             ni
         else 
+        if strEq (head input) "'"
+        then let chars = matchString 0 (tail input) in
+            (append (stringAppend "StringLit " (implode (head (listSplitAt (chars-1) (tail input)))))) 
+                    (lexNgram (head (tail (listSplitAt (chars+1) input))) lst)
+            ni
+        else 
+        # IGNORE WHITE SPACES
         if strEq (head input) " " 
         then lexNgram (tail input) lst
         else
-        if matchLet input
-        then (append "KLet") (lexNgram (tail(tail(tail(tail input)))) lst)
-        else
-        if matchIn input
-        then (append "KIn") (lexNgram (tail(tail(tail input))) lst)
-        else
-        if matchNi input
-        then (append "KNi") (lexNgram (tail(tail(tail input))) lst)
-        else
-        if matchIf input
-        then (append "KIf") (lexNgram (tail(tail(tail input))) lst)
-        else
-        (* USE SPLIT AT instead of tail(tail....
-        if matchThen input
-        then (append "KThen") (lexNgram (tail(tail(tail(tail(tail input))))) lst)
-        else
-        if matchElse input
-        then (append "KElse") (lexNgram (tail(tail(tail(tail(tail input))))) lst)
-        else
-        *)
-
             let chars = matchId 0 input in
-            (append (stringAppend "Id " (implode (head (listSplitAt chars input))))) 
-                    (lexNgram (head (tail (listSplitAt chars input))) lst)
+                let token = implode (head (listSplitAt chars input)) in
+                    let rest = head (tail (listSplitAt chars input)) in
+                        # NAMED FUNCTION KEYWORDS
+                        if strEq token "let"
+                        then (append "KLet") (lexNgram rest lst) 
+                        else
+                        if strEq token "in"
+                        then (append "KIn") (lexNgram rest lst) 
+                        else     
+                        if strEq token "ni"
+                        then (append "KNi") (lexNgram rest lst) 
+                        else
+                        # IFTHENELSE KEYWORDS
+                        if strEq token "if"
+                        then (append "KIf") (lexNgram rest lst) 
+                        else
+                        if strEq token "fi"
+                        then (append "KFi") (lexNgram rest lst) 
+                        else
+                        if strEq token "then"
+                        then (append "KThen") (lexNgram rest lst) 
+                        else
+                        if strEq token "else"
+                        then (append "Else") (lexNgram rest lst) 
+                        else 
+                        # List-String Builtins
+                        if listFind strEq token ["size", "append", "head", "tail", "implode", "explode", "strEq"]
+                        then (append token) (lexNgram rest lst) 
+                        else 
+                        # Booleans 
+                        if strEq token "true" || strEq token "false"
+                        then append (stringAppend "BoolLit " token) (lexNgram rest lst) 
+                        else
+                            append (stringAppend "Id " token) (lexNgram rest lst)
+                        fi fi fi fi fi fi fi fi fi 
+                    ni
+                ni
             ni
-            #append "ERROR" lst
 
-         fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi # fi fi for then and else
+         fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi 
     in
         lexNgram (explode program) lst
     ni
 in
-    lexer "let x = 5 in x ni " []
+    # testing with listReduce declaration
+    lexer "let listReduce f lst = let reducer f acc lst = if size lst == 0 then acc else reducer f (f acc (head lst)) (tail lst) fi in if size lst == 0 then 0 else reducer f (head lst) (tail lst) fi ni in let sum a b = a + b in listReduce sum [120, 2, 3, 4] ni ni" []
 ni
 
 # Helper functions
-ni ni ni ni ni ni  # ni ni for then and else 
+ni ni ni
 # Library
 ni ni ni ni ni ni ni
 
