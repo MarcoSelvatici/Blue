@@ -232,8 +232,8 @@ let BuiltIn =
          ];
 
         mapInputOutputUnary (fun x -> Some x) id
-         [
-            Print, (fun x -> printfn "%A" x; x);
+         [ // ast -> ast
+            Print, (fun x -> Printer.Print <| prettyPrint ( Ok x ) ; x  );
          ];
 
     ] |> List.concat |> Map
