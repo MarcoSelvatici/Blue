@@ -51,7 +51,7 @@ amdRequire(['vs/editor/editor.main'], function () {
     defaultToken: 'invalid',
 
     ignoreCase: true,
-
+   
     brackets: [
       ['{', '}', 'delimiter.curly'],
       ['[', ']', 'delimiter.square'],
@@ -97,7 +97,7 @@ amdRequire(['vs/editor/editor.main'], function () {
         root: [
 
         //  comments
-        [/#(.)*|\(\*(.|\r\n)*\*\)/, 'comment'],
+        [/#(.)*|\(\*[^]*\*\)/, 'comment'],
         [/>>;(.*)/, 'comment.testpass'],
         [/>>-(.*)/, 'comment.testerror'],
 

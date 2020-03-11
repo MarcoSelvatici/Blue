@@ -162,19 +162,19 @@
 .top {
     height: 35%;
     overflow-y: auto;
-    word-break: normal;
+    word-break: break-all;
 }
 
 .middle {
     height: 35%;
     overflow-y: auto;
-    word-break: normal;
+    word-break: break-all;
 }
 
 .bottom {
     height: 20%;
     overflow-y: auto;
-    word-break: normal;
+    word-break: break-all;
 }
 
 

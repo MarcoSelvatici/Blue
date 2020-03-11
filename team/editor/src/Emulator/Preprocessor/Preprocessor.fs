@@ -4,7 +4,8 @@ open SharedTypes
 let buildError s = s |> PreprocessorError |> Error
 
 // TODO: extend support to windows
-let isEndline = (=) '\n'
+let isEndlineUNIX = (=) '\010'
+let isEndlineDOS = (=) '\013'
 let addLine s1 s2 = s1 + "\n" + s2
 
 /////////
@@ -167,11 +168,17 @@ let charToString chrLst = chrLst |> (List.map string) |> List.fold (+) ""
 
 let splitLines (s:string) : char list list= 
     let rec toLists l =
-        match List.tryFindIndex isEndline l with
+        match List.tryFindIndex isEndlineUNIX l with
         | Some i -> List.splitAt i l
-                    |> (fun (l1, l2) -> l1::(toLists (List.tail l2))) 
+                    |> (fun (l1, l2) ->
+                        match List.tryFindIndex isEndlineDOS l1 with
+                        | Some i -> List.splitAt i l1
+                                    |> (fun (l3, l4) ->
+                                        l3::(toLists (List.tail l2))) 
+                        | None -> l1::(toLists (List.tail l2))) 
+                        
         | None -> [l]    
-
+    
     Seq.toList s |> toLists
 
 (*
