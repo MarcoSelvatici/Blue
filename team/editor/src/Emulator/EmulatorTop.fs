@@ -36,7 +36,6 @@ let end2end checkTypes runtime input =
     |> Result.bind parse
     |> Result.bind (maybeTypeCheck checkTypes)
     |> Result.bind (selectRuntime runtime)
-    |> prettyPrint
 
 let getAst input =
     input
@@ -47,6 +46,14 @@ let getType input : string =
     input
     |> tokeniseT3
     |> Result.bind parse
+    |> Result.bind typeCheck
+    |> function
+       | Ok t -> type2String t
+       | Error (TypeCheckerError e) -> sprintf "%A" e
+       | Error e -> "Build failed before type checker."
+
+let getAstType (input : Result<Ast, ErrorT>) : string =
+    input
     |> Result.bind typeCheck
     |> function
        | Ok t -> type2String t

@@ -42,8 +42,8 @@ let runCode () =
     let program = getProgram ()
     try
         let res = end2end currentTypeCheck currentRuntime program
-        (getHtml "out-text").innerHTML <-  sprintf "%A" res
-        (getHtml "out-type").innerHTML <- getType res
+        (getHtml "out-text").innerHTML <-  sprintf "%A" (prettyPrint res)
+        (getHtml "out-type").innerHTML <- getAstType res
         (getHtml "out-print").innerHTML <- Printer.ReturnClear
     with
         // Some of the impossible cases has been triggered, or there was a stack
