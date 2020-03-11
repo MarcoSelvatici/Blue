@@ -44,7 +44,8 @@ let getAst input =
 
 let getType input : string =
     input
-    |> tokeniseT3
+    |> preprocess
+    |> Result.bind tokeniseT3
     |> Result.bind parse
     |> Result.bind typeCheck
     |> function
