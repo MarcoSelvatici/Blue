@@ -125,7 +125,10 @@ let rec apply subs t =
     | Gen wildcard ->
         match List.tryFind (fun s -> s.wildcard = wildcard) subs with
         | None -> Gen wildcard // No substitution found. Return wildcard.
-        | Some s -> apply subs (s.newType) // Try to substitute the new type.
+        | Some s ->
+            match s.newType with
+            | Gen w when w = wildcard -> s.newType
+            | _ -> apply subs (s.newType) // Try to substitute the new type.
     | Fun (t1, t2) -> Fun (apply subs t1, apply subs t2)
     | Pair (t1, t2) -> Pair (apply subs t1, apply subs t2)
 
@@ -238,16 +241,16 @@ and inferFuncApp uid ctx f arg =
 
 and inferLambdaExp uid ctx lam =
     let newWildcard, uid = newGen uid // For the lambda bound variable.
-    let ctx' = extend ctx lam.LambdaParam newWildcard
-    match infer uid ctx' lam.LambdaBody with
-    | uid2, Error e -> uid2, Error e
-    | uid2, Ok (s1, t1) -> uid2, Ok (s1, Fun(apply s1 newWildcard, t1))
+    let ctx = extend ctx lam.LambdaParam newWildcard
+    match infer uid ctx lam.LambdaBody with
+    | uid, Error e -> uid, Error e
+    | uid, Ok (s1, t1) -> uid, Ok (s1, Fun(apply s1 newWildcard, t1))
 
 and inferFuncDefExp uid ctx def =
     // Extend the context with a generic type for our function, this allows
     // recursion.
     let funcType, uid = newGen uid
-    let ctx = (extend ctx def.FuncName funcType)
+    let ctx = extend ctx def.FuncName funcType
     match infer uid ctx def.FuncBody with
     | uid, Error e -> uid, Error e
     | uid, Ok (s1, t1) ->
