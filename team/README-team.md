@@ -12,7 +12,7 @@ This directory is used for:
 
 This documentation will contain:
 - how to run the code
-- features of the language with some code examples (TODO)
+- features of the language with some code examples.
 - implementative details of our system (TODO)
 
 ## Run the code
@@ -102,7 +102,8 @@ For Demo purposes, a library of functions has been developed and added to a Prep
   - listReverse
   - listSort
   - listItem
-  - TODO WHEN MERGING ADD THE FUNCTIONS THAT ARE IN THE PRINT BRANCH
+  - stringItem
+  - listContain
 
 Some of these functions have also been used in a further demo project, which is a Lexer for a simple language. <br>
 The lexer, contained in the demo-code folder under the name lexngram.s, correctly lexes strings, bools and ints, as well as all the builtin functions and list and string functions we included in our language. <br>

@@ -14,6 +14,8 @@ LISTS-STRINGS
 - size 
 - head
 - tail
+- append
+- implode
 - explode 
 - strEq
 
