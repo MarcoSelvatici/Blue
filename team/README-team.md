@@ -31,6 +31,7 @@ This documentation will contain:
   - type checker
   - SKI reduction engine
   - Beta reduction engine
+- individual contributions
 
 ## Run the code
 
@@ -378,3 +379,18 @@ a recursive process, since a type may contain substitutable wildcards.
 ### Beta Engine
 
 
+## Individual contributions
+
+### Fabio
+
+### Marco Selvatici (ms8817)
+
+- setup / restructure / cleanup the team repository at various stages
+- parser + unit tests
+- type checker + unit tests
+- stripped down Visual2 to create a working editor for Blue
+- church numerals demo code
+
+### Oliver
+
+### Szymon
