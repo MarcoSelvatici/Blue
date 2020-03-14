@@ -1,5 +1,9 @@
 # HLP project
 
+Plan created for the very first project deadline, before individual coding.
+Many features and details have been changed, please refer to the README-team.md
+file for documentation porpuses.
+
 ## Task
 
 Implement a functional language:

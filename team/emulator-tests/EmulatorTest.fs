@@ -17,7 +17,7 @@ open E2EBetaTest
 open E2ESKITest
  
 
-// Unit testing.
+// Unit and end to end tests.
 [<Tests>]
 let preprocessorTest = createTestList "Preprocessor Tests" preprocess testCasesPreprocessor
 [<Tests>]
@@ -36,17 +36,6 @@ let skiRuntimeTest = createTestList "SKI Runtime Tests" combinatorRuntime testCa
 let e2eSKITests = e2eCreateTestList "E2E SKI Tests" combinatorRuntime typeCheck parse tokeniseT3 testCasesSKIE2E
 [<Tests>]
 let e2eBetaTests = e2eCreateTestList "E2E Beta Tests" runAst typeCheck parse tokeniseT3 testCasesBetaE2E
-
-let print x =
-    printfn "%A" x
-    x
-
-let printParsedAst input =
-    input
-    |> tokeniseT3
-    |> Result.bind parse
-    |> print
-    |> ignore
 
 [<EntryPoint>]
 let main argv =
