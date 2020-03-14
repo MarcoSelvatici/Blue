@@ -1,6 +1,6 @@
 {
-  "name": "team4",
-  "productName": "TEAM4",
+  "name": "blue",
+  "productName": "Blue",
   "main": "main.js",
   "scripts": {
     "start": "cd src/Main && dotnet fable webpack -w --port free -- -w --config webpack.config.js -w",
