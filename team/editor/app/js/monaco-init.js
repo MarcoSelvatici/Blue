@@ -96,73 +96,71 @@ amdRequire(['vs/editor/editor.main'], function () {
     tokenizer: {
         root: [
 
-        //  comments
-        [/#(.)*|\(\*[^]*\*\)/, 'comment'],
-        [/>>;(.*)/, 'comment.testpass'],
-        [/>>-(.*)/, 'comment.testerror'],
+            //  comments
+            [/#(.)*|\(\*[^]*\*\)/, 'comment'],
+            [/>>;(.*)/, 'comment.testpass'],
+            [/>>-(.*)/, 'comment.testerror'],
 
 
-        // identifiers and keywords
-        [/[a-z_$][\w$]*/, {
-          cases: {
-            '@keywords': 'keyword',
-            '@builtins': 'builtin',
-            '@default': 'identifier'
-          }
-        }],
+            // identifiers and keywords
+            [/[a-z_$][\w$]*/, {
+              cases: {
+                '@keywords': 'keyword',
+                '@builtins': 'builtin',
+                '@default': 'identifier'
+              }
+            }],
 
-        // whitespace
-        { include: '@whitespace' },
+            // whitespace
+            { include: '@whitespace' },
 
-        // delimiters and operators
-        [/[{}()\[\]]/, '@brackets'],
-        //[/[<>](?!@symbols)/, '@brackets'],
-        [/@symbols/, {
-          cases: {
-            '@operators': 'symbol.operator',
-            '@default': 'symbol.other'
-          }
-        }],
+            // delimiters and operators
+            [/[{}()\[\]]/, '@brackets'],
+            //[/[<>](?!@symbols)/, '@brackets'],
+            [/@symbols/, {
+              cases: {
+                '@operators': 'symbol.operator',
+                '@default': 'symbol.other'
+              }
+            }],
 
 
-        // numbers
+            // numbers
       
-        [/#-?0[xX][0-9a-fA-F][0-9a-fA-F_]*/, 'number.hash.hex'],
-        [/#-?0[bB][0-1][01_]*/, 'number.hash.bin'],
-        [/#-?\d[\d_]*/, 'number.hash'],
-        [/-?0[xX][0-9a-fA-F][0-9a-fA-F_]*/, 'number.bare.hex'],
-        [/-?0[bB][0-1][01_]*/, 'number.bare.bin'],
-        [/-?\d[\d_]*/, 'number.bare'],
+            [/#-?0[xX][0-9a-fA-F][0-9a-fA-F_]*/, 'number.hash.hex'],
+            [/#-?0[bB][0-1][01_]*/, 'number.hash.bin'],
+            [/#-?\d[\d_]*/, 'number.hash'],
+            [/-?0[xX][0-9a-fA-F][0-9a-fA-F_]*/, 'number.bare.hex'],
+            [/-?0[bB][0-1][01_]*/, 'number.bare.bin'],
+            [/-?\d[\d_]*/, 'number.bare'],
 
-        // delimiter: after number because of .\d floats
-        [/[,.]/, 'delimiter'],
+            // delimiter: after number because of .\d floats
+            [/[,.]/, 'delimiter'],
 
-        // strings
-        [/"([^"\\]|\\.)*$/, 'string.invalid'],  // non-teminated string
-        [/"/, { token: 'string.quote', bracket: '@open', next: '@string' }],
+            // strings
+            [/"([^"\\]|\\.)*$/, 'string.invalid'],  // non-teminated string
+            [/"/, { token: 'string.quote', bracket: '@open', next: '@string' }],
 
-        // characters
-        [/'[^\\']'/, 'string'],
-        [/(')(@escapes)(')/, ['string', 'string.escape', 'string']],
-        [/'/, 'string.invalid'],
+            // characters
+            [/'[^\\']'/, 'string'],
+            [/(')(@escapes)(')/, ['string', 'string.escape', 'string']],
+            [/'/, 'string.invalid'],
 
-
-
-      ],
+        ],
 
 
-      string: [
+        string: [
         [/[^\\"]+/, 'string'],
         [/@escapes/, 'string.escape'],
         [/\\./, 'string.escape.invalid'],
         [/"/, { token: 'string.quote', bracket: '@close', next: '@pop' }]
-      ],
+        ],
 
-      whitespace: [
+        whitespace: [
         [/[ \t\r\n]+/, 'white'],
         //        [/\/\*/, 'comment', '@comment'],
         //        [/\/\/.*$/, 'comment'],
-      ],
+        ],
     }
   });
 
