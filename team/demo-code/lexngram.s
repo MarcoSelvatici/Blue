@@ -129,75 +129,77 @@ let matchId chars input =
     fi
 in 
 
-
 # LEXER
-let lexer program lst = 
+let lexer program lst =
+    let headIs lst c =
+        strEq (head lst) c
+    in
     let lexNgram input lst = 
         # Base case
         if size input == 0
         then lst 
         else
         # Keywords
-        if strEq (head input) "."
+        if headIs input "."
         then (append "KDot") (lexNgram (tail input) lst)
         else
-        if strEq (head input) ","
+        if headIs input ","
         then (append "KComma") (lexNgram (tail input) lst)
         else
-        if strEq (head input) "("
+        if headIs input "("
         then (append "KOpenRound") (lexNgram (tail input) lst)
         else
-        if strEq (head input) ")"
+        if headIs input ")"
         then (append "KCloseRound") (lexNgram (tail input) lst)
         else
-        if strEq (head input) "["
+        if headIs input "["
         then (append "KOpenSquare") (lexNgram (tail input) lst)
         else
-        if strEq (head input) "]"
+        if headIs input "]"
         then (append "KCloseSquare") (lexNgram (tail input) lst)
         else
-        if strEq (head input) "\\" # Doesnt work
+        if headIs input "\\" # Doesnt work
         then (append "KLambda") (lexNgram (tail input) lst)
         else
         # Arithmetics BuiltIn
-        if strEq (head input) "+" 
+        if headIs input "+" 
         then (append "BPlus") (lexNgram (tail input) lst)
         else 
-        if strEq (head input) "-" 
+        if headIs input "-" 
         then (append "BMinus") (lexNgram (tail input) lst)
         else
-        if strEq (head input) "*" 
+        if headIs input "*" 
         then (append "BMult") (lexNgram (tail input) lst)
         else 
-        if strEq (head input) "/" 
+        if headIs input "/" 
         then (append "BDiv") (lexNgram (tail input) lst)
         else 
         # Logic and Comparisons
-        if strEq (head input) "!" 
+        if headIs input "!" 
         then (append "BNot") (lexNgram (tail input) lst)
         else 
-        if strEq (head input) "&" && strEq (listItem 1 input) "&" 
+        if headIs input "&" && strEq (listItem 1 input) "&" 
         then let input' = tail input in  (append "BAnd") (lexNgram (tail input') lst) ni
         else 
-        if strEq (head input) "|" && strEq (listItem 1 input) "|" 
+        if headIs input "|" && strEq (listItem 1 input) "|" 
         then let input' = tail input in  (append "BOr") (lexNgram (tail input') lst) ni
         else 
-        if strEq (head input) ">" && strEq (listItem 1 input) "=" 
+        if headIs input ">" && strEq (listItem 1 input) "=" 
         then let input' = tail input in  (append "BGtEq") (lexNgram (tail input') lst) ni
         else 
-        if strEq (head input) "<" && strEq (listItem 1 input) "=" 
+        if headIs input "<" && strEq (listItem 1 input) "=" 
         then let input' = tail input in  (append "BLEq") (lexNgram (tail input') lst) ni
         else
-        if strEq (head input) "=" && strEq (listItem 1 input) "=" 
+        if headIs input "=" && strEq (listItem 1 input) "=" 
         then let input' = tail input in  (append "BEqTo") (lexNgram (tail input') lst) ni
         else 
-        if strEq (head input) ">" 
+        if headIs input ">" 
         then (append "BGt") (lexNgram (tail input) lst)
         else 
-        if strEq (head input) "<" 
+        if headIs input "<" 
         then (append "BLe") (lexNgram (tail input) lst)
         else 
-        if strEq (head input) "=" 
+        if headIs input "=" 
         then (append "Eq") (lexNgram (tail input) lst)
         else
         if listFind strEq (head input) ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
@@ -206,14 +208,14 @@ let lexer program lst =
                     (lexNgram (head (tail (listSplitAt digits input))) lst)
             ni
         else 
-        if strEq (head input) "'"
+        if headIs input "'"
         then let chars = matchString 0 (tail input) in
             (append (stringAppend "StringLit " (implode (head (listSplitAt (chars-1) (tail input)))))) 
                     (lexNgram (head (tail (listSplitAt (chars+1) input))) lst)
             ni
         else 
         # IGNORE WHITE SPACES
-        if strEq (head input) " " 
+        if headIs input " " 
         then lexNgram (tail input) lst
         else
             let chars = matchId 0 input in
@@ -259,10 +261,11 @@ let lexer program lst =
          fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi fi 
     in
         lexNgram (explode program) lst
-    ni
+    ni ni
 in
     # testing with listReduce declaration
-    lexer "let listReduce f lst = let reducer f acc lst = if size lst == 0 then acc else reducer f (f acc (head lst)) (tail lst) fi in if size lst == 0 then 0 else reducer f (head lst) (tail lst) fi ni in let sum a b = a + b in listReduce sum [120, 2, 3, 4] ni ni" []
+    # lexer "let listReduce f lst = let reducer f acc lst = if size lst == 0 then acc else reducer f (f acc (head lst)) (tail lst) fi in if size lst == 0 then 0 else reducer f (head lst) (tail lst) fi ni in let sum a b = a + b in listReduce sum [120, 2, 3, 4] ni ni" []
+    lexer "let " []
 ni
 
 # Helper functions

@@ -57,9 +57,6 @@ let libraries  =
            fi
          fi
       in";
-      "let StringLength str = 
-        size (explode str)
-      in";
       "let listConcat lhs rhs = 
         if size lhs == 0
         then rhs
@@ -132,19 +129,40 @@ let libraries  =
            looper 0 idx lst
          ni
        in";
-       "let stringItem idx str = 
-          listItem idx (explode str) 
-        in";
-        "let listContain f keys lst =
+        "let listContains f keys lst =
             if size keys == 0 || size lst == 0
             then false 
             else 
                 if (listFind f (head keys) lst)
                 then true
-                else  listContain f (tail keys) lst
+                else  listContains f (tail keys) lst
                 fi
             fi
         in";
+    ];
+
+    "String",
+    ["let stringItem idx str =
+        let listItem idx lst =    
+         let looper step idx lst =  
+           if size lst == 0
+           then 0 # undefined behaviour
+           else
+             if step == idx
+             then head lst
+             else looper (step + 1) idx (tail lst)
+             fi
+           fi
+         in
+           looper 0 idx lst
+         ni
+       in
+        listItem idx (explode str)
+       ni
+      in";
+      "let stringLength str = 
+        size (explode str)
+      in";
     ];
 
     "Test",
