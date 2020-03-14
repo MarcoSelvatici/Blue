@@ -171,6 +171,7 @@ Our demo codes have been mentioned a few times already:
 - List library: `demo-code/ListLib.s`
 - String library: `demo-code/StringLib.s`
 - Blue lexer: `demo-code/lexngram.s`
+- Church Numerals, Booleans, and operands: `demo-code/church.s` 
 
 ## Implementation details
 The code is divided in a series of modules.
