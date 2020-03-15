@@ -201,7 +201,6 @@ let BuiltIn =
             Mult, (*); 
             Div,  (/);
          ]; 
-         //fun x -> Some x
         
         mapInputOutputBin (fun x -> Some x) (|LISTLAZY|_|)  id
          [  Append, (fun l r -> SeqExp (l,r)); ];
@@ -227,13 +226,15 @@ let BuiltIn =
          ];
 
          mapInputOutputUnary (|STRLIST|_|) (StringLit>>Literal)
-         [ // [String] -> String 
-            Implode, Seq.fold (+) ""
-         ];
+         [ Implode, Seq.fold (+) "" ]; // [String] -> String 
 
         mapInputOutputUnary (fun x -> Some x) id
-         [ // ast -> ast
-            Print, (fun x -> Printer.Print <| prettyPrint ( Ok x ) ; x  );
+         [ Print, (fun x -> Printer.Print <| prettyPrint ( Ok x ) ; x  ); ]; // ast -> ast
+
+        mapInputOutputUnary (fun x -> Some x) (BoolLit>>Literal)
+         [ Test, (function 
+                  | Literal _ | SeqExp _ -> true
+                  | _ -> false)
          ];
 
     ] |> List.concat |> Map

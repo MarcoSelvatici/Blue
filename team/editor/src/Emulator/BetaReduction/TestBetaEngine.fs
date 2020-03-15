@@ -191,6 +191,16 @@ let testOk : TestInfo=
     // print
     "print","print \"testing print function\"", FbuiltIn Print (stringL "testing print function"), (stringL "testing print function");
 
+    // test
+    "test int", "test 1 -> T", FbuiltIn Test (intL 1), trueL;
+    "test bool", "test false -> T", FbuiltIn Test falseL, trueL;
+    "test string", "test \"ijk\" -> T", FbuiltIn Test (stringL "ijk"), trueL;
+    "test list 1", "test [] -> T", FbuiltIn Test (buildList []), trueL;
+    "test list 2", "test [10] -> T", FbuiltIn Test (buildList [intL 10]), trueL;
+    "test def", "test def x = 0 in x -> T", FbuiltIn Test (def "x" (intL 0) (idn "x")), trueL;
+    "test eval", "test (5+5) -> T", FbuiltIn Test (F2builtIn Plus (intL 5) (intL 5)), trueL;
+    "test lambda", "test \x.x -> F", FbuiltIn Test (lam "x" <| idn "x"), falseL;
+
     // lists
     "Head", "Head [1 2 3] -> 1", FbuiltIn Head (buildList [intL 1;intL 2;intL 3]), intL(1);
     "Head with idns", "Head [c c] -> c",
