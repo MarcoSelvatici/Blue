@@ -89,8 +89,7 @@ let testCasesLexer = [
             KThen; TLiteral (BoolLit true); KElse; TLiteral (BoolLit false); KFi];
     "Failing number literal 2", " 09 2 23a ",
         Error (LexerError "lexing error, number contains non numeric char: 'a' on line 1");
-    "Failing identifier", " let ab = 2
-                            let a_b@ = 4",
+    "Failing identifier", " let ab = 2\nlet a_b@ = 4",
         Error (LexerError "lexing error, unrecognised non-alphabetic character: '@' on line: 2");
     "Never closing multiline comment", " let ab = 2
                                          (* asdsapodsa
@@ -109,13 +108,7 @@ let testCasesLexer = [
             TLiteral (IntLit 10); KCloseRound; TLiteral (IntLit 12)];
     "list declaration", "let a = [b, 0, \"ciao\"]",
         Ok [KLet; TIdentifier "a"; KEq; KOpenSquare; TIdentifier "b"; KComma; TLiteral (IntLit 0); KComma; TLiteral (StringLit "ciao"); KCloseSquare];
-    "Row count for multiline comment", " let ab = 2
-                                         (* asdsapodsa
-                                         sadsioajd
-                                         let ciao = true
-                                         fdsfjspodjf 
-                                         *)
-                                         %%%",
+    "Row count for multiline comment", " let ab = 2\n(* asdsapodsa\nsadsioajd\nlet ciao = true\nfdsfjspodjf\n*)\n%%%",
         Error (LexerError "lexing error, unrecognised character '%' on line 7");
     "Print function", "print 1",
         Ok [TBuiltInFunc Print; TLiteral (IntLit 1)];

@@ -45,7 +45,7 @@ let runCode () =
         (getHtml "out-text").innerHTML <-  sprintf "%A" (prettyPrint res)
         (getHtml "out-type").innerHTML <- if currentTypeCheck
                                           then getType program
-                                          else "Type checkning not enabled"
+                                          else "Type checking not enabled"
         (getHtml "out-print").innerHTML <- Printer.ReturnClear
     with
         // Some of the impossible cases has been triggered, or there was a stack

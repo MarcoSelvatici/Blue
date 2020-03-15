@@ -116,7 +116,7 @@ let rec unify t1 t2 : Result<Subst list, string> =
     | t, Gen g | Gen g, t ->
         // Can specialise the generic type g into the type t.
         Ok <| [{wildcard = g; newType = t}]
-    | _ -> Error <| sprintf "Types %s and %s are not compatable" (type2String t1) (type2String t2)
+    | _ -> Error <| sprintf "Types %s and %s are not compatible" (type2String t1) (type2String t2)
 
 /// Apply a given substitution list to a type, and return the resulting type.
 let rec apply subs t =

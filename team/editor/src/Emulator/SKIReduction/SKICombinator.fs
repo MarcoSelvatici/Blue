@@ -25,6 +25,12 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,ErrorT
     match input with
     | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null -> input |> Ok
 
+    // test fn
+    | FuncApp (BuiltInFunc Test, x) ->
+        match x with
+        | Literal _ | Combinator _ | SeqExp _  -> true |> BoolLit |> Literal |> Ok
+        | _ ->  false |> BoolLit |> Literal |> Ok     
+
     //    1.  T[x] => x
     // Check in bindings to see if that identfier has been defined
     | Identifier x ->
@@ -158,7 +164,7 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
         | Error (SKIRuntimeError x), Error (SKIRuntimeError y) -> buildErrorSKI <| x + ", " + y
         | Error x, _ -> Error x
         | _, Error y -> Error y
-        | _, _       -> buildErrorSKI <| sprintf "Error evaluating built-in funciton 'Append' with arguments: %A, %A" x' y'           
+        | _, _       -> buildErrorSKI <| sprintf "Error evaluating built-in function 'Append' with arguments: %A, %A" x' y'           
 
     // implode string list
     | FuncApp( BuiltInFunc Implode, exp) -> 
