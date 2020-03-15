@@ -38,37 +38,21 @@ let testCasesSKIE2E : (string * string * Result<Ast, SharedTypes.ErrorT>) list =
                         StringLength \"1sdsadsvfe\"
                       ni",
     Ok (Literal (IntLit 10));
-    //////////////////////////////////////////
-    /// IF THEN ELSE BUG STILL TO BE FIXED ///
-    //////////////////////////////////////////
-     
-    // "ListMap library function", "let listMap f lst = 
-    //                             if size lst == 0
-    //                             then []
-    //                             else append (f (head lst))
-    //                                  (listMap f (tail lst))
-    //                             fi
-    //                           in 
-    //                           listMap (\x.x+1)[1, 2, 3]
-    //                           ni",
-    // Ok (FuncApp (Combinator K, Literal (IntLit 42)));
-    // "ListReverse ", "let listReverse lst = 
-    //                     let reverser lst revlst  = 
-    //                       if size lst == 0
-    //                       then revlst
-    //                       else reverser (tail lst) (append (head lst) revlst)
-    //                       fi
-    //                     in
-    //                       reverser lst []
-    //                     ni
-    //                   in
-    //                     listReverse [\"a\", \"bcd\", \"e\"]
-    //                   ni",
-    // Ok
-    //   (SeqExp
-    //      (Literal (StringLit "e"),
-    //       SeqExp
-    //         (Literal (StringLit "bcd"),
-    //             SeqExp (Literal (StringLit "a"),SeqExp (Null,Null)))));
+    "I combinator", "\x.x",
+    Ok (Combinator I);
+    "I combinator with value", "(\x.x) 10",
+    Ok (Literal (IntLit 10));
+    "K combinator", "\x y. y",
+    Ok (FuncApp(Combinator K,Combinator I));
+    "K combinator 2nd with 1 arg", "(\x y. y) 5",
+    Ok (Combinator I);
+    "K combinator 2nd with 2 args", "(\x y. y) 1 5",
+    Ok (Literal (IntLit 5));
+    "Program", "let main =
+                let first = (\x y.x) in
+                let second = (\x y.y) in
+                append \"a\" (append (first (second 1 \"b\") ([1,2,3])) [\"c\"]) ni ni
+                in main ni",
+    Ok(SeqExp (Literal (StringLit "a"),SeqExp (Literal (StringLit "b"),SeqExp (Literal (StringLit "c"),SeqExp (Null,Null)))));
 ]
   

@@ -375,4 +375,32 @@ This function takes a list of substitutions, and apply them to a type. This is
 a recursive process, since a type may contain substitutable wildcards.
 
 ### SKI Engine
+The SKI runtime takes an input from the parser and returns either the evaluated result or
+an error if the evaluation is unsuccessful.
+
+The implementation is divided into three main steps each implemented in seperate functions:
+- `bracketAbstract` : Peforms bracket abstraction on the input. Reduces the output of the parser and introduces 
+S,K and I combinators into the tree 
+- `combinatorReduc` : Does combinator reduction on the input 
+- `evalBuiltin` : Evaluates all built-in functions  
+
+The following features are supported by the SKI combinator runtime:
+- Converting Lambdas into S,K,I combinators (in `bracketAbstract` function)
+- Simplifying SKI combinator expressions (in `combinatorReduc` function)
+- Function definitions (in `bracketAbstract` function)
+- Function applications (in `bracketAbstract` function)
+- Evaluating built-in functions (in `evalBuiltin` function): 
+    - print  
+    - implode
+    - explode
+    - head
+    - append
+    - tail
+    - size
+    - basic arithmetic and logical operators
+- ifThenElse expressions, only evaluating a branch if needed
+- Error reporting which indicates at which stage of the runtime an error occured
+- Recursion for functions with one argument (covered in INDIV-oss1017)
+
+
 ### Beta Engine
