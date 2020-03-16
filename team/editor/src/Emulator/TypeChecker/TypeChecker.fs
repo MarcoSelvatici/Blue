@@ -33,6 +33,11 @@ type Subst = {
     newType: Type;
 }
 
+type State = {
+    uid: int;
+    funcTypes: Var list;
+}
+
 //==================//
 // Helper functions //
 //==================//
@@ -68,7 +73,7 @@ let type2String t =
     str
 
 /// Return a new Generic identifier, and the updated uid.
-let newGen uid = Gen uid, uid + 1
+let newGen state = Gen state.uid, {state with uid = state.uid + 1}
 
 /// Extend a context with a new variable and its type. If the variable is
 /// already present, it gets overridden (this allows variable shadowing in inner
@@ -146,15 +151,15 @@ let isBinaryOp op = List.contains op (int2int @ int2bool @ bool2bool)
 // Inference functions //
 //=====================//
 
-let inferNullType uid =
+let inferNullType state =
     // Assign generic type, since this will be used in empty sequences.
-    let g, uid = newGen uid
-    uid, Ok ([], g)
+    let g, state = newGen state
+    state, Ok ([], g)
 
-let inferIdentifier uid ctx name =
+let inferIdentifier state ctx name =
     match lookUpType ctx name with
-    | None -> uid, Error <| sprintf "Identifier %s is not bound" name
-    | Some (_, t) -> uid, Ok ([], t)
+    | None -> state, Error <| sprintf "Identifier %s is not bound" name
+    | Some (_, t) -> state, Ok ([], t)
 
 let inferBinOp op =
     let isInt2Int   = List.tryFind ((=) op) int2int
@@ -166,121 +171,128 @@ let inferBinOp op =
     | None, None, Some _ -> Ok ([], Fun(Base Bool, Fun(Base Bool, Base Bool)))
     | _ -> impossible "type checker, inferBinOp"
 
-let inferListOp uid op =
-    let tHead, uid = newGen uid
-    let tTail, uid = newGen uid
+let inferListOp state op =
+    let tHead, state = newGen state
+    let tTail, state = newGen state
     match op with
-    | Head -> uid, Ok ([], Fun (Pair (tHead, tTail), tHead))
-    | Tail -> uid, Ok ([], Fun (Pair (tHead, tTail), tTail))
-    | Size -> uid, Ok ([], Fun (Pair (tHead, tTail), Base Int))
+    | Head -> state, Ok ([], Fun (Pair (tHead, tTail), tHead))
+    | Tail -> state, Ok ([], Fun (Pair (tHead, tTail), tTail))
+    | Size -> state, Ok ([], Fun (Pair (tHead, tTail), Base Int))
     | Append ->
-        let tNewHead, uid = newGen uid
+        let tNewHead, uid = newGen state
         uid, Ok ([], Fun (tNewHead, Fun (Pair (tHead, tTail), Pair (tNewHead, Pair (tHead, tTail)))))
     | _ -> impossible "type checker, inferListOp"
 
-let inferImplodeExplode uid f =
+let inferImplodeExplode state f =
     // Return a generic list. This is a best effort type checking.
-    let tHead, uid = newGen uid
-    let tTail, uid = newGen uid    
+    let tHead, state = newGen state
+    let tTail, state = newGen state    
     match f with
-    | Explode -> uid, Ok ([], Fun (Base String, Pair (tHead, tTail)))
-    | Implode -> uid, Ok ([], Fun (Pair (tHead, tTail), Base String))
+    | Explode -> state, Ok ([], Fun (Base String, Pair (tHead, tTail)))
+    | Implode -> state, Ok ([], Fun (Pair (tHead, tTail), Base String))
     | _ -> impossible "type checker, inferImplodeExplode"
 
-let inferBuiltInFunc uid f =
+let inferBuiltInFunc state f =
     let isListOp op = List.contains op [Head; Tail; Size; Append]
     match f with
-    | op when isBinaryOp op -> uid, inferBinOp op
-    | op when isListOp op -> inferListOp uid op
-    | Not -> uid, Ok ([], Fun(Base Bool, Base Bool))
-    | Implode | Explode -> inferImplodeExplode uid f
-    | StrEq -> uid, Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
+    | op when isBinaryOp op -> state, inferBinOp op
+    | op when isListOp op -> inferListOp state op
+    | Not -> state, Ok ([], Fun(Base Bool, Base Bool))
+    | Implode | Explode -> inferImplodeExplode state f
+    | StrEq -> state, Ok ([], Fun(Base String, Fun(Base String, Base Bool)))
     | Print ->
-        let t, uid = newGen uid
+        let t, uid = newGen state
         uid, Ok ([], Fun (t, t))
     | Test ->
-        let t, uid = newGen uid
+        let t, uid = newGen state
         uid, Ok ([], Fun(t, Base Bool))
-    | _ -> uid, Error <| sprintf "Type checking for %A is not implemented" f
+    | _ -> state, Error <| sprintf "Type checking for %A is not implemented" f
 
-let rec inferIfExp uid ctx c t e =
-    let uid, i1 = infer uid ctx c
-    let uid, i2 = infer uid ctx t
-    let uid, i3 = infer uid ctx e
+let rec inferIfExp state ctx c t e =
+    let state, i1 = infer state ctx c
+    let state, i2 = infer state ctx t
+    let state, i3 = infer state ctx e
     match i1, i2, i3 with
-    | Error e, _, _ | _, Error e, _ | _, _, Error e -> uid, Error e
+    | Error e, _, _ | _, Error e, _ | _, _, Error e -> state, Error e
     | Ok (s1, t1), Ok (s2, t2), Ok (s3, t3) ->
         let rs4 = unify t1 (Base Bool) // Make sure the condition is bool.
         let rs5 = unify t2 t3 // Make sure both branches have same type.
         match rs4, rs5 with
-        | Error e, _ | _, Error e -> uid, Error e
-        | Ok s4, Ok s5 -> uid, Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
+        | Error e, _ | _, Error e -> state, Error e
+        | Ok s4, Ok s5 -> state, Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
 
-and inferSeqExp uid ctx head tail =
-    let uid, i1 = infer uid ctx head
-    let uid, i2 = infer uid ctx tail
+and inferSeqExp state ctx head tail =
+    let state, i1 = infer state ctx head
+    let state, i2 = infer state ctx tail
     match i1, i2 with
-    | Error e, _ | _, Error e -> uid, Error e
-    | Ok (s1, t1), Ok (s2, t2) -> uid, Ok (s1 @ s2, Pair (t1, t2))
+    | Error e, _ | _, Error e -> state, Error e
+    | Ok (s1, t1), Ok (s2, t2) -> state, Ok (s1 @ s2, Pair (t1, t2))
 
-and inferFuncApp uid ctx f arg =
-    let newWildcard, uid = newGen uid // Return type of the func application.
-    match infer uid ctx f with
-    | _, Error e -> uid, Error e
-    | uid, Ok (s1, t1) ->
+and inferFuncApp state ctx f arg =
+    let newWildcard, state = newGen state // Return type of the func application.
+    match infer state ctx f with
+    | _, Error e -> state, Error e
+    | state, Ok (s1, t1) ->
         // Infer the type of the second argument applying the substitutions from
         // the first inference.
-        match infer uid (applyToCtx s1 ctx) arg with
-        | uid, Error e -> uid, Error e
-        | uid, Ok (s2, t2) ->
+        match infer state (applyToCtx s1 ctx) arg with
+        | state, Error e -> state, Error e
+        | state, Ok (s2, t2) ->
             // We expect the t1 to be a lambda that takes t2 and returns
             // a new type. Hence we unify t1 with t2 -> newType.
             match unify (apply s2 t1) (Fun (t2, newWildcard)) with
-            | Error e -> uid, Error e
-            | Ok s3 -> uid, Ok (s1 @ s2 @ s3, apply s3 newWildcard)
+            | Error e -> state, Error e
+            | Ok s3 -> state, Ok (s1 @ s2 @ s3, apply s3 newWildcard)
 
-and inferLambdaExp uid ctx lam =
-    let newWildcard, uid = newGen uid // For the lambda bound variable.
+and inferLambdaExp state ctx lam =
+    let newWildcard, state = newGen state // For the lambda bound variable.
     let ctx = extend ctx lam.LambdaParam newWildcard
-    match infer uid ctx lam.LambdaBody with
-    | uid, Error e -> uid, Error e
-    | uid, Ok (s1, t1) -> uid, Ok (s1, Fun(apply s1 newWildcard, t1))
+    match infer state ctx lam.LambdaBody with
+    | state, Error e -> state, Error e
+    | state, Ok (s1, t1) -> state, Ok (s1, Fun(apply s1 newWildcard, t1))
 
-and inferFuncDefExp uid ctx def =
+and inferFuncDefExp state ctx def =
     // Extend the context with a generic type for our function, this allows
     // recursion.
-    let funcType, uid = newGen uid
+    let funcType, state = newGen state
     let ctx = extend ctx def.FuncName funcType
-    match infer uid ctx def.FuncBody with
-    | uid, Error e -> uid, Error e
-    | uid, Ok (s1, t1) ->
+    match infer state ctx def.FuncBody with
+    | state, Error e -> state, Error e
+    | state, Ok (s1, t1) ->
         match unify t1 funcType with
-        | Error e -> uid, Error e
+        | Error e -> state, Error e
         | Ok sFuncType ->
+            let state = {state with funcTypes = (def.FuncName, t1) :: state.funcTypes}
             let ctx = applyToCtx (sFuncType @ s1) ctx
-            match infer uid ctx def.Rest with
-            | uid, Error e -> uid, Error e
-            | uid, Ok (s2, t2) -> uid, Ok (sFuncType @ s1 @ s2, t2)
+            match infer state ctx def.Rest with
+            | state, Error e -> state, Error e
+            | state, Ok (s2, t2) -> state, Ok (sFuncType @ s1 @ s2, t2)
 
 /// Infer the type of an ast, and return the substitutions, together with the
 /// type of the ast.
-and infer uid ctx ast : int * Result<Subst list * Type, string> =
+and infer state ctx ast =
     match ast with
-    | Literal (IntLit _)    -> uid, Ok ([], Base Int)
-    | Literal (BoolLit _)   -> uid, Ok ([], Base Bool)
-    | Literal (StringLit _) -> uid, Ok ([], Base String)
-    | Null                  -> inferNullType uid
-    | Identifier name       -> inferIdentifier uid ctx name
-    | BuiltInFunc f         -> inferBuiltInFunc uid f
-    | IfExp (c, t, e)       -> inferIfExp uid ctx c t e
-    | SeqExp (head, tail)   -> inferSeqExp uid ctx head tail
-    | FuncApp (f, arg)      -> inferFuncApp uid ctx f arg
-    | LambdaExp lam         -> inferLambdaExp uid ctx lam
-    | FuncDefExp def        -> inferFuncDefExp uid ctx def
-    | _ -> uid, Error <| sprintf "Type checking for %A is not implemented" ast
+    | Literal (IntLit _)    -> state, Ok ([], Base Int)
+    | Literal (BoolLit _)   -> state, Ok ([], Base Bool)
+    | Literal (StringLit _) -> state, Ok ([], Base String)
+    | Null                  -> inferNullType state
+    | Identifier name       -> inferIdentifier state ctx name
+    | BuiltInFunc f         -> inferBuiltInFunc state f
+    | IfExp (c, t, e)       -> inferIfExp state ctx c t e
+    | SeqExp (head, tail)   -> inferSeqExp state ctx head tail
+    | FuncApp (f, arg)      -> inferFuncApp state ctx f arg
+    | LambdaExp lam         -> inferLambdaExp state ctx lam
+    | FuncDefExp def        -> inferFuncDefExp state ctx def
+    | _ -> state, Error <| sprintf "Type checking for %A is not implemented" ast
 
 let typeCheck (ast : Ast) : Result<Type, ErrorT> =
-    infer 0 [] ast
+    infer {uid = 0; funcTypes = []} [] ast
     |> function // Just return the type.
        | _, Ok (_, t) -> Ok t
+       | _, Error e -> Error <| TypeCheckerError e
+
+let getAllFuncTypes (ast : Ast) : Result<Var list, ErrorT> =
+    infer {uid = 0; funcTypes = []} [] ast
+    |> function // Just return the type.
+       | state, Ok _ -> Ok state.funcTypes
        | _, Error e -> Error <| TypeCheckerError e

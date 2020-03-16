@@ -53,6 +53,17 @@ let getType input : string =
        | Error (TypeCheckerError e) -> sprintf "%A" e
        | Error e -> "Build failed before type checker."
 
+let getFuncTypes input =
+    input
+    |> preprocess
+    |> Result.bind tokeniseT3
+    |> Result.bind parse
+    |> Result.bind getAllFuncTypes
+    |> Result.map (
+        fun funcTypes -> List.map (fun (name, t) -> name, type2String t) funcTypes
+    )
+    
+
 let getAstType (input : Result<Ast, ErrorT>) : string =
     input
     |> Result.bind typeCheck
