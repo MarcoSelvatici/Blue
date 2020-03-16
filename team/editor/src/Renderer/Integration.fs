@@ -74,10 +74,10 @@ let makeTypesTooltips program =
 /// If current tab is TB run TB if this is possible
 let runCode () =
     let program = getProgram ()
-    if currentTypeCheck
-    then makeTypesTooltips program
-    else ()
     try
+        if currentTypeCheck
+        then makeTypesTooltips program
+        else ()
         let res = end2end currentTypeCheck currentRuntime program
         (getHtml "out-text").innerHTML <-  sprintf "%A" (prettyPrint res)
         (getHtml "out-type").innerHTML <- if currentTypeCheck
@@ -87,5 +87,5 @@ let runCode () =
     with
         // Some of the impossible cases has been triggered, or there was a stack
         // overflow.
-        Failure msg -> showVexAlert <| sprintf "EXCEPTION:\n%A" msg
+        Failure msg -> showVexAlert <| sprintf "EXCEPTION:\n%A<br>This may be due to the fact that the expression cannot be type checked. Try turning off type checking." msg
 
