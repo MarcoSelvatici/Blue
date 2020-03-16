@@ -40,7 +40,7 @@ let makeToolTip lineNumber hoverLst =
          ])
         None
 
-let makeTypesTooltips () =
+let makeTypesTooltips program =
     removeEditorDecorations currentFileTabId
     let rawText = textOfTId currentFileTabId
     let linesWithLet, _ =
@@ -57,7 +57,7 @@ let makeTypesTooltips () =
         let initialState = [], 1 // No lines with let, and examining line 1.
         (initialState, rawText) ||> List.fold folder
 
-    match getFuncTypes (getProgram ()) with
+    match getFuncTypes program with
     | Error _ -> ()
     | Ok funcTypes ->
         let lookupType fName =
@@ -73,10 +73,10 @@ let makeTypesTooltips () =
 /// Top-level simulation execute
 /// If current tab is TB run TB if this is possible
 let runCode () =
-    if currentTypeCheck
-    then makeTypesTooltips ()
-    else ()
     let program = getProgram ()
+    if currentTypeCheck
+    then makeTypesTooltips program
+    else ()
     try
         let res = end2end currentTypeCheck currentRuntime program
         (getHtml "out-text").innerHTML <-  sprintf "%A" (prettyPrint res)
