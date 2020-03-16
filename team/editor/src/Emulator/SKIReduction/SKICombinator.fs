@@ -25,12 +25,6 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,ErrorT
     match input with
     | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null -> input |> Ok
 
-    // test fn
-    | FuncApp (BuiltInFunc Test, x) ->
-        match x with
-        | Literal _ | Combinator _ | SeqExp _  -> true |> BoolLit |> Literal |> Ok
-        | _ ->  false |> BoolLit |> Literal |> Ok     
-
     //    1.  T[x] => x
     // Check in bindings to see if that identfier has been defined
     | Identifier x ->
@@ -149,7 +143,6 @@ let isFree (var:string) (exp: Ast): bool =
 /// Evaluate Ast built-in functions
 let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
     match input with
-    
     //print
     | FuncApp (BuiltInFunc Print, x) ->
         let x' = evalBuiltin x
@@ -232,6 +225,7 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
             else buildErrorSKI <| sprintf "Error getting size of list: Invalid input: %A" x
         | Error x -> Error x            
 
+
     //unary built-in functions
     | FuncApp( BuiltInFunc op, x) -> 
         let x' = evalBuiltin x
@@ -240,6 +234,8 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
         //boolean op
         | Not, Ok (Literal (BoolLit n)) -> 
             Literal (BoolLit (not n)) |> Ok
+        | Test, (Ok (Literal _) | Ok (SeqExp _))  -> true |> BoolLit |> Literal |> Ok
+        | Test, Ok (_) -> false |> BoolLit |> Literal |> Ok  
         | _ ->
             buildErrorSKI <| sprintf "Error evaluating built-in function with 1 argument: operator \'%A\' with argument \'%A\'" op x'
 

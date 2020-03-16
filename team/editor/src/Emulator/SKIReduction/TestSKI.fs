@@ -114,6 +114,42 @@ let arithmeticTests = [
 
 ]
 
+/// Tests for built-in function 'test'
+let testTests = [
+
+    "test int", 
+    FuncApp( BuiltInFunc Test, Literal (IntLit 1)),
+    Ok (Literal (BoolLit true));
+
+    "test bool", 
+    FuncApp( BuiltInFunc Test, Literal (BoolLit false)),
+    Ok (Literal (BoolLit true));
+
+    "test string",
+    FuncApp( BuiltInFunc Test, Literal (StringLit "hello")),
+    Ok (Literal (BoolLit true));
+
+    "test list 1",
+    FuncApp( BuiltInFunc Test, (IntLit, [1]) ||> buildList),
+    Ok (Literal (BoolLit true));
+
+    "test list 2",
+    FuncApp( BuiltInFunc Test, (StringLit, []) ||> buildList),
+    Ok (Literal (BoolLit true));
+
+    "test def",
+    FuncApp( BuiltInFunc Test, FuncDefExp {FuncName = "f"; FuncBody = Literal (IntLit 2); Rest = Identifier "f";}),
+    Ok (Literal (BoolLit true));
+
+    "test eval",
+    FuncApp( BuiltInFunc Test, FuncApp( FuncApp( BuiltInFunc Minus, Literal (IntLit 4)), Literal (IntLit 2))),
+    Ok (Literal (BoolLit true));
+
+    "test lambda",
+    FuncApp( BuiltInFunc Test, LambdaExp { LambdaParam = "x" ; LambdaBody = Identifier "x" }),
+    Ok (Literal (BoolLit false));
+
+]
 
 /// Tests for built-in functions related to logical operators
 let booleanTests = [
@@ -471,11 +507,6 @@ let recursionTests = [
     runtimeFact 12,
     12 |> fact |> IntLit |> Literal |> Ok;
 
-    // This overflows but the result is still expected to match the F# one
-    "factorial 120, overflow check",
-    runtimeFact 120,
-    120 |> fact |> IntLit |> Literal |> Ok;
-
     "fib 0",
     runtimeFib 0,
     0 |> fib |> IntLit |> Literal |> Ok;
@@ -555,6 +586,7 @@ let generalErrorTests = [
 
 /// List of all test categories to be run
 let runtimeTests = [
+    testTests;
     listTests;
     arithmeticTests;
     booleanTests;
@@ -568,6 +600,7 @@ let runtimeTests = [
     stringTests;
     generalErrorTests;
 ]
+
 
 /// Run a single input using the combinator runtime
 let singleEval = 
