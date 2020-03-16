@@ -25,8 +25,7 @@ IDENTIFIER:
 
 ### LEXER (STRING -> STRING LIST)    ###
 ### MISSING:                         ###
-### 1. Match string                  ###
-### 2. Match lambda                  ###
+### 1. Match lambda                  ###
 
 # Library
 let listFind f key lst = 
@@ -210,8 +209,8 @@ let lexer program lst =
         else 
         if headIs input "'"
         then let chars = matchString 0 (tail input) in
-            (append (stringAppend "StringLit " (implode (head (listSplitAt (chars-1) (tail input)))))) 
-                    (lexNgram (head (tail (listSplitAt (chars+1) input))) lst)
+            (append (stringAppend (stringAppend "StringLit '" (implode (head (listSplitAt (chars) (tail input))))) "'" )) 
+                    (lexNgram (head (tail (listSplitAt (chars+2) input))) lst)
             ni
         else 
         # IGNORE WHITE SPACES
@@ -265,7 +264,8 @@ let lexer program lst =
 in
     # testing with listReduce declaration
     # lexer "let listReduce f lst = let reducer f acc lst = if size lst == 0 then acc else reducer f (f acc (head lst)) (tail lst) fi in if size lst == 0 then 0 else reducer f (head lst) (tail lst) fi ni in let sum a b = a + b in listReduce sum [120, 2, 3, 4] ni ni" []
-    lexer "let " []
+    # lexer "let " []
+     lexer "['a','b','c']" []
 ni
 
 # Helper functions
