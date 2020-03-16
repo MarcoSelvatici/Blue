@@ -22,10 +22,21 @@ unit tests for it.
 Since I designed the parser, I also designed the main shared types in our
 code (Token, Ast).
 
+The parser required no changes during the group phase, aside from when we 
+decided to how to represent the empty list.
+
 <b>Type checker + unit tests</b>
 
 During the individual code phase, I implemented the type checker and 
 wrote many unit tests for it.
+
+During group phase I changed the type checker by:
+
+- adding a few builtin function types,
+- introducing type checking for recursive functions,
+- creating a prettyprint function for the types,
+- allowing to keep track of the types of all let functions (to implement 
+tooltips).
 
 <b>TestLib</b>
 
