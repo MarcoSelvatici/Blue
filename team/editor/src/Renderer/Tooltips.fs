@@ -21,7 +21,7 @@ open Refs
 //                                  SVG Graphics using React
 // ***********************************************************************************************
 
-(*
+
 // SVG elements
 let inline svg b c = svgEl "svg" b c
 let inline circle b c = svgEl "circle" b c
@@ -103,7 +103,6 @@ let inline tspan b c = svgEl "tspan" b c
         | Y2 of obj
         | Y of obj
 
-*)
 
 //---------------------------------------------------------------------------------------------------------------------------
 //

@@ -14,7 +14,7 @@ let listReduce f lst =
     fi
   in
   if size lst == 0
-  then 0 
+  then 0 # This should throw an exception, but we dont have those in our language.
   else reducer f (head lst) (tail lst) 
   fi
 ni
@@ -52,13 +52,13 @@ let listConcat lhs rhs =
   fi
 in
 let listReverse lst = 
-  let reverser lst revlst  = 
+  let reverser lst  = 
     if size lst == 0
-    then revlst
-    else reverser (tail lst) (append (head lst) revlst)
+    then []
+    else reverser (tail lst) (append (head lst))
     fi
   in
-    reverser lst []
+    reverser lst
   ni
 in
 let listSplitAt idx lst = 

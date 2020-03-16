@@ -41,6 +41,13 @@ editor could run code and display its result in a popup window.
 The UI has then been further improved by Oliver (with the tabs on the 
 right section of the screen).
 
+<b>Show types when hovering let expressions</b>
+
+I edited the type checker to return the types of all let expressions,
+and added code to create tooltips displaying these types upon hovering.
+
+Note: you need to click the run button to generate/refresh them.
+
 <b>Church numerals demo code</b>
 
 I implemented the demo code for Church numerals.

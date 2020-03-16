@@ -52,6 +52,9 @@ The editor allows to run the code and see:
 You can also easily turn on and off type checking, and choosing the reduction
 engine you prefer (SKI or Beta).
 
+After clicking the run button, you can hover the let expressions to see
+a tooltip with their types!
+
 ## Features
 
 Blue is a typed functional language with two runtimes (beta reduction and combinators reduction). It also has comments, builtin types and builtin operators/functions.

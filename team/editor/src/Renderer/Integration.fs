@@ -20,26 +20,63 @@ let resetEmulator() =
     Editors.removeEditorDecorations currentFileTabId
     Editors.enableEditors()
 
-//let enableTypeCheck() =
-//    showVexAlert "enable type check"
-
-//let disableTypeCheck() =
-//    showVexAlert "disable type check"
-
-//let enableSki() =
-//    showVexAlert "enable SKI"
-
-//let enableBeta() =
-//    showVexAlert "enable BETA"
-
 let getProgram () =
     textOfTId currentFileTabId
     |> List.fold (fun r s -> r + s + "\n") ""
+
+let makeToolTip lineNumber hoverLst =
+    let makeMarkDown textLst =
+        textLst
+        |> List.toArray
+        |> Array.map (fun txt -> createObj [ "isTrusted" ==> true; "value" ==> txt ])
+    editorLineDecorate
+        Refs.editors.[currentFileTabId]
+        lineNumber
+        (createObj [
+            "isWholeLine" ==> true
+            "isTrusted" ==> true
+            "inlineClassName" ==> ""
+            "hoverMessage" ==> makeMarkDown hoverLst
+         ])
+        None
+
+let makeTypesTooltips program =
+    removeEditorDecorations currentFileTabId
+    let rawText = textOfTId currentFileTabId
+    let linesWithLet, _ =
+        let folder state (currLine : string) =
+            //let seqLine = Seq.toList line
+            let stateLst, lineNum = state
+            match currLine.IndexOf "let" with
+            | -1 -> stateLst, lineNum + 1 // No match.
+            | b ->
+                let trimmed = currLine.Substring (b+4) // Skip "let ".
+                match trimmed.IndexOf " " with
+                | -1 -> stateLst, lineNum + 1 // No match.
+                | e -> (trimmed.[..e-1], lineNum) :: stateLst, lineNum + 1
+        let initialState = [], 1 // No lines with let, and examining line 1.
+        (initialState, rawText) ||> List.fold folder
+
+    match getFuncTypes program with
+    | Error _ -> ()
+    | Ok funcTypes ->
+        let lookupType fName =
+            match List.tryFind (fun (name,_)->fName = name) funcTypes with
+            | Some (_,t) -> t
+            | None -> "Could not find type"
+        // For each line with let, create a tooltip with the corresponding type from
+        // funcTypes.
+        linesWithLet
+        |> List.map (fun (fname, lineNum) -> makeToolTip lineNum [lookupType fname])
+        |> ignore
 
 /// Top-level simulation execute
 /// If current tab is TB run TB if this is possible
 let runCode () =
     let program = getProgram ()
+    if currentTypeCheck
+    then makeTypesTooltips program
+    else ()
     try
         let res = end2end currentTypeCheck currentRuntime program
         (getHtml "out-text").innerHTML <-  sprintf "%A" (prettyPrint res)
