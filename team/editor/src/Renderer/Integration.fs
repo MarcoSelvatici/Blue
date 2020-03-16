@@ -41,6 +41,7 @@ let makeToolTip lineNumber hoverLst =
         None
 
 let makeTypesTooltips () =
+    removeEditorDecorations currentFileTabId
     let rawText = textOfTId currentFileTabId
     let linesWithLet, _ =
         let folder state (currLine : string) =
