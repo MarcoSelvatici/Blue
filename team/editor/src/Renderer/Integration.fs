@@ -62,7 +62,7 @@ let makeTypesTooltips program =
     | Ok funcTypes ->
         let lookupType fName =
             match List.tryFind (fun (name,_)->fName = name) funcTypes with
-            | Some (_,t) -> t
+            | Some (_,t) -> sprintf "val %s: %s" fName t
             | None -> "Could not find type"
         // For each line with let, create a tooltip with the corresponding type from
         // funcTypes.
