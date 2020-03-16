@@ -12,6 +12,22 @@ open EmulatorTop
 open TypeChecker
 open SharedTypes
 
+let makeToolTip lineNumber hoverLst =
+    let makeMarkDown textLst =
+        textLst
+        |> List.toArray
+        |> Array.map (fun txt -> createObj [ "isTrusted" ==> true; "value" ==> txt ])
+    editorLineDecorate
+        Refs.editors.[currentFileTabId]
+        lineNumber
+        (createObj [
+            "isWholeLine" ==> true
+            "isTrusted" ==> true
+            "inlineClassName" ==> ""
+            "hoverMessage" ==> makeMarkDown hoverLst
+         ])
+        None
+
 let resetEmulator() =
     //showVexAlert "Resetting..."
     (getHtml "out-text").innerHTML <- ""
@@ -20,17 +36,22 @@ let resetEmulator() =
     Editors.removeEditorDecorations currentFileTabId
     Editors.enableEditors()
 
-//let enableTypeCheck() =
-//    showVexAlert "enable type check"
-
-//let disableTypeCheck() =
-//    showVexAlert "disable type check"
-
-//let enableSki() =
-//    showVexAlert "enable SKI"
-
-//let enableBeta() =
-//    showVexAlert "enable BETA"
+let makeTypesTooltips () =
+    let rawText = textOfTId currentFileTabId
+    let linesWithLet =
+        let folder state (currLine : string) =
+            //let seqLine = Seq.toList line
+            let stateLst, lineNum = state
+            match currLine.IndexOf "let" with
+            | -1 -> stateLst, lineNum + 1 // No match.
+            | b ->
+                let trimmed = currLine.Substring (b+4)
+                match trimmed.IndexOf " " with
+                | -1 -> stateLst, lineNum + 1 // No match.
+                | e -> trimmed.[..e-1] :: stateLst, lineNum + 1
+        let initialState = [], 1 // No lines with let, and examining line 1.
+        (initialState, rawText) ||> List.fold folder
+    showVexAlert <| sprintf "%A" linesWithLet
 
 let getProgram () =
     textOfTId currentFileTabId
@@ -39,6 +60,9 @@ let getProgram () =
 /// Top-level simulation execute
 /// If current tab is TB run TB if this is possible
 let runCode () =
+    if currentTypeCheck
+    then makeTypesTooltips ()
+    else ()
     let program = getProgram ()
     try
         let res = end2end currentTypeCheck currentRuntime program
