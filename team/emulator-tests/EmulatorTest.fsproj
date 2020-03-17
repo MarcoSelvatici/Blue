@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="../editor/src/Emulator/TestLib.fs" />
     <Compile Include="../editor/src/Emulator/SharedTypes.fs" />
+    <Compile Include="../editor/src/Emulator/Libraries/Libraries.fs" />
     <Compile Include="../editor/src/Emulator/Preprocessor/Preprocessor.fs" />
     <Compile Include="../editor/src/Emulator/Preprocessor/PreprocessorTest.fs" />
     <Compile Include="../editor/src/Emulator/Lexer/Lexer.fs" />
