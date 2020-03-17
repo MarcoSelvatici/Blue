@@ -192,7 +192,7 @@ Since our lists are untyped it is impractical to check the list types.
 
 ### Preprocessor
 
-TODO
+The preprocessor takes a string as the input, potentially containing the 'import' keyword which is then substituted for the desired library. As let statements are enclosed with 'in .. ni' it also appends appropriate number of 'ni' to the end.
 
 ### Tokeniser
 The tokeniser module takes as input the raw string that contains the program to be run. <br>
@@ -407,3 +407,28 @@ The following features are supported by the SKI combinator runtime:
 
 
 ### Beta Engine
+The Beta Engine takes the Ast from parser as input and returns either the evaluated result or an error if the evaluation is unsuccessful.
+
+The top level function `runAst` which sets up empty environment and calls the `evaluate` function which is the heart of the Beta Engine.
+Given the current ast it evaluates and returns the result.
+For clarity `functionApplication` was designed to be separate function dealing with that case.
+
+As for the *reduction* part :
+- `evaluate` function is responsible for logic of the if-statements and adding let-statements bindings to the environment.
+- `functionApplication` is responsible for function application including lambdas, named functions and built-in functions
+
+The Built-in functions are stored in a map `BuiltIn` making adding new builti-ins quite easy. For example to add modulo operator. Assuming it was added to language built-ins and the parser returns the keyword in ast, the changes to Beta Engine would be only one line :
+
+```
+    mapInputOutputBin (|INTLIT|_|) (|INTLIT|_|) (IntLit>>Literal)
+         [ // int -> int -> int
+            Plus, (+);
+            Minus,(-);   
+            Mult, (*); 
+            Div,  (/);
+            Mod,  (%); // NEW LINE
+         ]; 
+```
+
+The `mapInputOutputBin` works by getting "matcher and unpacker" to both inputs with "packer" for output with a list of pairs between built-ins and the f# functions.
+
