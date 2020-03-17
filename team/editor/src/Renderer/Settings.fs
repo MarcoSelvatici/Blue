@@ -16,7 +16,6 @@ open Tabs
 open Editors
 
 let editorFontSize = "editor-font-size"
-let simulatorMaxSteps = "simulator-max-steps"
 let editorTheme = "editor-theme"
 let editorWordWrap = "editor-word-wrap"
 let editorRenderWhitespace = "editor-render-whitespace"
@@ -40,7 +39,6 @@ let getFormSettings() =
         let input = document.getElementById (name) :?> HTMLInputElement
         input.value
     let vs = {
-            SimulatorMaxSteps = getIntSetting 0L 1000000000L vSettings.SimulatorMaxSteps (getS simulatorMaxSteps)
             EditorFontSize = getIntSetting 6L 100L vSettings.EditorFontSize (getS editorFontSize)
             EditorTheme = getS editorTheme
             EditorWordWrap = getS editorWordWrap
@@ -61,7 +59,6 @@ let initFormSettings() =
         printfn "name=%A,dom=%A, value=%A" name input v
         input.value <- v
     let vs = vSettings
-    setS simulatorMaxSteps <| (uint64 vs.SimulatorMaxSteps).ToString()
     setS editorFontSize <| (uint64 vs.EditorFontSize).ToString()
     setS editorTheme vs.EditorTheme
     setS editorWordWrap vs.EditorWordWrap
@@ -148,11 +145,7 @@ let settingsMenu() =
             makeFormGroup "Render Whitespace Characters"
                 (makeInputCheckbox editorRenderWhitespace "all" "none" "none")
         ]
-        DIV [] [
-            ELEMENT "h4" [] [] |> INNERHTML "Simulator"
-            makeFormGroup "Max Steps <br> (0 for no max) "
-                (makeInputVal "number" simulatorMaxSteps (0, 100, 10000000) vSettings.SimulatorMaxSteps)
-        ]
+
 
         DIV [ "after" ] []
         DIV [] [
