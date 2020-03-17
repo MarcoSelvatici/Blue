@@ -426,7 +426,7 @@ The Built-in functions are stored in a map `BuiltIn` making adding new builti-in
             Minus,(-);   
             Mult, (*); 
             Div,  (/);
-            Mod,  (%); // NEW LINE
+            Mod,  (%); // NEW FUNCTION
          ]; 
 ```
 
