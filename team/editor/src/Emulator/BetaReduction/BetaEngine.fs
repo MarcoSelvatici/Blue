@@ -218,11 +218,10 @@ let BuiltIn =
             Tail, (fun (_,tl) -> tl);         
          ];
 
-         mapInputOutputUnary (|STRINGLIT|_|) id
+         mapInputOutputUnary (|STRINGLIT|_|) buildList
          [ // String -> ast 
             Explode, Seq.toList 
-                     >> List.map (string >> StringLit >> Literal) 
-                     >> buildList ;
+                     >> List.map (string >> StringLit >> Literal);
          ];
 
          mapInputOutputUnary (|STRLIST|_|) (StringLit>>Literal)
@@ -276,7 +275,7 @@ let rec lambdaBetaReduction variable value ast =
 /// - map - Map from Builtin token to F# function
 /// - env - envoiurment needed if x is identifier
 /// - f,x - left- and righthandside of function application
-let rec FlatAndMatch n map (env:Enviourment) (f, x) : AstState option= 
+let rec FlatAndMatch n map (f, x, env) : AstState option= 
     /// flattens nested FuncApp to list of arguments and the builin function token
     /// retruns (function token), (list of arguments)
     let rec (|FlatArg|_|) (env:Enviourment) n (f, x) =
@@ -309,28 +308,26 @@ and decodeIdentifier (env:Enviourment) name =
         )
         | None -> buildError (sprintf "Identifier \'%s\' is not defined" name) (Identifier name);
 
-and functionApplication (env: Enviourment) f x = //: AstState=
-    let (|BultinMatchWEnv|_|) = FlatAndMatch 2 BuiltIn env
-    //printFA env f x
-    // match evaluate env f, evaluate env x with
+and functionApplication (env: Enviourment) f x =
+    let (|BultinMatchWEnv|_|) = FlatAndMatch 2 BuiltIn
     match evaluate env x with
     | Error e -> Error e
-    | Ok (inp,retEnv) -> Ok (f , inp)
+    | Ok (inp,Some retEnv) -> Ok (f , inp, retEnv)
+    | Ok (inp,None ) -> Ok (f , inp, env)
     |> Result.map (function
         | BultinMatchWEnv res -> res
-
-        | (Identifier _ as uf), _
-        | (IfExp _ as uf), _  
-        | (FuncApp _ as uf), _ 
-        | (FuncDefExp _ as uf), _-> 
+        | (Identifier _ as uf), _, env
+        | (IfExp _ as uf), _ , env
+        | (FuncApp _ as uf), _ , env
+        | (FuncDefExp _ as uf), _, env-> 
             match evaluate env uf with
             | Error e -> addTrace e (astToString uf)
             | Ok (evalf,retEnv) -> functionApplication (mergeEnv env retEnv) evalf x
-        | LambdaExp  { LambdaParam = name; LambdaBody = body}, ast
+        | LambdaExp  { LambdaParam = name; LambdaBody = body}, ast, env
             -> lambdaBetaReduction name ast body |> evaluate env      
-        | (Null as ast), _  | (Literal _ as ast), _ | (SeqExp _ as ast), _ 
+        | (Null as ast), _ , _ | (Literal _ as ast), _ ,_ | (SeqExp _ as ast), _ ,_
             -> buildError (sprintf "%s non-reducable" (astToString ast) ) ast
-        | (f, x) -> buildError (sprintf "What? %A in FuncApp" (f,x)) (FuncApp (f,x))
+        | (f, x, _) -> buildError (sprintf "What? %A in FuncApp" (f,x)) (FuncApp (f,x))
         )
     |> function
     | Ok ( Ok ast ) -> Ok ast
