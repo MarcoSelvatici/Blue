@@ -76,82 +76,83 @@ let rec buildString rowCount str input =
 // Tokenise function: takes the program in string form and returns a list of Tokens or a lexing error.
 let tokeniseT3 (str: string) =
     // Recursively trying to match a token. 
-    let rec tokenise rowCount (input: char list) =
+    let rec tokenise tokenList rowCount (input: char list) =
         match input with
         // Single/Coupled character -> Token matching, no helper functions needed.
-        | '.'::tl -> [KDot] @ tokenise rowCount tl
-        | ','::tl -> [KComma] @ tokenise rowCount tl
-        | ';'::tl -> [KSemiColon] @ tokenise rowCount tl
-        | '('::'*'::tl' -> 
-            let rowCount', rest = buildMultilineComment rowCount tl'
-            tokenise rowCount' rest
-        | '('::tl -> [KOpenRound] @ tokenise rowCount tl
-        | ')'::tl -> [KCloseRound] @ tokenise rowCount tl
-        | '['::tl -> [KOpenSquare] @ tokenise rowCount tl
-        | ']'::tl -> [KCloseSquare] @ tokenise rowCount tl
-        | '\\'::tl -> [KLambda] @ tokenise rowCount tl
+        | '.'::tl -> tokenise (KDot::tokenList) rowCount tl
+        | ','::tl -> tokenise (KComma::tokenList) rowCount tl
+        | ';'::tl -> tokenise (KSemiColon::tokenList) rowCount tl
+        | '('::'*'::tl -> 
+            let rowCount', rest = buildMultilineComment rowCount tl
+            tokenise tokenList rowCount' rest
+        | '('::tl -> tokenise (KOpenRound::tokenList) rowCount tl
+        | ')'::tl -> tokenise (KCloseRound::tokenList) rowCount tl
+        | '['::tl -> tokenise (KOpenSquare::tokenList) rowCount tl
+        | ']'::tl -> tokenise (KCloseSquare::tokenList) rowCount tl
+        | '\\'::tl -> tokenise (KLambda::tokenList) rowCount tl
         // Arithmetic Builtin Functions
-        | '+'::tl -> [Plus |> TBuiltInFunc] @ tokenise rowCount tl
-        | '-'::tl -> [Minus |> TBuiltInFunc] @ tokenise rowCount tl
-        | '*'::tl -> [Mult |> TBuiltInFunc] @ tokenise rowCount tl
+        | '+'::tl ->  
+            tokenise ([TBuiltInFunc <| Plus] @ tokenList) rowCount tl
+        | '-'::tl -> tokenise ([TBuiltInFunc <| Minus] @ tokenList) rowCount tl
+        | '*'::tl -> tokenise ([TBuiltInFunc <| Mult] @ tokenList) rowCount tl
         | '#'::tl -> 
             let rest = buildInlineComment tl
-            tokenise rowCount rest
-        | '/'::tl -> [Div |> TBuiltInFunc] @ tokenise rowCount tl 
+            tokenise tokenList rowCount rest
+        | '/'::tl -> tokenise ([TBuiltInFunc <| Div] @ tokenList) rowCount tl
         // Logic and comparisons
-        | '!'::tl -> [Not |> TBuiltInFunc] @ tokenise rowCount tl
-        | '>'::'='::tl -> [GreaterEq |> TBuiltInFunc] @ tokenise rowCount tl
-        | '>'::tl -> [Greater |> TBuiltInFunc] @ tokenise rowCount tl
-        | '<'::'='::tl -> [LessEq |> TBuiltInFunc] @ tokenise rowCount tl
-        | '<'::tl -> [Less |> TBuiltInFunc] @ tokenise rowCount tl
-        | '='::'='::tl -> [Equal |> TBuiltInFunc] @ tokenise rowCount tl
-        | '='::tl -> [KEq] @ tokenise rowCount tl
-        | '&'::'&'::tl -> [And |> TBuiltInFunc] @ tokenise rowCount tl
-        | '|'::'|'::tl -> [Or |> TBuiltInFunc] @ tokenise rowCount tl
+        | '!'::tl -> tokenise ([TBuiltInFunc <| Not] @ tokenList) rowCount tl
+        | '>'::'='::tl -> tokenise ([TBuiltInFunc <| GreaterEq] @ tokenList) rowCount tl
+        | '>'::tl -> tokenise ([TBuiltInFunc <| Greater] @ tokenList) rowCount tl
+        | '<'::'='::tl -> tokenise ([TBuiltInFunc <| LessEq] @ tokenList) rowCount tl
+        | '<'::tl -> tokenise ([TBuiltInFunc <| Less] @ tokenList) rowCount tl
+        | '='::'='::tl -> tokenise ([TBuiltInFunc <| Equal] @ tokenList) rowCount tl
+        | '='::tl -> tokenise (KEq::tokenList) rowCount tl
+        | '&'::'&'::tl -> tokenise ([TBuiltInFunc <| And] @ tokenList) rowCount tl
+        | '|'::'|'::tl -> tokenise ([TBuiltInFunc <| Or] @ tokenList) rowCount tl
         // String helper function is called when a quotation mark is detected.
         | '\"'::tl -> 
             let str, rest = buildString rowCount "" tl
-            [str |> StringLit |> TLiteral] @ tokenise rowCount rest
+            tokenise ([TLiteral <| (StringLit <| str)] @ tokenList) rowCount rest
         // Isolate newline case just for row counting purposes.
-        | '\n'::tl -> tokenise (rowCount + 1) tl
-        | '\r'::tl -> tokenise (rowCount + 1) tl
-        | '\r'::'\n'::tl -> tokenise (rowCount + 1) tl
+        | '\n'::tl -> tokenise tokenList (rowCount + 1) tl
+        | '\r'::tl -> tokenise tokenList (rowCount + 1) tl
+        | '\r'::'\n'::tl -> tokenise tokenList (rowCount + 1) tl
         // Discard all spaces and tabs.
-        | currChar::tl  when List.contains currChar ([' ';'\t';'\v']) -> tokenise rowCount tl
+        | currChar::tl  when List.contains currChar ([' ';'\t';'\v']) -> tokenise tokenList rowCount tl
         // Number matching.
         | currChar::_ when List.contains currChar (['0'..'9']) ->
             let number, rest = buildNumber rowCount "" input
-            [int number |> IntLit |> TLiteral] @ tokenise rowCount rest
+            tokenise ([int number |> IntLit |> TLiteral] @ tokenList) rowCount rest
         // Identifier/Keyword - Builtin Function matching.
         | currChar::_ when List.contains currChar (['a'..'z']@['A'..'Z']@['_']) -> 
             let word, rest = buildWord rowCount "" input
             match (string word) with 
-            | "true" -> [true |> BoolLit |> TLiteral] @ tokenise rowCount rest
-            | "false" -> [false |> BoolLit |> TLiteral] @ tokenise rowCount rest
-            | "head" -> [Head |> TBuiltInFunc] @ tokenise rowCount rest
-            | "tail" -> [Tail |> TBuiltInFunc] @ tokenise rowCount rest
-            | "size" -> [Size |> TBuiltInFunc] @ tokenise rowCount rest
-            | "implode" -> [Implode |> TBuiltInFunc] @ tokenise rowCount rest
-            | "explode" -> [Explode |> TBuiltInFunc] @ tokenise rowCount rest
-            | "append" -> [Append |> TBuiltInFunc] @ tokenise rowCount rest
-            | "strEq" -> [StrEq |> TBuiltInFunc] @ tokenise rowCount rest 
-            | "let" -> [KLet] @ tokenise rowCount rest
-            | "in" -> [KIn] @ tokenise rowCount rest
-            | "ni" -> [KNi] @ tokenise rowCount rest
-            | "if" -> [KIf] @ tokenise rowCount rest
-            | "then" -> [KThen] @ tokenise rowCount rest
-            | "else" -> [KElse] @ tokenise rowCount rest
-            | "fi" -> [KFi] @ tokenise rowCount rest
-            | "test" -> [Test |> TBuiltInFunc] @ tokenise rowCount rest
-            | "print" -> [Print |> TBuiltInFunc] @ tokenise rowCount rest
-            | _ -> [word |> TIdentifier] @ tokenise rowCount rest
+            | "true" -> tokenise ([TLiteral <| (BoolLit <| true)] @ tokenList) rowCount rest
+            | "false" -> tokenise ([TLiteral <| (BoolLit <| false)] @ tokenList) rowCount rest
+            | "head" -> tokenise ([TBuiltInFunc <| Head] @ tokenList) rowCount rest
+            | "tail" -> tokenise ([TBuiltInFunc <| Tail] @ tokenList) rowCount rest
+            | "size" -> tokenise ([TBuiltInFunc <| Size] @ tokenList) rowCount rest
+            | "implode" -> tokenise ([TBuiltInFunc <| Implode]  @ tokenList) rowCount rest
+            | "explode" -> tokenise ([TBuiltInFunc <| Explode] @ tokenList) rowCount rest
+            | "append" -> tokenise ([TBuiltInFunc <| Append] @ tokenList) rowCount rest
+            | "strEq" -> tokenise ([TBuiltInFunc <| StrEq] @ tokenList) rowCount rest
+            | "let" -> tokenise (KLet::tokenList) rowCount rest
+            | "in" -> tokenise (KIn::tokenList) rowCount rest
+            | "ni" -> tokenise (KNi::tokenList) rowCount rest
+            | "if" -> tokenise (KIf::tokenList) rowCount rest
+            | "then" -> tokenise (KThen::tokenList) rowCount rest
+            | "else" -> tokenise (KElse::tokenList) rowCount rest
+            | "fi" -> tokenise (KFi::tokenList) rowCount rest
+            | "test" -> tokenise ([TBuiltInFunc <| Test] @ tokenList) rowCount rest
+            | "print" -> tokenise ([TBuiltInFunc <| Print] @ tokenList) rowCount rest
+            | _ -> tokenise ([TIdentifier <| word] @ tokenList) rowCount rest
         // End case, the whole string has been succesfully matched.
-        | [] -> []
+        | [] -> tokenList
         // Error throwing due to unrecognised character.
         | currChar::_ -> failwithf "lexing error, unrecognised character '%c' on line %i" currChar rowCount
         | _ -> failwithf "lexing error, unexpected behaviour... nothing was matched on line %i" rowCount
     try 
-        tokenise 1 (Seq.toList str)
-        |> Ok
+        Ok <| (List.rev <| (tokenise [] 1 (Seq.toList str)))
+        
     with
         Failure msg -> Error (LexerError msg)  

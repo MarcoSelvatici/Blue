@@ -43,7 +43,6 @@ type Views =
 
 type VSettings = {
     EditorFontSize : string
-    SimulatorMaxSteps : string
     EditorTheme : string
     EditorWordWrap : string
     EditorRenderWhitespace : string
@@ -376,7 +375,6 @@ let settings : obj = electron.remote.require "electron-settings"
 
 let mutable vSettings = {
     EditorFontSize = "16"
-    SimulatorMaxSteps = "20000"
     EditorTheme = "solarised-dark"
     EditorWordWrap = "off"
     EditorRenderWhitespace = "none"
@@ -421,8 +419,7 @@ let checkSettings (vs : VSettings) =
                 | Some _ -> vs.EditorTheme
                 | _ -> printfn "Setting theme to default"
                        vSettings.EditorTheme
-            SimulatorMaxSteps =
-                checkNum vs.SimulatorMaxSteps 0L System.Int64.MaxValue vso.SimulatorMaxSteps
+      
             EditorFontSize =
                 checkNum vs.EditorFontSize minFontSize maxFontSize vso.EditorFontSize
             CurrentFilePath = checkPath vs.CurrentFilePath
