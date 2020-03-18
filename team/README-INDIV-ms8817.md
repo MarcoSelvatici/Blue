@@ -37,6 +37,10 @@ During group phase I changed the type checker by:
 - creating a prettyprint function for the types,
 - allowing to keep track of the types of all let functions (to implement 
 tooltips).
+- improving the error messages, to show precisely where it happens (I
+experimented with an error trace as well, but it was providing very 
+little extra information while being confusing to read, so I removed 
+it).
 
 <b>TestLib</b>
 
@@ -62,6 +66,8 @@ Note: you need to click the run button to generate/refresh them.
 <b>Church numerals demo code</b>
 
 I implemented the demo code for Church numerals.
+
+I also fixed some bugs in the demo code for `ListLib.s` and `lexngram.s`.
 
 ### General notes
 
