@@ -108,20 +108,20 @@ let applyToCtx subs ctx =
 /// Try to unify two types, and if successful returns a list of substitutions
 /// needed to do so.
 /// If this is not possible, return error.
-let rec unify t1 t2 : Result<Subst list, string> =
+let rec unify t1 t2 errMsg : Result<Subst list, string> =
     match t1, t2 with
     | Base b1, Base b2 when b1 = b2 -> Ok []
     | Fun (l, r), Fun (l', r') | Pair (l, r), Pair (l', r') ->
         // Try to unify both sides.
-        match unify l l' with
+        match unify l l' errMsg with
         | Error e -> Error e
-        | Ok subs -> match unify r r' with
+        | Ok subs -> match unify r r' errMsg with
                      | Error e -> Error e
                      | Ok subs' -> Ok <| subs' @ subs
     | t, Gen g | Gen g, t ->
         // Can specialise the generic type g into the type t.
         Ok <| [{wildcard = g; newType = t}]
-    | _ -> Error <| sprintf "Types %s and %s are not compatible" (type2String t1) (type2String t2)
+    | _ -> Error <| sprintf "Types %s and %s are not compatible %s" (type2String t1) (type2String t2) errMsg
 
 /// Apply a given substitution list to a type, and return the resulting type.
 let rec apply subs t =
@@ -136,6 +136,9 @@ let rec apply subs t =
             | _ -> apply subs (s.newType) // Try to substitute the new type.
     | Fun (t1, t2) -> Fun (apply subs t1, apply subs t2)
     | Pair (t1, t2) -> Pair (apply subs t1, apply subs t2)
+
+/// Wrapper for prettyPrint function that accepts Ast.
+let pp ast = prettyPrint <| Ok ast
 
 /// Try to lookup the type of an identifier.
 let lookUpType ctx name =
@@ -209,14 +212,15 @@ let inferBuiltInFunc state f =
     | _ -> state, Error <| sprintf "Type checking for %A is not implemented" f
 
 let rec inferIfExp state ctx c t e =
+    let errMsg = sprintf ", while type checking if expression: if %A then %A else %A" (pp c) (pp t) (pp e)
     let state, i1 = infer state ctx c
     let state, i2 = infer state ctx t
     let state, i3 = infer state ctx e
     match i1, i2, i3 with
     | Error e, _, _ | _, Error e, _ | _, _, Error e -> state, Error e
     | Ok (s1, t1), Ok (s2, t2), Ok (s3, t3) ->
-        let rs4 = unify t1 (Base Bool) // Make sure the condition is bool.
-        let rs5 = unify t2 t3 // Make sure both branches have same type.
+        let rs4 = unify t1 (Base Bool) errMsg // Make sure the condition is bool.
+        let rs5 = unify t2 t3 errMsg // Make sure both branches have same type.
         match rs4, rs5 with
         | Error e, _ | _, Error e -> state, Error e
         | Ok s4, Ok s5 -> state, Ok (s1 @ s2 @ s3 @ s4 @ s5, apply s5 t2)
@@ -229,6 +233,7 @@ and inferSeqExp state ctx head tail =
     | Ok (s1, t1), Ok (s2, t2) -> state, Ok (s1 @ s2, Pair (t1, t2))
 
 and inferFuncApp state ctx f arg =
+    let errMsg = sprintf ", while type checking function applicaton: %A %A" (pp f) (pp arg)
     let newWildcard, state = newGen state // Return type of the func application.
     match infer state ctx f with
     | _, Error e -> state, Error e
@@ -240,7 +245,7 @@ and inferFuncApp state ctx f arg =
         | state, Ok (s2, t2) ->
             // We expect the t1 to be a lambda that takes t2 and returns
             // a new type. Hence we unify t1 with t2 -> newType.
-            match unify (apply s2 t1) (Fun (t2, newWildcard)) with
+            match unify (apply s2 t1) (Fun (t2, newWildcard)) errMsg with
             | Error e -> state, Error e
             | Ok s3 -> state, Ok (s1 @ s2 @ s3, apply s3 newWildcard)
 
@@ -254,12 +259,13 @@ and inferLambdaExp state ctx lam =
 and inferFuncDefExp state ctx def =
     // Extend the context with a generic type for our function, this allows
     // recursion.
+    let errMsg = sprintf ", while type checking function: %s" def.FuncName
     let funcType, state = newGen state
     let ctx = extend ctx def.FuncName funcType
     match infer state ctx def.FuncBody with
     | state, Error e -> state, Error e
     | state, Ok (s1, t1) ->
-        match unify t1 funcType with
+        match unify t1 funcType errMsg with
         | Error e -> state, Error e
         | Ok sFuncType ->
             let state = {state with funcTypes = (def.FuncName, t1) :: state.funcTypes}
