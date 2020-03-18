@@ -4,7 +4,7 @@ let stringItem idx str =
   let listItem idx lst =    
     let looper step idx lst =  
       if size lst == 0
-      then 0 # undefined behaviour
+      then "" # undefined behaviour
       else
         if step == idx
         then head lst

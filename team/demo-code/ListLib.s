@@ -103,10 +103,10 @@ let listSort f l =
     ni 
   ni
 in
-let listItem idx lst =    
+let listItem idx lst default =    
   let looper step idx lst =  
     if size lst == 0
-    then 0 # undefined behaviour
+    then default
     else
       if step == idx
       then head lst

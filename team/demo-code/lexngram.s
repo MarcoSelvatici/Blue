@@ -1,3 +1,5 @@
+import List
+
 ### ATTEMPT TO LEX A SIMPLE LANGUAGE ###
 ### LANGUAGE SPECIFICATION:          ###
 (*                                             
@@ -28,70 +30,8 @@ IDENTIFIER:
 ### 1. Match lambda                  ###
 
 # Library
-let listFind f key lst = 
-    if size lst == 0
-    then false
-    else 
-        if f (head lst) key
-        then true 
-        else listFind f key (tail lst)
-        fi
-    fi
-in
-let listContain f keys lst =
-    if size keys == 0 || size lst == 0
-    then false 
-    else 
-        if (listFind f (head keys) lst)
-        then true
-        else  listContain f (tail keys) lst
-        fi
-    fi
-in
-let listItem idx lst =    
-    let looper step idx lst =  
-        if size lst == 0
-        then "" # undefined behaviour
-        else
-            if step == idx
-            then head lst
-            else looper (step + 1) idx (tail lst)
-            fi
-        fi
-    in
-        looper 0 idx lst
-    ni
-in
-let listConcat lhs rhs = 
-    if size lhs == 0
-    then rhs
-    else append (head lhs) (listConcat (tail lhs) rhs)
-    fi
-in
 let stringAppend lhs rhs =
     implode (listConcat (explode lhs) (explode rhs))
-in
-let listReverse lst = 
-    let reverser lst revlst  = 
-        if size lst == 0
-        then revlst
-        else reverser (tail lst) (append (head lst) revlst)
-        fi
-    in
-        reverser lst []
-    ni
-in
-let listSplitAt idx lst = 
-    let splitter lhs rhs idx =
-        if size lhs == idx || size rhs == 0
-        then [lhs, rhs]
-        else splitter (append (head rhs) lhs) (tail rhs) idx
-        fi
-    in 
-        let halfReversed = splitter [] lst idx in
-            (\ a b. [a , b] ) (listReverse (head halfReversed)) (head (tail halfReversed))
-        ni
-    ni
 in
 
 # Helper functions
@@ -128,8 +68,9 @@ let matchId chars input =
     fi
 in 
 
+
 # LEXER
-let lexer program lst =
+let lexer program lst = 
     let headIs lst c =
         strEq (head lst) c
     in
@@ -177,19 +118,19 @@ let lexer program lst =
         if headIs input "!" 
         then (append "BNot") (lexNgram (tail input) lst)
         else 
-        if headIs input "&" && strEq (listItem 1 input) "&" 
+        if headIs input "&" && strEq (listItem 1 input "?") "&" 
         then let input' = tail input in  (append "BAnd") (lexNgram (tail input') lst) ni
         else 
-        if headIs input "|" && strEq (listItem 1 input) "|" 
+        if headIs input "|" && strEq (listItem 1 input "?") "|" 
         then let input' = tail input in  (append "BOr") (lexNgram (tail input') lst) ni
         else 
-        if headIs input ">" && strEq (listItem 1 input) "=" 
+        if headIs input ">" && strEq (listItem 1 input "?") "=" 
         then let input' = tail input in  (append "BGtEq") (lexNgram (tail input') lst) ni
         else 
-        if headIs input "<" && strEq (listItem 1 input) "=" 
+        if headIs input "<" && strEq (listItem 1 input "?") "=" 
         then let input' = tail input in  (append "BLEq") (lexNgram (tail input') lst) ni
         else
-        if headIs input "=" && strEq (listItem 1 input) "=" 
+        if headIs input "=" && strEq (listItem 1 input "?") "=" 
         then let input' = tail input in  (append "BEqTo") (lexNgram (tail input') lst) ni
         else 
         if headIs input ">" 
@@ -265,12 +206,12 @@ in
     # testing with listReduce declaration
     # lexer "let listReduce f lst = let reducer f acc lst = if size lst == 0 then acc else reducer f (f acc (head lst)) (tail lst) fi in if size lst == 0 then 0 else reducer f (head lst) (tail lst) fi ni in let sum a b = a + b in listReduce sum [120, 2, 3, 4] ni ni" []
     # lexer "let " []
-     lexer "['a','b','c']" []
+    lexer "['a','b','c']" []
 ni
 
 # Helper functions
 ni ni ni
 # Library
-ni ni ni ni ni ni ni
+ni
 
 
