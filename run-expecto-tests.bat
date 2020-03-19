@@ -1,3 +1,3 @@
 @echo off
-dotnet run --project team\emulator-tests\EmulatorTest.fsproj
+dotnet run --project team\editor\src\Emulator\Tests\EmulatorTest.fsproj
 @pause
