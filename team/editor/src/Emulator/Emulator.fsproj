@@ -5,23 +5,14 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="EEExtensions.fs" />
-    <Compile Include="TestLib.fs" />
     <Compile Include="SharedTypes.fs" />
-    <Compile Include="Libraries/Libraries.fs" />
-    <Compile Include="Preprocessor/Preprocessor.fs" />
-    <Compile Include="Preprocessor/PreprocessorTest.fs" />
-    <Compile Include="Lexer/Lexer.fs" />
-    <Compile Include="Lexer/LexerTest.fs" />
-    <Compile Include="Parser/Parser.fs" />
-    <Compile Include="Parser/ParserTest.fs" />
-    <Compile Include="TypeChecker/TypeChecker.fs" />
-    <Compile Include="TypeChecker/TypeCheckerTest.fs" />
-    <Compile Include="BetaReduction/BetaEngine.fs" />
-    <Compile Include="BetaReduction/TestBetaEngine.fs" />
-    <Compile Include="SKIReduction/SKICombinator.fs" />
-    <Compile Include="SKIReduction/TestSKI.fs" />
-    <Compile Include="E2ESKITest.fs" />
-    <Compile Include="E2EBetaTest.fs" />
+    <Compile Include="Libraries.fs" />
+    <Compile Include="Preprocessor.fs" />
+    <Compile Include="Lexer.fs" />
+    <Compile Include="Parser.fs" />
+    <Compile Include="TypeChecker.fs" />
+    <Compile Include="BetaEngine.fs" />
+    <Compile Include="SKICombinator.fs" />
     <Compile Include="EmulatorTop.fs" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

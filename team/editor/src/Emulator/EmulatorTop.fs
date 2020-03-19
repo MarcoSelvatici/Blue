@@ -2,18 +2,12 @@ module EmulatorTop
 
 open System
 open Expecto
-open TestLib
 open Preprocessor
 open Lexer
-open LexerTest
 open Parser
-open ParserTest
 open TypeChecker
-open TypeCheckerTest
 open BetaEngine
-open TestBetaEngine
 open SKIRuntime
-open TestSKIRuntime
 open SharedTypes
 
 let maybeTypeCheck checkTypes ast =

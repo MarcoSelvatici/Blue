@@ -36,11 +36,13 @@ This documentation will contain:
 
 ### Expecto tests
 
-Enter the `emulator-tests` directory and run with `dotnet run`.
+Enter the `team/editor/src/Emulator/Tests` directory and run with `dotnet run`.
+
+If you are using windows, you can run them with `run-expecto-tests.bat`.
 
 ### GUI
 
-Enter the editor directory and follow the instructions in the README 
+Enter the `team/editor` directory and follow the instructions in the README 
 (like Visual2).
 
 The editor allows to run the code and see:

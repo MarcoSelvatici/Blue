@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="TestLib.fs" />
+    <Compile Include="../SharedTypes.fs" />
+    <Compile Include="../Libraries.fs" />
+    <Compile Include="../Preprocessor.fs" />
+    <Compile Include="../Lexer.fs" />
+    <Compile Include="../Parser.fs" />
+    <Compile Include="../TypeChecker.fs" />
+    <Compile Include="../BetaEngine.fs" />
+    <Compile Include="../SKICombinator.fs" />
+    <Compile Include="PreprocessorTest.fs" />
+    <Compile Include="LexerTest.fs" />
+    <Compile Include="ParserTest.fs" />
+    <Compile Include="TypeCheckerTest.fs" />
+    <Compile Include="BetaEngineTest.fs" />
+    <Compile Include="SKITest.fs" />
+    <Compile Include="E2EBetaTest.fs" />
+    <Compile Include="E2ESKITest.fs" />
+    <Compile Include="EmulatorTest.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Expecto.FsCheck" Version="8.13.1" />
+  </ItemGroup>
+</Project>

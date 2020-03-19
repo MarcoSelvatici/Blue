@@ -1,6 +1,5 @@
 module TestBetaEngine
 
-open TestLib
 open SharedTypes
 open BetaEngine
 //open Expecto

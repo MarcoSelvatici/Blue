@@ -3,7 +3,6 @@
 
 module TestSKIRuntime
 
-open TestLib
 open SharedTypes
 open SKIRuntime
 
