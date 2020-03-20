@@ -2,7 +2,7 @@ import List
 
 ### ATTEMPT TO LEX A SIMPLE LANGUAGE ###
 ### LANGUAGE SPECIFICATION:          ###
-(*                                             
+(*
 LITERALS:
     INTEGERS [0-9]+
     STRINGS: ['][^']*[']
@@ -24,10 +24,6 @@ LISTS-STRINGS
 IDENTIFIER: 
     any sequence of chars
 *)
-
-### LEXER (STRING -> STRING LIST)    ###
-### MISSING:                         ###
-### 1. Match lambda                  ###
 
 # Library
 let stringAppend lhs rhs =
