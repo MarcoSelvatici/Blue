@@ -60,5 +60,5 @@ function (implemented as merge sort algorithm).
 
 ## **Group Dynamic and contributions**
 
-
+The team had a good balancing of the self-prescribed tasks. We have communicated regularly  and if some changes required the work of the whole team, for example adding print, all of us would work on their part - where changes to the Lexer, Parser and so on were made usually by the person who wrote them.
 

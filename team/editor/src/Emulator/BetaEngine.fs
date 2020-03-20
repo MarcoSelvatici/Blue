@@ -129,6 +129,7 @@ let buildUnaryBuiltIn b f (|InType|_|) (argLst, originalAst) =
     match argLst with
     | [InType x] -> Ok (f x)
     | (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_ -> Ok originalAst// TODO: CAN DELETE THIS ROW ?
+    | _::_::_ -> Ok originalAst
     | [arg] 
         -> buildError (sprintf "%A is unsuported for %A" b arg) originalAst
     | _ -> buildError (sprintf "What? buildUnaryBuiltIn %A %A" b argLst) originalAst
@@ -157,8 +158,6 @@ let mapInputOutputUnary inputTransformer outputTransformer lstBind =
 let buildBinaryBuiltIn b f (|InType1|_|) (|InType2|_|) (argLst, originalAst) =
     match argLst with
     | (InType2 val2)::[InType1 val1] -> Ok (f val1 val2)
-    //| (Identifier _)::_ | (FuncApp _)::_ | (IfExp _)::_    // TODO: CAN DELETE THIS ROW ?
-    //| _::(Identifier _)::_ | _::(FuncApp _)::_ | _::(IfExp _)::_
     | [_] | _::_::_::_
         -> Ok originalAst
     | arg2::[arg1] 
