@@ -20,10 +20,21 @@ let buildErrorSKI =
     SKIRuntimeError >> Error
 
 
+let runtime input bindings =
+    match bracketAbstract input bindings with
+    | Ok x ->
+        match evalBuiltin (combinatorReduc x) with
+        | Ok x -> Ok x
+        | Error (SKIRuntimeError x) -> buildErrorSKI <| "Built-in function evaluation Error: \n" + x
+        | Error x -> Error x // will never occur
+    | Error (SKIRuntimeError x) -> buildErrorSKI <| "Bracket Abstraction Error: \n" + x
+    | Error x -> Error x // will never occur
+
+
 /// Bracket abstraction and substituting functions when they are called (by making use of function name to body fn bindings) 
 let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,ErrorT> =
     match input with
-    | Combinator _ | Literal _ | BuiltInFunc _ | SeqExp _ | Null -> input |> Ok
+    | Combinator _ | Literal _ | BuiltInFunc _ | Null -> input |> Ok
 
     //    1.  T[x] => x
     // Check in bindings to see if that identfier has been defined
@@ -49,7 +60,24 @@ let bracketAbstract (input: Ast) (bindings: Map<string, Ast>): Result<Ast,ErrorT
     //    | Ok x, Ok y ->
     //        bracketAbstract body (bindings.Add(name1, x).Add(name2, y))
     //    | _ -> buildErrorSKI <| "error in in lamda w/ 2 args"
-        
+    
+    // bracket abstract/eval/simplify all sequence elements
+    | SeqExp (head,tail) ->
+        let rec evalSeq seq bindings =
+            match seq with
+            | SeqExp (Null, Null) -> SeqExp (Null, Null) |> Ok
+            | SeqExp (head, SeqExp (Null, Null)) -> 
+                match runtime head bindings with
+                | Ok x -> SeqExp (x ,SeqExp (Null, Null)) |> Ok
+                | Error x -> Error x
+            | SeqExp (head,tail) -> 
+                match runtime head bindings, evalSeq tail bindings with
+                | Ok x, Ok y -> SeqExp (x, y) |> Ok
+                | Error x, _ -> Error x
+                | _, Error y -> Error y
+            | _ -> seq |> Ok 
+        evalSeq (SeqExp (head, tail)) bindings
+
     //rec w/ 1 arg
     | FuncApp ( LambdaExp { LambdaParam = name; LambdaBody = exp1 },  exp2) ->
         match bracketAbstract exp2 bindings with
@@ -169,15 +197,13 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
                 match imp tail with
                 | None -> None
                 | Some x -> Some (head + x)              
-            | _ ->
-                None
+            | _ -> None
         
         match evalBuiltin exp with
         | Ok x -> 
             match imp x with
             | None -> buildErrorSKI "Cannot implode argument of type which is not string list"
             | Some x -> x |> StringLit |> Literal |> Ok
-            
         | Error x -> Error x 
             
             
@@ -186,26 +212,21 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
         match evalBuiltin x with
         | Ok (Literal (StringLit x)) ->
             Seq.toList x |> List.map (string) |> buildList |> Ok
-        | _ ->
-            buildErrorSKI "cannot explode argument of type which is not string"
+        | _ -> buildErrorSKI "cannot explode argument of type which is not string"
 
     // head
     | FuncApp( BuiltInFunc Head, x) -> 
         match evalBuiltin x with
         | Ok(SeqExp(Null,Null)) -> Ok(SeqExp(Null,Null))
-        | Ok (SeqExp (head, tail)) ->
-            head |> Ok
-        | _ ->
-            buildErrorSKI "Error getting head of list/sequence"
+        | Ok (SeqExp (head, tail)) -> head |> Ok
+        | _ -> buildErrorSKI "Error getting head of list/sequence"
 
     // tail
     | FuncApp( BuiltInFunc Tail, x) -> 
         match evalBuiltin x with
         | Ok(SeqExp(Null,Null)) -> Ok(SeqExp(Null,Null))
-        | Ok (SeqExp (head, tail)) ->
-            tail |> Ok
-        | _ ->
-            buildErrorSKI "Error getting tail of list/sequence"
+        | Ok (SeqExp (head, tail)) -> tail |> Ok
+        | _ -> buildErrorSKI "Error getting tail of list/sequence"
 
     // size of list
     | FuncApp( BuiltInFunc Size, exp) -> 
@@ -214,8 +235,7 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
             | SeqExp(Null,Null) -> 0 // empty list case
             | SeqExp (head, tail) ->
                 1 + (sizeOf tail)
-            | _ ->
-               -1
+            | _ -> -1
 
         match evalBuiltin exp with
         | Ok x ->
@@ -277,7 +297,12 @@ let evalBuiltin (input:Ast) : Result<Ast,ErrorT> =
 
         // Passthrough for partially applied functions
         // if we only wanted fully evaluated and reduced expressions this should return an error
-        | _ -> buildErrorSKI <| sprintf "Error evaluating %A operator with arguments: %A, %A" op x' y'    
+        //| _ -> buildErrorSKI <| sprintf "Error evaluating %A operator with arguments: %A, %A" op x' y'    
+        | _ -> 
+            match evalBuiltin (FuncApp (BuiltInFunc op, x)) with
+            | Ok x -> runtime (FuncApp (x, y)) (Map [])
+            | Error x -> Error x
+
 
     | Combinator _ | SeqExp _ | Identifier _ | FuncApp _ | BuiltInFunc _ | Null | Literal _ -> input |> Ok
 
@@ -351,11 +376,4 @@ let prettyPrint (inp: Result<Ast,ErrorT>): string =
 /// Evaluate the output of the parser using bracket abstraction, S K I Y combinators and the evaluation of built-in functions
 let combinatorRuntime (input: Ast): Result<Ast,ErrorT> = 
     let bindings = Map []
-    match bracketAbstract input bindings with
-    | Ok x ->
-        match evalBuiltin (combinatorReduc x) with
-        | Ok x -> Ok x
-        | Error (SKIRuntimeError x) -> buildErrorSKI <| "Built-in function evaluation Error: \n" + x
-        | Error x -> Error x // will never occur
-    | Error (SKIRuntimeError x) -> buildErrorSKI <| "Bracket Abstraction Error: \n" + x
-    | Error x -> Error x // will never occur
+    runtime input bindings

@@ -151,7 +151,7 @@ let prettyPrint (inp: Result<Ast,ErrorT>): string =
         | Combinator x -> toString x
         | Literal (IntLit x) -> toString x 
         | Literal (BoolLit x) -> toString x 
-        | Literal (StringLit x) -> toString x 
+        | Literal (StringLit x) -> toString x // sprintf "\"%A\"" x 
         | Null -> "Null" // should this be an error ?
         | LambdaExp { LambdaParam = name; LambdaBody = exp } -> 
             sprintf "(\\%A.%A)" name (printFormat exp)

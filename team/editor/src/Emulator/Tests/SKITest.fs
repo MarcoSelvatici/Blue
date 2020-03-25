@@ -50,8 +50,8 @@ let listTests = [
     Ok (Literal (IntLit 3));
 
     "ListSize long", 
-    FuncApp( BuiltInFunc Size, (IntLit, [1..5000]) ||> buildList), 
-    Ok (Literal (IntLit 5000));
+    FuncApp( BuiltInFunc Size, (IntLit, [1..1000]) ||> buildList), 
+    Ok (Literal (IntLit 1000));
 
     "ListSize 1", 
     FuncApp( BuiltInFunc Size, (IntLit, [1]) ||> buildList),
@@ -545,8 +545,8 @@ let basicPassThroughTests = [
     Ok (SeqExp (Literal (IntLit 1), Literal (IntLit 1)));
 
     "list",
-    SeqExp (Literal (IntLit 1), SeqExp (Literal (IntLit 1), Null)),
-    Ok (SeqExp (Literal (IntLit 1), SeqExp (Literal (IntLit 1), Null)));
+    SeqExp (Literal (IntLit 1), SeqExp (Literal (IntLit 1), SeqExp (Null,Null))),
+    Ok (SeqExp (Literal (IntLit 1), SeqExp (Literal (IntLit 1), SeqExp (Null,Null))));
 
 ]
 
