@@ -6,7 +6,7 @@ app/js/*.js*
 app/js/vs
 node_modules
 paket-files
-dist/*
+dist/Blue-win32-x64/*
 test-results/*
 !test-results
 

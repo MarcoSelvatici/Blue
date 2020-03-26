@@ -13,6 +13,8 @@ in order to properly fit into the group deliverable:
 The code was then extended to support some new built-in functions such as 
 print and append. 
 
+Sequences were changed to be fully evaluated as that wasn't the case before (e.g. Now: [1+1,1-1] -> [2,0], Before: [1+1,1-1] -> [1+1,1-1])
+
 **Recursion**  
 Recursion was never properly implemented during the individual phase. 
 Recursion with one argument was supported but I had aimed to implement it completely

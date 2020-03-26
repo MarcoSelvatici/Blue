@@ -178,7 +178,7 @@ let lexer program lst =
                         then (append "KThen") (lexNgram rest lst) 
                         else
                         if strEq token "else"
-                        then (append "Else") (lexNgram rest lst) 
+                        then (append "KElse") (lexNgram rest lst) 
                         else 
                         # List-String Builtins
                         if listFind strEq token ["size", "append", "head", "tail", "implode", "explode", "strEq"]

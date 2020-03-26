@@ -1,16 +1,6 @@
-# Sample README
-
-NB - replace this file by your overall team README.
-
-This directory is used for:
-
-* Team phase code submission
-* Team phase individual team contribution statements (named `team-login.md`)
-* overall team readme
-
-<b>We named our language Blue, for no particular reason.</b>
-
 # Blue Documentation
+
+**Blue is a typed functional language**
 
 This documentation will contain:
 - how to run the code
@@ -38,12 +28,9 @@ This documentation will contain:
 
 Enter the `team/editor/src/Emulator/Tests` directory and run with `dotnet run`.
 
-If you are using windows, you can run them with `run-expecto-tests.bat`.
+If you are using windows, you can also run the tests with `run-expecto-tests.bat`.
 
 ### GUI
-
-Enter the `team/editor` directory and follow the instructions in the README 
-(like Visual2).
 
 The editor allows to run the code and see:
 
@@ -56,6 +43,16 @@ engine you prefer (SKI or Beta).
 
 After clicking the run button, you can hover the let expressions to see
 a tooltip with their types!
+
+**Windows instructions:**  
+Unzip `team\editor\dist\Blue-win32-x64.zip` to a directory of your choice and run `Blue.exe`.  
+Alternatively, execute `setup.bat`. It will create a new directory `Blue` and launch the Blue GUI.  
+The GUI can then be started anytime by running `Blue\Blue.exe`.  
+
+
+**Alternative method:**  
+Enter the `team/editor` directory and follow the instructions in the README 
+(like Visual2). The app can be compiled and run live or packed to then be used on Windows/Linux/macOS.
 
 ## Features
 
