@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>emulator</AssemblyName>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="EEExtensions.fs" />
+    <Compile Include="SharedTypes.fs" />
+    <Compile Include="Libraries.fs" />
+    <Compile Include="Preprocessor.fs" />
+    <Compile Include="Lexer.fs" />
+    <Compile Include="Parser.fs" />
+    <Compile Include="TypeChecker.fs" />
+    <Compile Include="BetaEngine.fs" />
+    <Compile Include="SKICombinator.fs" />
+    <Compile Include="EmulatorTop.fs" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>
