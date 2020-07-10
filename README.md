@@ -1,6 +1,8 @@
 # Blue Documentation
 
-**Blue is a typed functional language**
+**Blue is a typed functional language with both SKI and Beta reduction runtimes. The language can be easily used via the GUI editor provided (which also features syntax highlighting and inferred type tooltips).**
+
+**This project was developed as part of the functional programming course during my third year of university, together with: Fabio Deo, Oliver Stiff, and Szymon Kobus.**
 
 This documentation will contain:
 - how to run the code
@@ -43,6 +45,8 @@ engine you prefer (SKI or Beta).
 
 After clicking the run button, you can hover the let expressions to see
 a tooltip with their types!
+
+The GUI is heavily based on the [Visual2](https://github.com/tomcl/V2releases) one's.
 
 **Windows instructions:**  
 Unzip `team\editor\dist\Blue-win32-x64.zip` to a directory of your choice and run `Blue.exe`.  
